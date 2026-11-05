@@ -224,3 +224,52 @@ test('attachments sync as sealed files, and removed ones are cleaned up', async 
     await srv.close();
   }
 });
+
+test('live updates: a waiting device is woken by another device’s change, not its own', async () => {
+  const dir = tmp();
+  const srv = await startServer({ port: 0, dataDir: dir, signups: 'open', log: () => {} });
+  try {
+    const sk = generateSecretKey();
+    const a = await VaultStore.create(tmp(), PW, sk, KDF_FAST_FOR_TESTS);
+    const vaultId = a.snapshot().vaults[0].id;
+    const ca = new SyncClient(srv.url);
+    await ca.signup('live@example.com', await a.authKey(PW, sk), a.keyset(), 'Laptop');
+    a.syncState = { serverUrl: srv.url, email: 'live@example.com', cursor: 0 };
+    await syncOnce(a, ca);
+    const cb = new SyncClient(srv.url);
+    const b = await VaultStore.createFromRemote(tmp(), PW, sk, await signIn(cb, 'live@example.com', PW, sk, 'Desktop'), { serverUrl: srv.url, email: 'live@example.com', cursor: 0 });
+    await syncOnce(b, cb);
+
+    // Nothing new: the wait ends after its time with changed: false.
+    let t = Date.now();
+    assert.deepEqual((await cb.waitForChanges(b.syncState!.cursor, 1)).changed, false);
+    assert.ok(Date.now() - t >= 900);
+
+    // B waits; A saves an item; B is woken right away.
+    t = Date.now();
+    const woke = cb.waitForChanges(b.syncState!.cursor, 20);
+    await new Promise(r => setTimeout(r, 100));
+    a.saveItem({ ...note('Live note', 'hi'), vaultId });
+    await syncOnce(a, ca);
+    assert.equal((await woke).changed, true);
+    assert.ok(Date.now() - t < 5000, 'woken within seconds, not at the timeout');
+    await syncOnce(b, cb);
+    assert.ok(b.snapshot().items.some(i => i.title === 'Live note'));
+
+    // A's own change doesn't wake A (it already has it).
+    await syncOnce(a, ca); // catch A's cursor up to its own push
+    const own = ca.waitForChanges(a.syncState!.cursor, 1);
+    a.saveItem({ ...note('Another', 'x'), vaultId });
+    const pushed = a.records.dirty().map(r => ({ id: r.id, kind: r.kind, baseRev: r.rev, updatedAt: r.updatedAt, deleted: !!r.deleted, data: r.data }));
+    await ca.push(pushed);
+    assert.equal((await own).changed, false);
+
+    // An attachment upload wakes the other device too.
+    const fileWake = cb.waitForChanges(Number.MAX_SAFE_INTEGER, 20);
+    await new Promise(r => setTimeout(r, 100));
+    await ca.putBlob('someFile0001', Buffer.from('sealed'));
+    assert.equal((await fileWake).changed, true);
+  } finally {
+    await srv.close();
+  }
+});

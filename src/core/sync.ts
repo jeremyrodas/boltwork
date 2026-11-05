@@ -64,14 +64,14 @@ export function normalizeServerUrl(input: string): string {
 export class SyncClient {
   constructor(public serverUrl: string, public token = '') {}
 
-  private async req<T>(method: string, route: string, body?: unknown): Promise<T> {
+  private async req<T>(method: string, route: string, body?: unknown, opts: { timeoutMs?: number; signal?: AbortSignal } = {}): Promise<T> {
     let res: Response;
     try {
       res = await fetch(`${this.serverUrl}/api/v1${route}`, {
         method,
         headers: { 'content-type': 'application/json', ...(this.token ? { authorization: `Bearer ${this.token}` } : {}) },
         body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(30_000),
+        signal: opts.signal ? AbortSignal.any([opts.signal, AbortSignal.timeout(opts.timeoutMs ?? 30_000)]) : AbortSignal.timeout(opts.timeoutMs ?? 30_000),
       });
     } catch (e) {
       throw unreachable(this.serverUrl, e);
@@ -99,6 +99,14 @@ export class SyncClient {
   deleteAccount() { return this.req('DELETE', '/account'); }
   account() { return this.req<{ email: string; devices: { device: string; createdAt: number; lastUsedAt: number }[] }>('GET', '/account'); }
   updateKeys(authKey: Uint8Array, kdf: KdfParams, wrappedKey: Sealed) { return this.req('PUT', '/account/keys', { authKey: b64u(authKey), kdf, wrappedKey }); }
+  /**
+   * Waits until another device changes something (or `waitSec` passes). Returns at once if the server
+   * has records newer than `since`.
+   */
+  waitForChanges(since: number, waitSec = 25, signal?: AbortSignal) {
+    return this.req<{ changed: boolean; rev: number }>('GET', `/changes?since=${since}&wait=${waitSec}`, undefined, { timeoutMs: (waitSec + 15) * 1000, signal });
+  }
+
   listBlobs() { return this.req<{ blobs: { id: string; size: number; createdAt: number }[]; now: number }>('GET', '/blobs'); }
   deleteBlob(id: string) { return this.req('DELETE', `/blobs/${encodeURIComponent(id)}`); }
 

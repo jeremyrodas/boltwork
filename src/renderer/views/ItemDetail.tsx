@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Copy, Download, Ellipsis, ExternalLink, Eye, EyeOff, FileQuestion, Paperclip, Pencil, Star } from 'lucide-react';
+import { previousPasswords } from '../../core/passwordHistory';
 import { fieldByPurpose, TEMPLATE_BY_CATEGORY } from '../../core/templates';
 import type { Field, Item, Strength, WatchtowerCheck } from '../../core/types';
 import { api } from '../api';
@@ -102,9 +103,36 @@ function HistoryModal({ item, onClose }: { item: Item; onClose: () => void }) {
         <div key={i} className="history-row">
           <div>
             <div><b>{v.content.title}</b> <span className="muted">· saved {timeAgo(v.savedAt)}</span></div>
-            <div className="muted small">{v.content.fields.filter(f => f.value).map(f => f.label).join(', ')}</div>
+            <div className="muted small">{v.content.fields.filter(f => f.value).map(f => f.label).join(', ')}{(fieldByPurpose(v.content, 'password')?.value ?? '') !== (fieldByPurpose(i === 0 ? item : item.history[i - 1].content, 'password')?.value ?? '') ? ' · different password' : ''}</div>
           </div>
           <Button small onClick={async () => { await run(api.restoreVersion(item.id, i), 'Version restored'); onClose(); }}>Restore</Button>
+        </div>
+      ))}
+    </Modal>
+  );
+}
+
+/** Earlier passwords of the item, from its saved versions: concealed until revealed, each copyable. */
+function PasswordHistoryModal({ item, onClose }: { item: Item; onClose: () => void }) {
+  const { run, settings } = useApp();
+  const [shown, setShown] = useState<Set<number>>(new Set());
+  const list = previousPasswords(item);
+  const toggle = (i: number) => setShown(s => { const n = new Set(s); if (n.has(i)) n.delete(i); else n.add(i); return n; });
+  return (
+    <Modal title="Previous passwords" onClose={onClose} wide>
+      {list.length === 0
+        ? <p className="muted">No earlier passwords. When you change this item’s password, the old one is kept here.</p>
+        : <p className="muted small">Kept from the item’s last {settings?.historyLimit ?? 30} saved versions. Restore a whole version from Item history.</p>}
+      {list.map((p, i) => (
+        <div key={i} className="history-row">
+          <div className="grow">
+            <div className="mono">{shown.has(i) && !settings?.privacyMode ? <ColoredPassword value={p.value} /> : <span className="dots">••••••••••</span>}</div>
+            <div className="muted small">Replaced {timeAgo(p.replacedAt)} · {new Date(p.replacedAt).toLocaleDateString()}</div>
+          </div>
+          <div className="field-actions">
+            <IconButton title={shown.has(i) ? 'Conceal' : 'Reveal'} onClick={() => toggle(i)}><Ico icon={shown.has(i) ? EyeOff : Eye} /></IconButton>
+            <IconButton title="Copy this old password" onClick={() => run(api.copy(p.value, true), copiedMessage('old password', true, settings))}><Ico icon={Copy} /></IconButton>
+          </div>
         </div>
       ))}
     </Modal>
@@ -126,13 +154,14 @@ function MoveModal({ item, onClose }: { item: Item; onClose: () => void }) {
 
 export function ItemDetail({ id }: { id: string }) {
   const { data, navigate, run, settings } = useApp();
-  const [modal, setModal] = useState<'history' | 'move' | null>(null);
+  const [modal, setModal] = useState<'history' | 'passwords' | 'move' | null>(null);
   const item = data?.items.find(i => i.id === id);
   if (!item) return <div className="detail-pane"><Empty icon={FileQuestion} title="Item not found" /></div>;
   const vault = data!.vaults.find(v => v.id === item.vaultId);
   const t = TEMPLATE_BY_CATEGORY[item.category];
   const deleted = item.state === 'deleted';
   const password = fieldByPurpose(item, 'password')?.value;
+  const oldPasswords = previousPasswords(item).length;
   const ignorable = IGNORABLE.filter(x => x.applies(item) || item.watchtowerIgnore.includes(x.check));
 
   return (
@@ -153,6 +182,7 @@ export function ItemDetail({ id }: { id: string }) {
           { label: 'Duplicate', onClick: async () => { const d = await run(api.duplicateItem(item.id), 'Item duplicated'); if (d) navigate(`/edit/${d.id}`); } },
           { label: 'Move to vault…', onClick: () => setModal('move') },
           { label: 'Item history…', onClick: () => setModal('history') },
+          ...(oldPasswords ? [{ label: 'Previous passwords…', onClick: () => setModal('passwords') }] : []),
           ...(item.category === 'sshKey' ? [
             { label: 'Save public key (.pub)…', onClick: () => run(api.sshExport(item.id, 'public')) },
             { label: 'Export private key…', onClick: async () => {
@@ -232,11 +262,12 @@ export function ItemDetail({ id }: { id: string }) {
         <div className="meta">
           <div>Modified {timeAgo(item.updatedAt)} · Created {new Date(item.createdAt).toLocaleDateString()}</div>
           {item.lastUsedAt && <div>Last used {timeAgo(item.lastUsedAt)} · used {item.useCount} times</div>}
-          {item.passwordChangedAt && <div>Password changed {timeAgo(item.passwordChangedAt)}</div>}
+          {item.passwordChangedAt && <div>Password changed {timeAgo(item.passwordChangedAt)}{oldPasswords > 0 && <> · <button className="link" onClick={() => setModal('passwords')}>{oldPasswords} previous password{oldPasswords > 1 ? 's' : ''}</button></>}</div>}
           {item.history.length > 0 && <button className="link" onClick={() => setModal('history')}>View {item.history.length} previous version{item.history.length > 1 ? 's' : ''}</button>}
         </div>
       </div>
       {modal === 'history' && <HistoryModal item={item} onClose={() => setModal(null)} />}
+      {modal === 'passwords' && <PasswordHistoryModal item={item} onClose={() => setModal(null)} />}
       {modal === 'move' && <MoveModal item={item} onClose={() => setModal(null)} />}
     </section>
   );

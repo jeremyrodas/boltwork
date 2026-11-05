@@ -7,6 +7,7 @@ import { zipSync, strToU8 } from 'fflate';
 import { ready, generateSecretKey, normalizeSecretKey, KDF_FAST_FOR_TESTS } from '../src/core/crypto';
 import { VaultStore, WrongPasswordError } from '../src/core/store';
 import { blankContent } from '../src/core/templates';
+import { previousPasswords } from '../src/core/passwordHistory';
 import { generatePassword, DEFAULT_GENERATOR } from '../src/core/generator';
 import { rateStrength } from '../src/core/strength';
 import { totpAt, parseTotp, base32Decode } from '../src/core/totp';
@@ -255,4 +256,29 @@ test('countNewItems matches what importItems adds', async () => {
   const batch = [mk('A'), mk('B'), mk('B'), mk('C')];
   assert.equal(s.countNewItems(batch), 2);
   assert.equal(s.importItems(batch, vaultId), 2);
+});
+
+test('previous passwords come from item history, newest first, each once', async () => {
+  const store = await VaultStore.create(fs.mkdtempSync(path.join(os.tmpdir(), 'sr-pwh-')), 'correct horse battery', generateSecretKey(), KDF_FAST_FOR_TESTS);
+  const vaultId = store.snapshot().vaults[0].id;
+  const login = (pw: string, notes = '') => {
+    const c = blankContent('login');
+    c.title = 'Bank'; c.notes = notes;
+    c.fields.find(f => f.purpose === 'password')!.value = pw;
+    return c;
+  };
+  const tick = () => new Promise(r => setTimeout(r, 5));
+  const id = store.saveItem({ ...login('first-pass'), vaultId }).id;
+  await tick(); store.saveItem({ ...login('second-pass'), id, vaultId });
+  await tick(); store.saveItem({ ...login('second-pass', 'only notes changed'), id, vaultId });
+  await tick(); store.saveItem({ ...login('first-pass', 'only notes changed'), id, vaultId }); // reused
+  await tick(); store.saveItem({ ...login('third-pass', 'only notes changed'), id, vaultId });
+
+  const item = store.getItem(id);
+  const prev = previousPasswords(item);
+  assert.deepEqual(prev.map(p => p.value), ['first-pass', 'second-pass']);
+  // Each one's date is when it was replaced, and newer replacements come first.
+  assert.equal(prev[0].replacedAt, item.passwordChangedAt);
+  assert.ok(prev[0].replacedAt > prev[1].replacedAt);
+  assert.deepEqual(previousPasswords({ ...item, history: [] }), []);
 });

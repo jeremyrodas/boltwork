@@ -121,6 +121,14 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
     deleteBlob: db.prepare('DELETE FROM blobs WHERE account_id = ? AND id = ?'),
   };
 
+  // ---- live updates: devices wait on GET /changes and are woken when another device changes something ----
+  type Waiter = { tokenHash: Buffer; wake: () => void };
+  const waiters = new Map<string, Set<Waiter>>();
+  /** Wakes every device of the account waiting for changes, except the one that made the change. */
+  function notify(accountId: string, except?: Buffer) {
+    for (const w of waiters.get(accountId) ?? []) if (!except || !w.tokenHash.equals(except)) w.wake();
+  }
+
   // Account ids are checked against BLOB_ID-style patterns on sign-up, so they're safe as folder names.
   const blobDir = (accountId: string) => path.join(blobRoot, accountId);
   const blobFile = (accountId: string, id: string) => path.join(blobDir(accountId), id);
@@ -230,8 +238,32 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
       return { ok: true };
     }
 
+    if (r === `GET ${API}/changes`) {
+      // Long poll: answers at once if there are records newer than `since`, otherwise when another device
+      // changes something, or after `wait` seconds with changed: false.
+      const since = Number(url.searchParams.get('since') ?? 0) || 0;
+      const rev = () => Number((q.accountById.get(accountId) as Row).rev);
+      if (rev() > since) return { changed: true, rev: rev() };
+      const waitMs = Math.min(Math.max(Number(url.searchParams.get('wait') ?? 25) || 25, 1), 55) * 1000;
+      return new Promise(resolve => {
+        const set = waiters.get(accountId) ?? new Set<Waiter>();
+        waiters.set(accountId, set);
+        const finish = (changed: boolean) => {
+          clearTimeout(timer);
+          set.delete(w);
+          if (!set.size) waiters.delete(accountId);
+          resolve(changed ? { changed: true, rev: q.accountById.get(accountId) ? rev() : since } : { changed: false, rev: since });
+        };
+        const w: Waiter = { tokenHash, wake: () => finish(true) };
+        const timer = setTimeout(() => finish(false), waitMs);
+        set.add(w);
+        req.socket.once('close', () => { clearTimeout(timer); set.delete(w); if (!set.size) waiters.delete(accountId); });
+      });
+    }
+
     if (r === `DELETE ${API}/account`) {
       q.deleteAccount.run(accountId);
+      notify(accountId);
       fs.rmSync(blobDir(accountId), { recursive: true, force: true });
       log(`account deleted ${accountId}`);
       return { ok: true };
@@ -274,6 +306,7 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
         }
         db.exec('COMMIT');
       } catch (e) { db.exec('ROLLBACK'); throw e; }
+      if (accepted.length) notify(accountId, tokenHash);
       return { accepted, conflicts };
     }
 
@@ -286,7 +319,7 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
    */
   async function blobRoute(req: http.IncomingMessage, res: http.ServerResponse, id: string): Promise<unknown> {
     if (!BLOB_ID.test(id)) throw new HttpError(400, 'Bad attachment id.');
-    const { accountId } = auth(req);
+    const { accountId, tokenHash } = auth(req);
     const file = blobFile(accountId, id);
 
     if (req.method === 'GET') {
@@ -300,6 +333,7 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
     if (req.method === 'DELETE') {
       q.deleteBlob.run(accountId, id);
       fs.rmSync(file, { force: true });
+      notify(accountId, tokenHash);
       return { ok: true };
     }
 
@@ -333,6 +367,7 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
         throw e;
       }
       q.upsertBlob.run(accountId, id, size, Date.now());
+      notify(accountId, tokenHash);
       return { ok: true, size };
     }
 

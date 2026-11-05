@@ -1,6 +1,6 @@
 {
   "name": "strongroom",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Strongroom: a local-first, end-to-end encrypted password manager",
   "main": "dist/main.js",

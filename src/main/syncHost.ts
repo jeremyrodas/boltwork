@@ -74,20 +74,58 @@ export function syncNow(): Promise<void> {
 export function scheduleSync() {
   if (!host.store()?.syncState) return;
   if (debounce) clearTimeout(debounce);
-  debounce = setTimeout(() => { void syncNow(); }, 1500);
+  debounce = setTimeout(() => { void syncNow(); }, 500);
 }
 
 export function startSyncLoop() {
   stopSyncLoop();
   if (!host.store()?.syncState) return;
+  // Live updates do the real work; this is the fallback for servers without them, or a connection that drops quietly.
   timer = setInterval(() => { void syncNow(); }, 60_000);
-  void syncNow();
+  void syncNow().then(() => watchForChanges());
 }
 
 export function stopSyncLoop() {
   if (timer) clearInterval(timer);
   if (debounce) clearTimeout(debounce);
   timer = debounce = null;
+  watch?.abort();
+  watch = null;
+}
+
+let watch: AbortController | null = null;
+const pause = (ms: number, signal: AbortSignal) => new Promise<void>(r => { const t = setTimeout(r, ms); signal.addEventListener('abort', () => { clearTimeout(t); r(); }, { once: true }); });
+
+/**
+ * Keeps a request open to the server, which answers as soon as another device changes something,
+ * so changes show up here within a second or two instead of at the next timed sync.
+ */
+function watchForChanges() {
+  watch?.abort();
+  const ac = new AbortController();
+  watch = ac;
+  void (async () => {
+    let backoff = 5_000;
+    while (!ac.signal.aborted) {
+      const store = host.store();
+      if (!store?.syncState || status.signedOut) return;
+      try {
+        const r = await clientFor(store).waitForChanges(store.syncState.cursor, 25, ac.signal);
+        backoff = 5_000;
+        if (r.changed) {
+          await syncNow();
+          // If that sync failed, don't spin: the server will keep saying there's something new.
+          if (status.error) await pause(15_000, ac.signal);
+        }
+      } catch (e) {
+        if (ac.signal.aborted) return;
+        if (e instanceof SyncError && e.status === 401) { void syncNow(); return; } // syncNow reports the sign-out
+        if (e instanceof SyncError && e.status === 404) return; // an older server without live updates: timed syncs still run
+        await pause(backoff, ac.signal);
+        backoff = Math.min(backoff * 2, 120_000);
+      }
+    }
+  })();
 }
 
 export async function checkServer(url: string) {
