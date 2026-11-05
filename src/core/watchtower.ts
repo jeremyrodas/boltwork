@@ -29,6 +29,27 @@ export interface OnlineChecks {
   twoFactorDomains?: () => Promise<Set<string>>;
 }
 
+/**
+ * Strength ratings are slow (tens of milliseconds each) and never change for a given password, so they're
+ * remembered between checks, keyed by hash. The app runs checks in a worker it shuts down on lock, which clears this.
+ */
+const weakCache = new Map<string, boolean>();
+function weak(pw: string): boolean {
+  const h = createHash('sha256').update(pw, 'utf8').digest('base64');
+  let w = weakCache.get(h);
+  if (w === undefined) {
+    w = isWeak(pw);
+    if (weakCache.size > 20_000) weakCache.clear();
+    weakCache.set(h, w);
+  }
+  return w;
+}
+
+export type WatchtowerPhase = 'strength' | 'breaches';
+
+/** Pwned Passwords lookups in flight at once. */
+const PWNED_PARALLEL = 8;
+
 const sha1 = (s: string) => createHash('sha1').update(s, 'utf8').digest('hex').toUpperCase();
 const WEIGHTS: Record<WatchtowerCheck, number> = {
   compromisedWebsite: 5, vulnerable: 5, reused: 3, weak: 3, unsecured: 1, inactive2fa: 1, expiring: 1, duplicate: 0.5,
@@ -60,6 +81,7 @@ export async function runWatchtower(
   online: OnlineChecks = {},
   now = Date.now(),
   onPwned?: (sha1: string, count: number) => void,
+  onProgress?: (done: number, total: number, phase: WatchtowerPhase) => void,
 ): Promise<WatchtowerReport> {
   const active = data.items.filter(i => i.state === 'active');
   const issues: WatchtowerIssue[] = [];
@@ -69,12 +91,13 @@ export async function runWatchtower(
 
   // Passwords: weak, reused, vulnerable
   const byPassword = new Map<string, Item[]>();
-  for (const item of active) {
-    const pw = fieldByPurpose(item, 'password')?.value;
-    if (!pw) continue;
+  const withPassword = active.filter(i => fieldByPurpose(i, 'password')?.value);
+  withPassword.forEach((item, n) => {
+    const pw = fieldByPurpose(item, 'password')!.value;
     byPassword.set(pw, [...(byPassword.get(pw) ?? []), item]);
-    if (isWeak(pw)) add(item, 'weak', 'This password is easy to guess.');
-  }
+    if (weak(pw)) add(item, 'weak', 'This password is easy to guess.');
+    onProgress?.(n + 1, withPassword.length, 'strength');
+  });
   for (const items of byPassword.values()) {
     if (items.length > 1) {
       const others = items.length - 1;
@@ -84,20 +107,34 @@ export async function runWatchtower(
   let vulnerableOnline = false;
   if (online.pwnedCount) {
     vulnerableOnline = true;
-    for (const [pw, items] of byPassword) {
+    const lookup = online.pwnedCount;
+    const counts = new Map<string, number>();
+    const todo: string[] = [];
+    for (const pw of byPassword.keys()) {
       const h = sha1(pw);
-      let count: number | undefined = data.pwnedCache[h];
-      if (count === undefined) {
+      const cached = data.pwnedCache[h];
+      if (cached === undefined) todo.push(h); else counts.set(h, cached);
+    }
+    // A few lookups at a time; after the first failure (offline, blocked) the rest are skipped rather than each timing out.
+    let next = 0, done = 0;
+    onProgress?.(0, todo.length, 'breaches');
+    const worker = async () => {
+      while (vulnerableOnline && next < todo.length) {
+        const h = todo[next++];
         try {
-          count = await online.pwnedCount(h);
-          onPwned?.(h, count);
+          const n = await lookup(h);
+          counts.set(h, n);
+          onPwned?.(h, n);
         } catch {
           vulnerableOnline = false;
-          continue;
         }
+        onProgress?.(++done, todo.length, 'breaches');
       }
-      const n = count;
-      if (n > 0) items.forEach(i => add(i, 'vulnerable', `This password has appeared in ${n.toLocaleString('en-US')} data breaches.`));
+    };
+    await Promise.all(Array.from({ length: Math.min(PWNED_PARALLEL, todo.length) }, worker));
+    for (const [pw, items] of byPassword) {
+      const n = counts.get(sha1(pw));
+      if (n) items.forEach(i => add(i, 'vulnerable', `This password has appeared in ${n.toLocaleString('en-US')} data breaches.`));
     }
   }
 

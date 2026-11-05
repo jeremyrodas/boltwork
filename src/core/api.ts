@@ -161,7 +161,10 @@ export interface ApiEvents {
   data: VaultData;
   settings: Settings;
   navigate: string;
+  /** A Watchtower check finished (whichever window started it). */
   watchtowerUpdated: WatchtowerReport;
+  /** Password lookups done so far in the running check; null when it's finished. */
+  watchtowerProgress: { done: number; total: number; phase: 'strength' | 'breaches' } | null;
   quickAccessShown: null;
 }
 

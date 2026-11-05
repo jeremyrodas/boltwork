@@ -1,4 +1,5 @@
 import type { GeneratorOptions, Settings } from './types';
+import { schemeOf } from './schemes';
 
 export const DEFAULT_GENERATOR: GeneratorOptions = {
   mode: 'characters', length: 20, digits: true, symbols: true, avoidAmbiguous: false,
@@ -8,6 +9,7 @@ export const DEFAULT_GENERATOR: GeneratorOptions = {
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
+  colorScheme: 'brass',
   density: 'default',
   zoom: 1,
   startAtLogin: false,
@@ -68,7 +70,9 @@ export const SECURITY_PRESETS: Record<PresetName, { name: string; description: s
 };
 
 export function mergeSettings(saved: Partial<Settings> | null | undefined): Settings {
-  return { ...DEFAULT_SETTINGS, ...(saved ?? {}), generator: { ...DEFAULT_GENERATOR, ...(saved?.generator ?? {}) } };
+  const s = { ...DEFAULT_SETTINGS, ...(saved ?? {}), generator: { ...DEFAULT_GENERATOR, ...(saved?.generator ?? {}) } };
+  s.colorScheme = schemeOf(s.colorScheme);
+  return s;
 }
 
 /** Recomputes which preset (if any) the current settings match. */

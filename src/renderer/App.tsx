@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { SCHEMES } from '../core/schemes';
 import { fieldByPurpose } from '../core/templates';
 import type { Category } from '../core/types';
 import { api } from './api';
@@ -25,6 +26,9 @@ function useTheme() {
     const apply = () => {
       const dark = settings.theme === 'dark' || (settings.theme === 'system' && mq.matches);
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      document.documentElement.dataset.scheme = settings.colorScheme;
+      const mark = SCHEMES[settings.colorScheme].mark;
+      for (const [k, v] of Object.entries(mark)) document.documentElement.style.setProperty(`--mark-${k}`, v);
       document.documentElement.dataset.density = settings.density;
     };
     apply();

@@ -1,5 +1,5 @@
 /**
- * The Strongroom mark: a vault door in brass on graphite. A brass rim set with dark bolts, and a
+ * The Strongroom mark: a vault door in brass on graphite (or another metal, see schemes.ts). A brass rim set with dark bolts, and a
  * three-spoke handwheel on a hub. Drawn here as straight-alpha RGBA at any size, so the app window,
  * tray and browser extension need no image files. At 24px and below the bolts and spoke caps are
  * dropped and the rim and spokes thicken, so the mark stays legible in the tray and toolbar.
@@ -7,23 +7,21 @@
  * Geometry is in a 72-unit square, matching BrandMark in the renderer.
  */
 
-export const MARK_COLORS = {
-  graphite: [31, 36, 48] as const,   // #1f2430
-  edge: [72, 80, 98] as const,       // #485062, the rim of the square
-  brass: [201, 164, 92] as const,    // #c9a45c
-  lockedBrass: [154, 160, 171] as const, // greyed for the tray while locked
-};
+import { SCHEMES, type ColorScheme } from './schemes';
 
 type RGB = readonly [number, number, number];
+const rgb = (hex: string): RGB => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)) as unknown as RGB;
 interface Layer { color: RGB; coverage: (x: number, y: number) => number }
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
-export function drawIcon(size: number, locked = false): Uint8Array {
+export function drawIcon(size: number, locked = false, scheme: ColorScheme = 'brass'): Uint8Array {
   const s = size / 72; // pixels per unit
   const small = size <= 24;
-  const brass = locked ? MARK_COLORS.lockedBrass : MARK_COLORS.brass;
-  const graphite = MARK_COLORS.graphite;
+  const colors = SCHEMES[scheme].mark;
+  const brass = rgb(locked ? colors.locked : colors.metal); // "brass" is the metal of whichever scheme
+  const graphite = rgb(colors.body);
+  const edgeColor = rgb(colors.edge);
   const c = 36;
 
   // Coverage helpers (unit space in, pixel-accurate antialiasing out).
@@ -48,7 +46,7 @@ export function drawIcon(size: number, locked = false): Uint8Array {
   // A thin lighter edge keeps the square visible on dark taskbars and toolbars.
   const edge = Math.max(1.5, 1 / s);
   const layers: Layer[] = [
-    { color: MARK_COLORS.edge, coverage: roundedSquare(2, 16) },
+    { color: edgeColor, coverage: roundedSquare(2, 16) },
     { color: graphite, coverage: roundedSquare(2 + edge, 16 - edge) },
   ];
   if (small) {

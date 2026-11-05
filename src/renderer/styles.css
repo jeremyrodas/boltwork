@@ -52,6 +52,42 @@
 }
 [data-density='comfortable'] { --row-h: 62px; }
 
+/* Color schemes: the vault door in other metals (see src/core/schemes.ts). Brass is the base above. */
+:root[data-scheme='copper']:not([data-theme='light']), [data-theme='dark'][data-scheme='copper'] {
+  --accent: #e3956b; --accent-fill: #d0825a; --accent-fill-hover: #db8f67; --accent-text: #1e0f07;
+  --sel: #33251f; --muted-on-sel: #cdb5a8;
+}
+[data-theme='light'][data-scheme='copper'] {
+  --accent: #9a4a24; --accent-fill: #9a4a24; --accent-fill-hover: #873f1d; --accent-text: #fff;
+  --sel: #f6e6dc; --muted-on-sel: #6a4a3a;
+}
+:root[data-scheme='verdigris']:not([data-theme='light']), [data-theme='dark'][data-scheme='verdigris'] {
+  --accent: #6cc9b4; --accent-fill: #5ab8a3; --accent-fill-hover: #68c4af; --accent-text: #06201a;
+  --sel: #1c2e2b; --muted-on-sel: #a8c7bf;
+}
+[data-theme='light'][data-scheme='verdigris'] {
+  --accent: #1f6f61; --accent-fill: #1f6f61; --accent-fill-hover: #195e52; --accent-text: #fff;
+  --sel: #dcefea; --muted-on-sel: #3f5e57;
+}
+:root[data-scheme='steel']:not([data-theme='light']), [data-theme='dark'][data-scheme='steel'] {
+  --accent: #9dbcf0; --accent-fill: #86a8e0; --accent-fill-hover: #95b5ea; --accent-text: #0b1730;
+  --sel: #222b3d; --muted-on-sel: #b3bfd4;
+}
+[data-theme='light'][data-scheme='steel'] {
+  --accent: #2f5596; --accent-fill: #2f5596; --accent-fill-hover: #284a84; --accent-text: #fff;
+  --sel: #e1e9f6; --muted-on-sel: #46526a;
+}
+:root[data-scheme='silver']:not([data-theme='light']), [data-theme='dark'][data-scheme='silver'] {
+  --accent: #c8cfdb; --accent-fill: #bcc3cf; --accent-fill-hover: #c9cfda; --accent-text: #15181e;
+  --sel: #2a2d34; --muted-on-sel: #bcc1cb;
+}
+[data-theme='light'][data-scheme='silver'] {
+  --accent: #4a5262; --accent-fill: #4a5262; --accent-fill-hover: #3d4452; --accent-text: #fff;
+  --sel: #e9ebef; --muted-on-sel: #4f5563;
+}
+/* Silver's accent sits close to the text color, so links also carry an underline. */
+[data-scheme='silver'] a, [data-scheme='silver'] .link { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent); text-underline-offset: 3px; }
+
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body {
@@ -316,9 +352,13 @@ input.switch:checked::after { left: 19px; }
 .wt-score b { font-size: 30px; }
 .wt-score span { font-size: 12px; color: var(--muted); }
 .wt-score b { font-variant-numeric: tabular-nums; }
-.wt-note { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; color: var(--warn-text); font-size: 13px; max-width: 62ch; }
-.wt-note svg { flex-shrink: 0; margin-top: 2px; }
-.wt-note .link { padding: 0; }
+.wt-callout { display: flex; gap: 16px; align-items: center; margin: 0 0 14px; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
+.wt-callout h3 { margin: 0 0 4px; font-size: 16px; font-weight: 650; text-transform: none; letter-spacing: normal; color: var(--text); }
+.wt-callout p { margin: 0 0 6px; max-width: 70ch; }
+.wt-callout .hint { margin: 0; }
+.wt-callout-icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.wt-callout > .btn, .wt-callout > button { flex-shrink: 0; }
+@media (max-width: 760px) { .wt-callout { flex-wrap: wrap; } }
 .wt-grid { display: flex; flex-direction: column; gap: 8px; }
 .wt-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
 .wt-icon { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--hover); color: var(--muted); flex-shrink: 0; }
@@ -331,10 +371,13 @@ input.switch:checked::after { left: 19px; }
 .wt-card.sev-tip .wt-sev { color: var(--muted); }
 .wt-card-head { display: flex; gap: 12px; align-items: center; width: 100%; padding: 12px 16px; background: none; border: 0; cursor: pointer; text-align: left; }
 .wt-card-head:hover { background: var(--hover); border-radius: 10px; }
+.wt-card-head.static { cursor: default; }
+.wt-card-head.static:hover { background: none; }
 .wt-card-head .grow { display: flex; flex-direction: column; }
 .wt-count { font-size: 20px; font-weight: 700; min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
 .wt-card.ok .wt-count { color: var(--good-text); }
 .wt-card.off .wt-count { color: var(--muted); font-size: 13px; font-weight: 600; }
+.wt-card.pending .wt-count { color: var(--muted); }
 .wt-list { border-top: 1px solid var(--line); padding: 6px; }
 .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin: 16px 0; }
 .home-stat { display: flex; gap: 14px; align-items: center; cursor: pointer; text-align: left; }
@@ -411,3 +454,18 @@ code { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 12.5px; }
 
 .steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--muted); max-width: 70ch; }
 .steps li b, .steps li code { color: var(--text); }
+
+/* Settings > Appearance > Color scheme: one tile per metal, each showing its vault door. */
+.scheme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; margin: 4px 0 0; }
+.scheme-grid + .hint { margin-top: 12px; }
+.scheme-tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 10px 12px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); cursor: pointer; text-align: center;
+  transition: border-color .12s, background-color .12s; }
+.scheme-tile:hover { background: var(--hover); }
+.scheme-tile input { position: absolute; opacity: 0; pointer-events: none; }
+.scheme-tile:has(input:checked) { border-color: var(--accent); background: var(--sel); box-shadow: inset 0 0 0 1px var(--accent); }
+.scheme-tile:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.scheme-tile b { font-size: 13px; }
+.scheme-tile .muted { font-size: 12px; line-height: 1.35; }
+.scheme-tile:has(input:checked) .muted { color: var(--muted-on-sel); }
+.scheme-tile .brand-mark { filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .25)); }

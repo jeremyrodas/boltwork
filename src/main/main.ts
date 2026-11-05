@@ -16,10 +16,9 @@ import { vaultExists, VaultStore, WrongPasswordError } from '../core/store';
 import { rateStrength } from '../core/strength';
 import { fieldByPurpose } from '../core/templates';
 import { currentTotp } from '../core/totp';
-import type { Settings } from '../core/types';
-import { runWatchtower } from '../core/watchtower';
+import type { Settings, WatchtowerReport } from '../core/types';
+import { Worker } from 'node:worker_threads';
 import { makeIcon } from './icon';
-import { onlineChecks } from './online';
 import { initSshAgent, setSshAgentEnabled, sshAgentLocked, sshAgentStatus } from './sshAgentHost';
 import { browserHostStatus, getBridge, registerNativeHost, startBrowserHost, stopBrowserHost } from './browserHost';
 import {
@@ -120,6 +119,89 @@ function changed() {
   scheduleSync();
 }
 
+// ---------- Watchtower: one check at a time, in a worker thread ----------
+
+/*
+ * Rating hundreds of passwords takes many seconds of solid CPU work. Done on this thread it froze every
+ * window ("Not responding"), so the check runs in a worker. The worker lives while the vault is unlocked
+ * (it remembers strength ratings between checks) and is shut down on lock, taking its memory with it.
+ */
+type WorkerMsg =
+  | { type: 'pwned'; h: string; n: number }
+  | { type: 'progress'; done: number; total: number; phase: 'strength' | 'breaches' }
+  | { type: 'done'; report: WatchtowerReport }
+  | { type: 'error'; message: string };
+
+let wtWorker: Worker | null = null;
+
+function watchtowerWorker(): Worker {
+  if (!wtWorker) {
+    const w = new Worker(path.join(unpackedRoot, 'dist', 'watchtowerWorker.js'));
+    w.unref();
+    w.on('exit', () => { if (wtWorker === w) wtWorker = null; });
+    w.on('error', e => console.error('Watchtower worker failed', e));
+    wtWorker = w;
+  }
+  return wtWorker;
+}
+
+function stopWatchtowerWorker() {
+  void wtWorker?.terminate();
+  wtWorker = null;
+}
+
+function checkInWorker(s: VaultStore, onProgress: (done: number, total: number, phase: 'strength' | 'breaches') => void): Promise<WatchtowerReport> {
+  const w = watchtowerWorker();
+  return new Promise((resolve, reject) => {
+    const onMessage = (m: WorkerMsg) => {
+      if (m.type === 'pwned') { if (store === s) s.recordPwned(m.h, m.n); return; }
+      if (m.type === 'progress') { onProgress(m.done, m.total, m.phase); return; }
+      cleanup();
+      if (m.type === 'done') resolve(m.report); else reject(new Error(m.message));
+    };
+    const onExit = () => { cleanup(); reject(new Error('Strongroom locked.')); };
+    const cleanup = () => { w.off('message', onMessage); w.off('exit', onExit); };
+    w.on('message', onMessage);
+    w.on('exit', onExit);
+    w.postMessage({
+      data: s.snapshot(), now: Date.now(), cacheDir,
+      enabled: { vulnerable: settings.checkVulnerable, compromised: settings.checkCompromisedSites, twoFactor: settings.check2faSites },
+    });
+  });
+}
+
+let wtRunning: Promise<WatchtowerReport> | null = null;
+let wtAgain = false;
+
+/**
+ * Runs a Watchtower check, or joins the one already running. Asking during a run (data changed, another
+ * window opened Watchtower) schedules one more run afterwards; every finished run is broadcast.
+ */
+function watchtowerRun(): Promise<WatchtowerReport> {
+  if (wtRunning) { wtAgain = true; return wtRunning; }
+  const s = requireStore();
+  let lastProgress = 0;
+  wtRunning = (async () => {
+    try {
+      const report = await checkInWorker(s, (done, total, phase) => {
+        if (!total || done === total || Date.now() - lastProgress > 150) {
+          lastProgress = Date.now();
+          emit('watchtowerProgress', total && done < total ? { done, total, phase } : null);
+        }
+      });
+      if (store === s) { s.flush(); emit('watchtowerUpdated', report); }
+      return report;
+    } finally {
+      emit('watchtowerProgress', null);
+      wtRunning = null;
+      const again = wtAgain && store === s;
+      wtAgain = false;
+      if (again) void watchtowerRun().catch(() => undefined);
+    }
+  })();
+  return wtRunning;
+}
+
 function requireStore(): VaultStore {
   if (!store) throw new Error('Strongroom is locked.');
   return store;
@@ -136,6 +218,7 @@ function currentSecretKey(): string {
 function lock() {
   if (!store) return;
   stopSyncLoop();
+  stopWatchtowerWorker();
   store.lock();
   store = null;
   sshAgentLocked();
@@ -216,7 +299,7 @@ function hardenWindow(win: BrowserWindow) {
 function createMainWindow(show = true) {
   mainWin = new BrowserWindow({
     width: 1180, height: 760, minWidth: 820, minHeight: 520, show: false, title: 'Strongroom',
-    icon: makeIcon(256), backgroundColor: '#111318', autoHideMenuBar: true,
+    icon: makeIcon(256, false, settings.colorScheme), backgroundColor: '#111318', autoHideMenuBar: true,
     webPreferences: { preload, contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
   });
   hardenWindow(mainWin);
@@ -287,7 +370,7 @@ function showLargeType(text: string) {
 
 function updateTray() {
   if (!tray) return;
-  tray.setImage(makeIcon(16, !store));
+  tray.setImage(makeIcon(16, !store, settings.colorScheme));
   tray.setToolTip(store ? 'Strongroom (unlocked)' : 'Strongroom (locked)');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open Strongroom', click: () => showMain() },
@@ -342,6 +425,12 @@ function applySettingsSideEffects(prev: Settings) {
   if (prev.quickAccessShortcut !== settings.quickAccessShortcut || prev.showShortcut !== settings.showShortcut || prev.lockShortcut !== settings.lockShortcut) {
     registerShortcuts();
     buildMenu();
+    updateTray();
+  }
+  if (prev.colorScheme !== settings.colorScheme) {
+    // Window, taskbar and tray icons follow the scheme. The installer's icon and Start menu shortcut stay brass.
+    const icon = makeIcon(256, false, settings.colorScheme);
+    allWindows().forEach(w => w.setIcon(icon));
     updateTray();
   }
   if (prev.screenCaptureProtection !== settings.screenCaptureProtection) allWindows().forEach(w => w.setContentProtection(settings.screenCaptureProtection));
@@ -568,17 +657,7 @@ const handlers: Handlers = {
   suggestUsername: () => suggestUsername(),
   totp: value => { try { return currentTotp(value); } catch (e) { return { error: (e as Error).message }; } },
 
-  watchtower: async () => {
-    const s = requireStore();
-    const report = await runWatchtower(
-      s.snapshot(),
-      onlineChecks(cacheDir, { vulnerable: settings.checkVulnerable, compromised: settings.checkCompromisedSites, twoFactor: settings.check2faSites }),
-      Date.now(),
-      (h, n) => s.recordPwned(h, n),
-    );
-    if (store === s) s.flush();
-    return report;
-  },
+  watchtower: () => watchtowerRun(),
 
   copy: (text, secret) => copy(text, secret),
   getSettings: () => settings,
@@ -782,7 +861,7 @@ app.whenReady().then(async () => {
     else app.setAsDefaultProtocolClient('strongroom', process.execPath, [path.resolve(process.argv[1] ?? '.')]);
   }
   buildMenu();
-  tray = new Tray(makeIcon(16, true));
+  tray = new Tray(makeIcon(16, true, settings.colorScheme));
   tray.on('click', () => showMain());
   updateTray();
   registerShortcuts();

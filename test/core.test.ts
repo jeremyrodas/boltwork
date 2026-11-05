@@ -282,3 +282,55 @@ test('previous passwords come from item history, newest first, each once', async
   assert.ok(prev[0].replacedAt > prev[1].replacedAt);
   assert.deepEqual(previousPasswords({ ...item, history: [] }), []);
 });
+
+test('watchtower looks passwords up a few at a time, reports progress, and stops when offline', async () => {
+  const store = await VaultStore.create(fs.mkdtempSync(path.join(os.tmpdir(), 'sr-wt-')), 'correct horse battery', generateSecretKey(), KDF_FAST_FOR_TESTS);
+  const vaultId = store.snapshot().vaults[0].id;
+  for (let i = 0; i < 40; i++) {
+    const c = blankContent('login');
+    c.title = `Site ${i}`;
+    c.fields.find(f => f.purpose === 'password')!.value = `unique-${i}-Qx7!vR2m`;
+    store.saveItem({ ...c, vaultId });
+  }
+
+  // Online: lookups overlap, every password is looked up once, progress reaches the total.
+  let inFlight = 0, maxInFlight = 0, calls = 0;
+  const progress: [number, number][] = [];
+  const report = await runWatchtower(store.snapshot(), {
+    pwnedCount: async () => { calls++; inFlight++; maxInFlight = Math.max(maxInFlight, inFlight); await new Promise(r => setTimeout(r, 5)); inFlight--; return 3; },
+  }, Date.now(), undefined, (d, t) => progress.push([d, t]));
+  assert.equal(calls, 40);
+  assert.ok(maxInFlight > 1 && maxInFlight <= 8, `ran ${maxInFlight} at once`);
+  assert.deepEqual(progress.at(-1), [40, 40]);
+  assert.equal(report.issues.filter(i => i.check === 'vulnerable').length, 40);
+
+  // Offline: after the first failure no new lookups start, and the check still finishes.
+  calls = 0;
+  const offline = await runWatchtower(store.snapshot(), {
+    pwnedCount: async () => { calls++; await new Promise(r => setTimeout(r, 5)); throw new Error('offline'); },
+  });
+  assert.ok(calls <= 8, `stopped after ${calls} lookups`);
+  assert.equal(offline.issues.filter(i => i.check === 'vulnerable').length, 0);
+});
+
+test('color schemes: the app icon is drawn in each metal, and unknown settings fall back to brass', async () => {
+  const { drawIcon } = await import('../src/core/iconBitmap');
+  const { SCHEMES, SCHEME_ORDER } = await import('../src/core/schemes');
+  const { mergeSettings } = await import('../src/core/settings');
+  const hex = (h: string) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const at = (px: Uint8Array, size: number, x: number, y: number) => Array.from(px.slice((y * size + x) * 4, (y * size + x) * 4 + 3));
+  const seen = new Set<string>();
+  for (const id of SCHEME_ORDER) {
+    const size = 64, px = drawIcon(size, false, id);
+    // The hub at the centre is solid metal; the corner just inside the edge is the door's face.
+    const hub = at(px, size, 32, 28); // on the hub, clear of its dark centre pin
+    assert.deepEqual(hub, hex(SCHEMES[id].mark.metal), `${id} hub`);
+    assert.deepEqual(at(px, size, 12, 12), hex(SCHEMES[id].mark.body), `${id} face`);
+    assert.deepEqual(at(drawIcon(16, true, id), 16, 8, 8), hex(SCHEMES[id].mark.locked), `${id} locked tray`);
+    seen.add(hub.join());
+  }
+  assert.equal(seen.size, SCHEME_ORDER.length, 'every scheme looks different');
+  assert.equal(mergeSettings({ colorScheme: 'plaid' as never }).colorScheme, 'brass');
+  assert.equal(mergeSettings({ colorScheme: 'verdigris' }).colorScheme, 'verdigris');
+  assert.equal(mergeSettings(null).colorScheme, 'brass');
+});

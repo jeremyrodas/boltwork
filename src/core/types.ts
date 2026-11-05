@@ -137,6 +137,8 @@ export interface VaultData {
 
 export interface Settings {
   theme: 'system' | 'light' | 'dark';
+  /** The vault door's metal: logo, app icon and accent color. */
+  colorScheme: import('./schemes').ColorScheme;
   density: 'default' | 'comfortable';
   zoom: number;
   startAtLogin: boolean;

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { SCHEMES, SCHEME_ORDER } from '../../core/schemes';
+import { BrandMark } from '../components/BrandMark';
 import type { ImportPreview } from '../../core/api';
 import { IMPORT_SOURCES } from '../../core/importSources';
 import { SECURITY_PRESETS, type PresetName } from '../../core/settings';
@@ -316,6 +318,19 @@ export function SettingsView({ pane = 'general' }: { pane?: string }) {
         {pane === 'appearance' && (<>
           <Section title="Theme">
             <div className="seg">{(['system', 'light', 'dark'] as const).map(t => <button key={t} className={settings.theme === t ? 'on' : ''} onClick={() => updateSettings({ theme: t })}>{t[0].toUpperCase() + t.slice(1)}</button>)}</div>
+          </Section>
+          <Section title="Color scheme">
+            <div className="scheme-grid" role="radiogroup" aria-label="Color scheme">
+              {SCHEME_ORDER.map(id => (
+                <label key={id} className="scheme-tile">
+                  <input type="radio" name="color-scheme" value={id} checked={settings.colorScheme === id} onChange={() => updateSettings({ colorScheme: id })} />
+                  <BrandMark size={48} scheme={id} />
+                  <b>{SCHEMES[id].label}</b>
+                  <span className="muted">{SCHEMES[id].blurb}</span>
+                </label>
+              ))}
+            </div>
+            <p className="hint">Changes the logo, the app’s icon in the taskbar and tray, and the accent color, in both light and dark. The installer and Start menu shortcut keep the brass icon.</p>
           </Section>
           <Section title="Layout">
             <div className="seg">{(['default', 'comfortable'] as const).map(t => <button key={t} className={settings.density === t ? 'on' : ''} onClick={() => updateSettings({ density: t })}>{t === 'default' ? 'Compact' : 'Comfortable'}</button>)}</div>

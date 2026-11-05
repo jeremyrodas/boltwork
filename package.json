@@ -1,6 +1,6 @@
 {
   "name": "strongroom",
-  "version": "0.2.1",
+  "version": "0.2.5",
   "private": true,
   "description": "Strongroom: a local-first, end-to-end encrypted password manager",
   "main": "dist/main.js",
@@ -60,6 +60,7 @@
     ],
     "asarUnpack": [
       "dist/nmhost.js",
+      "dist/watchtowerWorker.js",
       "dist-extension/**"
     ],
     "win": {

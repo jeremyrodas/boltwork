@@ -17,6 +17,7 @@ if (tests) {
   await build({ ...common, entryPoints: ['src/main/preload.ts'], outfile: 'dist/preload.js', platform: 'node', format: 'cjs', target: 'node20', external: ['electron'] });
   await build({ ...common, entryPoints: ['src/renderer/index.tsx'], outfile: 'dist/renderer.js', platform: 'browser', format: 'iife', target: 'chrome130', loader: { '.css': 'css' } });
   await build({ ...common, entryPoints: ['src/nmhost/nmhost.ts'], outfile: 'dist/nmhost.js', platform: 'node', format: 'cjs', target: 'node20' });
+  await build({ ...common, entryPoints: ['src/main/watchtowerWorker.ts'], outfile: 'dist/watchtowerWorker.js', platform: 'node', format: 'cjs', target: 'node20' });
   await buildExtension();
   await build({ ...common, sourcemap: false, entryPoints: ['server/src/main.ts'], outfile: 'server/dist/server.js', platform: 'node', format: 'cjs', target: 'node22' });
   const v = Date.now().toString(36);
