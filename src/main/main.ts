@@ -393,8 +393,8 @@ function emergencyKitHtml(secretKey: string): string {
   const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
   return `<!doctype html><html><head><meta charset="utf-8"><style>
   body{font-family:Segoe UI,system-ui,sans-serif;margin:48px;color:#111}h1{margin:0 0 4px;font-size:28px}
-  .sub{color:#555;margin-bottom:28px}.box{border:2px solid #2563eb;border-radius:12px;padding:18px 22px;margin:18px 0}
-  .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#2563eb;font-weight:700}
+  .sub{color:#555;margin-bottom:28px}.box{border:2px solid #84621c;border-radius:12px;padding:18px 22px;margin:18px 0}
+  .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#84621c;font-weight:700}
   .key{font-family:Consolas,monospace;font-size:24px;letter-spacing:.06em;margin-top:6px}
   .blank{border-bottom:1px solid #999;height:34px}.small{font-size:13px;color:#444;line-height:1.5}</style></head><body>
   <h1>Strongroom Emergency Kit</h1><div class="sub">Created ${esc(new Date().toLocaleString())} on ${esc(os.hostname())}</div>

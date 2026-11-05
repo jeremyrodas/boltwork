@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { Plus } from 'lucide-react';
 import { TEMPLATES } from '../../core/templates';
+import { BrandMark } from '../components/BrandMark';
 import { CategoryIcon, Ico, NAV_ICONS, VaultIcon } from '../components/icons';
 import type { Item, Settings, VaultData } from '../../core/types';
 import { searchItems } from '../../core/search';
@@ -76,7 +77,7 @@ export function Sidebar() {
   return (
     <nav className="sidebar">
       <div className="side-top">
-        <div className="brand small"><span className="brand-mark" />Strongroom</div>
+        <div className="brand small"><BrandMark size={26} />Strongroom</div>
         <select className="collection-select" value={settings.activeCollection} onChange={e => updateSettings({ activeCollection: e.target.value })} title="Collection">
           <option value="">All vaults</option>
           {data.collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}

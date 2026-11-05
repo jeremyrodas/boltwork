@@ -3,16 +3,16 @@
   --panel: #151820;
   --panel-2: #1b1f29;
   --hover: #222735;
-  --sel: #263457;
+  --sel: #2d2a22;
   --line: #2a2f3c;
   --text: #e6e8ee;
   --muted: #8b93a7;
-  --accent: #6b95ff;          /* links, focus, accents on dark surfaces */
-  --accent-fill: #3d68e0;     /* solid fill behind white text: 4.9:1 */
-  --accent-fill-hover: #4a74ea;
-  --accent-2: #8b5cf6;        /* brand mark only */
-  --accent-text: #fff;
-  --muted-on-sel: #b4bccd;    /* secondary text on the selection fill */
+  /* Brass, from the vault-door mark. */
+  --accent: #d4b06a;          /* links, focus, accents on dark surfaces: 9.6:1 on --bg */
+  --accent-fill: #c9a45c;     /* solid fill; text on it is --accent-text */
+  --accent-fill-hover: #d6b36e;
+  --accent-text: #1c1709;     /* dark text on brass: 8.4:1 */
+  --muted-on-sel: #c3bba8;    /* secondary text on the selection fill */
   --good: #22c55e;
   --warn: #f59e0b;
   --bad: #ef4444;
@@ -32,15 +32,15 @@
   --panel: #ffffff;
   --panel-2: #f7f8fb;
   --hover: #eef1f7;
-  --sel: #dfe8ff;
+  --sel: #f2ead8;
   --line: #e3e6ee;
   --text: #171a21;
   --muted: #677087;
-  --accent: #2459dc;
-  --accent-fill: #2459dc;
-  --accent-fill-hover: #1f4fc6;
-  --accent-2: #7c3aed;
-  --muted-on-sel: #46506a;
+  --accent: #84621c;          /* brass, darkened for text on white: 5.4:1 */
+  --accent-fill: #84621c;
+  --accent-fill-hover: #735416;
+  --accent-text: #fff;        /* white on dark brass: 5.4:1 */
+  --muted-on-sel: #574c35;
   --good-text: #15803d;
   --warn-text: #a15c07;
   --bad-text: #c62828;
@@ -128,27 +128,24 @@ h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: v
 .icon-btn.active svg { fill: currentColor; }
 
 /* welcome */
-.welcome { height: 100%; display: grid; place-items: center; background: radial-gradient(1200px 600px at 20% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent), radial-gradient(900px 600px at 100% 100%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent), var(--bg); }
+.welcome { height: 100%; display: grid; place-items: center; background: radial-gradient(1100px 620px at 20% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent), var(--bg); }
 .welcome-card { width: 440px; max-width: calc(100% - 40px); background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 32px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; }
 .welcome-card > .btn-primary { margin-top: 10px; padding: 10px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; margin-bottom: 14px; }
 .brand.small { font-size: 15px; margin: 0; }
-.brand-mark { width: 26px; height: 26px; border-radius: 8px; background: radial-gradient(circle at 50% 50%, #fff 0 18%, transparent 19%), radial-gradient(circle at 50% 50%, transparent 0 38%, #fff 39% 50%, transparent 51%), linear-gradient(160deg, var(--accent), var(--accent-2)); flex-shrink: 0; }
+.brand-mark { flex-shrink: 0; display: block; }
 .lbl { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 6px; display: block; }
 .lbl::first-letter { text-transform: uppercase; }
 .welcome-card h1 { text-align: left; }
-/* Lock screen: the vault dial is the hero; it turns once while unlocking. */
-.dial { width: 64px; height: 64px; border-radius: 18px; margin: 4px 0 6px; position: relative;
-  background: linear-gradient(160deg, var(--accent), var(--accent-2)); box-shadow: 0 10px 30px -8px color-mix(in srgb, var(--accent) 55%, transparent); }
-.dial::before { content: ''; position: absolute; inset: 14px; border-radius: 50%; border: 4px solid #fff; }
-.dial::after { content: ''; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px; border-radius: 50%; background: #fff;
-  box-shadow: 0 -14px 0 -3px #fff; transition: transform .6s cubic-bezier(.16, 1, .3, 1); }
-.dial.turning::after { transform: rotate(300deg); }
+/* Lock screen: the vault door is the hero; its wheel turns a third of a turn while the vault opens. */
+.dial { margin: 4px 0 6px; filter: drop-shadow(0 10px 24px rgba(0, 0, 0, .35)); }
+.brand-wheel { transform-origin: 36px 36px; transition: transform .7s cubic-bezier(.16, 1, .3, 1); }
+.brand-wheel.turning { transform: rotate(120deg); }
+@media (prefers-reduced-motion: reduce) { .brand-wheel { transition: none; } }
 .lock-sub { margin: -4px 0 6px; }
 .caps-hint { display: block; font-size: 12px; color: var(--warn-text); margin-top: 4px; }
 .pw-wrap { display: flex; flex-direction: column; }
 input[aria-invalid='true'] { border-color: var(--bad); }
-@media (prefers-reduced-motion: reduce) { .dial::after { transition: none; } }
 .secret-key { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 18px; letter-spacing: .05em; background: var(--panel-2); border: 1px dashed var(--accent); padding: 14px; border-radius: 10px; text-align: center; user-select: all; }
 .secret-key.small-key { font-size: 15px; margin-top: 12px; cursor: pointer; }
 .check { display: flex; gap: 8px; align-items: center; margin: 6px 0; cursor: pointer; }

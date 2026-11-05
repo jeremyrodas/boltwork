@@ -29,7 +29,7 @@ const CSS = `
   .box { ${FONT} color: #e7e7ee; background: #1d1d26; border: 1px solid #3a3a4a; border-radius: 10px;
          box-shadow: 0 8px 28px rgba(0,0,0,.35); overflow: hidden; }
   .head { display: flex; align-items: center; gap: 6px; padding: 7px 10px; font-size: 11px; color: #a3a3b8; border-bottom: 1px solid #2c2c3a; }
-  .logo { width: 14px; height: 14px; border-radius: 4px; background: linear-gradient(#2563eb, #6d28d9); display: inline-block; }
+  .logo { width: 14px; height: 14px; display: inline-block; background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 72'><rect x='2.75' y='2.75' width='66.5' height='66.5' rx='15.25' fill='%231f2430' stroke='%23485062' stroke-width='1.5'/><circle cx='36' cy='36' r='23.25' fill='none' stroke='%23c9a45c' stroke-width='9.5'/><g stroke='%23c9a45c' stroke-width='7' stroke-linecap='round'><line x1='36' y1='36' x2='36' y2='24'/><line x1='36' y1='36' x2='46.4' y2='42'/><line x1='36' y1='36' x2='25.6' y2='42'/></g><circle cx='36' cy='36' r='6.5' fill='%23c9a45c'/></svg>") center / contain no-repeat; }
   button.row { all: unset; box-sizing: border-box; display: flex; flex-direction: column; width: 100%; padding: 8px 12px; cursor: pointer; }
   button.row:hover, button.row:focus-visible { background: #2a2a38; }
   .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -38,7 +38,7 @@ const CSS = `
   .bar p { margin: 0 0 4px; }
   .btns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
   .btn { all: unset; cursor: pointer; padding: 6px 12px; border-radius: 7px; background: #2c2c3a; font-weight: 600; font-size: 12px; }
-  .btn.primary { background: #4f46e5; color: #fff; }
+  .btn.primary { background: #c9a45c; color: #1c1709; }
   .btn:hover { filter: brightness(1.15); }
 `;
 

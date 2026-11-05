@@ -1,31 +1,92 @@
 /**
- * Draws the Strongroom mark (rounded square with a vault-door dial) as straight-alpha RGBA,
- * so neither the app nor the extension needs binary image assets. `locked` greys it for the tray.
+ * The Strongroom mark: a vault door in brass on graphite. A brass rim set with dark bolts, and a
+ * three-spoke handwheel on a hub. Drawn here as straight-alpha RGBA at any size, so the app window,
+ * tray and browser extension need no image files. At 24px and below the bolts and spoke caps are
+ * dropped and the rim and spokes thicken, so the mark stays legible in the tray and toolbar.
+ *
+ * Geometry is in a 72-unit square, matching BrandMark in the renderer.
  */
+
+export const MARK_COLORS = {
+  graphite: [31, 36, 48] as const,   // #1f2430
+  edge: [72, 80, 98] as const,       // #485062, the rim of the square
+  brass: [201, 164, 92] as const,    // #c9a45c
+  lockedBrass: [154, 160, 171] as const, // greyed for the tray while locked
+};
+
+type RGB = readonly [number, number, number];
+interface Layer { color: RGB; coverage: (x: number, y: number) => number }
+
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+
 export function drawIcon(size: number, locked = false): Uint8Array {
+  const s = size / 72; // pixels per unit
+  const small = size <= 24;
+  const brass = locked ? MARK_COLORS.lockedBrass : MARK_COLORS.brass;
+  const graphite = MARK_COLORS.graphite;
+  const c = 36;
+
+  // Coverage helpers (unit space in, pixel-accurate antialiasing out).
+  const disc = (cx: number, cy: number, r: number) => (x: number, y: number) => clamp01((r - Math.hypot(x - cx, y - cy)) * s + 0.5);
+  const ring = (r0: number, r1: number) => (x: number, y: number) => {
+    const d = Math.hypot(x - c, y - c);
+    return Math.min(clamp01((r1 - d) * s + 0.5), clamp01((d - r0) * s + 0.5));
+  };
+  const segment = (x1: number, y1: number, x2: number, y2: number, w: number) => (x: number, y: number) => {
+    const dx = x2 - x1, dy = y2 - y1;
+    const t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)));
+    const d = Math.hypot(x - (x1 + t * dx), y - (y1 + t * dy));
+    return clamp01((w / 2 - d) * s + 0.5);
+  };
+  const roundedSquare = (inset: number, r: number) => (x: number, y: number) => {
+    const lo = inset + r, hi = 72 - inset - r;
+    const qx = Math.max(lo - x, 0, x - hi), qy = Math.max(lo - y, 0, y - hi);
+    return clamp01((r - Math.hypot(qx, qy)) * s + 0.5);
+  };
+
+  const spokeAngles = [-90, 30, 150].map(a => (a * Math.PI) / 180);
+  // A thin lighter edge keeps the square visible on dark taskbars and toolbars.
+  const edge = Math.max(1.5, 1 / s);
+  const layers: Layer[] = [
+    { color: MARK_COLORS.edge, coverage: roundedSquare(2, 16) },
+    { color: graphite, coverage: roundedSquare(2 + edge, 16 - edge) },
+  ];
+  if (small) {
+    layers.push({ color: brass, coverage: ring(18.5, 28) });
+    for (const a of spokeAngles) layers.push({ color: brass, coverage: segment(c, c, c + Math.cos(a) * 12, c + Math.sin(a) * 12, 7) });
+    layers.push({ color: brass, coverage: disc(c, c, 6.5) });
+  } else {
+    layers.push({ color: brass, coverage: ring(20.5, 27) });
+    for (let k = 0; k < 8; k++) {
+      const a = (k * Math.PI) / 4 + Math.PI / 8;
+      layers.push({ color: graphite, coverage: disc(c + Math.cos(a) * 23.75, c + Math.sin(a) * 23.75, 1.7) });
+    }
+    for (const a of spokeAngles) {
+      const ex = c + Math.cos(a) * 13.5, ey = c + Math.sin(a) * 13.5;
+      layers.push({ color: brass, coverage: segment(c, c, ex, ey, 3.8) });
+      layers.push({ color: brass, coverage: disc(ex, ey, 2.9) });
+    }
+    layers.push({ color: brass, coverage: disc(c, c, 5) });
+    layers.push({ color: graphite, coverage: disc(c, c, 1.8) });
+  }
+
   const buf = new Uint8Array(size * size * 4);
-  const r = size * 0.22; // corner radius
-  const c = size / 2;
-  const top = locked ? [120, 120, 130] : [37, 99, 235];
-  const bottom = locked ? [80, 80, 90] : [109, 40, 217];
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const px = x + 0.5, py = y + 0.5;
-      const dx = Math.max(r - px, 0, px - (size - r));
-      const dy = Math.max(r - py, 0, py - (size - r));
-      const d = Math.hypot(dx, dy) - r;
-      const inside = Math.min(1, Math.max(0, 0.5 - d));
-      if (inside <= 0) continue;
-      const t = py / size;
-      let rgb = top.map((v, i) => Math.round(v + (bottom[i] - v) * t));
-      const dist = Math.hypot(px - c, py - c);
-      const ring = Math.abs(dist - size * 0.28) < size * 0.055;
-      const hub = dist < size * 0.09;
-      const ang = Math.atan2(py - c, px - c);
-      const spoke = dist < size * 0.28 && [0, 2.094, -2.094].some(a => Math.abs(Math.sin(ang - a)) * dist < size * 0.035 && Math.cos(ang - a) > 0);
-      if (ring || hub || spoke) rgb = [255, 255, 255];
-      const i = (y * size + x) * 4;
-      buf[i] = rgb[0]; buf[i + 1] = rgb[1]; buf[i + 2] = rgb[2]; buf[i + 3] = Math.round(255 * inside);
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      const x = (px + 0.5) / s, y = (py + 0.5) / s;
+      let r = 0, g = 0, b = 0, a = 0;
+      for (const l of layers) {
+        const cov = l.coverage(x, y);
+        if (cov <= 0) continue;
+        // "over" compositing in premultiplied space
+        r = l.color[0] * cov + r * (1 - cov);
+        g = l.color[1] * cov + g * (1 - cov);
+        b = l.color[2] * cov + b * (1 - cov);
+        a = cov + a * (1 - cov);
+      }
+      const i = (py * size + px) * 4;
+      if (a > 0) { buf[i] = Math.round(r / a); buf[i + 1] = Math.round(g / a); buf[i + 2] = Math.round(b / a); }
+      buf[i + 3] = Math.round(a * 255);
     }
   }
   return buf;

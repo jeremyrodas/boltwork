@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { api } from '../api';
+import { BrandMark } from '../components/BrandMark';
 import { Button, PasswordInput, StrengthMeter, useStrength } from '../components/ui';
 import { useApp } from '../state';
 
 function Brand() {
-  return <div className="brand"><span className="brand-mark" />Strongroom</div>;
+  return <div className="brand"><BrandMark size={28} />Strongroom</div>;
 }
 
 export function Setup({ onDone }: { onDone: () => void }) {
@@ -83,7 +84,7 @@ export function Unlock({ compact }: { compact?: boolean }) {
 /** The vault dial is the lock screen's mark; it turns while the vault opens. */
 function LockHeading({ compact, busy }: { compact?: boolean; busy: boolean }) {
   return (<>
-    <div className={`dial${busy ? ' turning' : ''}`} aria-hidden="true" />
+    <BrandMark size={64} turning={busy} className="dial" />
     <h1>{compact ? 'Unlock Strongroom' : 'Strongroom is locked'}</h1>
     <p className="muted lock-sub">Your vault is encrypted on this device. It opens only with your password.</p>
   </>);

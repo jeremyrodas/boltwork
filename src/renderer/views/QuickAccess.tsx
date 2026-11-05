@@ -4,6 +4,7 @@ import { searchItems } from '../../core/search';
 import { fieldByPurpose, subtitleOf } from '../../core/templates';
 import type { Item } from '../../core/types';
 import { api, on } from '../api';
+import { BrandMark } from '../components/BrandMark';
 import { ItemIcon } from '../components/ui';
 import { useApp } from '../state';
 import { Unlock } from './Welcome';
@@ -53,7 +54,7 @@ export function QuickAccess() {
       if (mod && e.key.toLowerCase() === 'o') { e.preventDefault(); void act(current, 'open'); }
     }}>
       <div className="qa-search">
-        <span className="brand-mark" />
+        <BrandMark size={24} />
         <input ref={input} autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Search Strongroom" spellCheck={false} />
       </div>
       <div className="qa-results">
