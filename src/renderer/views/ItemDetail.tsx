@@ -3,7 +3,7 @@ import { Copy, Download, Ellipsis, ExternalLink, Eye, EyeOff, FileQuestion, Pape
 import { fieldByPurpose, TEMPLATE_BY_CATEGORY } from '../../core/templates';
 import type { Field, Item, Strength, WatchtowerCheck } from '../../core/types';
 import { api } from '../api';
-import { Ico } from '../components/icons';
+import { Ico, VaultIcon } from '../components/icons';
 import { askConfirm, Button, ColoredPassword, copiedMessage, Empty, IconButton, ItemIcon, Menu, Modal, StrengthMeter, timeAgo } from '../components/ui';
 import { useApp } from '../state';
 
@@ -117,7 +117,7 @@ function MoveModal({ item, onClose }: { item: Item; onClose: () => void }) {
     <Modal title={`Move “${item.title}”`} onClose={onClose}>
       {data!.vaults.map(v => (
         <button key={v.id} className="vault-choice" disabled={v.id === item.vaultId} onClick={async () => { await run(api.move(item.id, v.id), `Moved to ${v.name}`); onClose(); }}>
-          <span>{v.icon}</span> {v.name} {v.id === item.vaultId && <span className="muted">(current)</span>}
+          <VaultIcon icon={v.icon} /> {v.name} {v.id === item.vaultId && <span className="muted">(current)</span>}
         </button>
       ))}
     </Modal>
@@ -178,7 +178,7 @@ export function ItemDetail({ id }: { id: string }) {
           <ItemIcon item={item} size={56} />
           <div>
             <h1>{item.title}</h1>
-            <div className="muted">{t.name} · {vault?.icon} {vault?.name}{item.state === 'archived' ? ' · Archived' : ''}{deleted ? ' · Deleted' : ''}</div>
+            <div className="muted with-icon">{t.name} · <VaultIcon icon={vault?.icon} size={14} />{vault?.name}{item.state === 'archived' ? ' · Archived' : ''}{deleted ? ' · Deleted' : ''}</div>
           </div>
         </div>
 

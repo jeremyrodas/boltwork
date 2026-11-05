@@ -73,7 +73,7 @@ export function vaultExists(dir: string): boolean {
 function emptyData(): VaultData {
   const now = Date.now();
   return {
-    vaults: [{ id: randomId(), name: 'Personal', description: 'Your private vault', icon: '🏠', color: '#3b82f6', createdAt: now }],
+    vaults: [{ id: randomId(), name: 'Personal', description: 'Your private vault', icon: 'house', color: '#3b82f6', createdAt: now }],
     items: [],
     collections: [],
     pwnedCache: {},
@@ -331,7 +331,7 @@ export class VaultStore {
     const existing = v.id ? this.data.vaults.find(x => x.id === v.id) : undefined;
     const vault: Vault = existing
       ? Object.assign(existing, v)
-      : { id: randomId(), description: '', icon: '🗂️', color: '#8b5cf6', createdAt: Date.now(), ...v } as Vault;
+      : { id: randomId(), description: '', icon: 'folder', color: '#8b5cf6', createdAt: Date.now(), ...v } as Vault;
     if (!existing) this.data.vaults.push(vault);
     this.persist();
     return structuredClone(vault);

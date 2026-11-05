@@ -366,6 +366,10 @@ input.switch:checked::after { left: 19px; }
 .list-row .emoji { font-size: 20px; }
 .list-icon { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--hover); color: var(--muted); flex-shrink: 0; }
 .emoji-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.icon-pick-grid { display: grid; grid-template-columns: repeat(9, 40px); gap: 6px; }
+.icon-pick-grid button { width: 40px; height: 40px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+.icon-pick-grid button:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+.icon-pick-grid button.on { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel-2)); }
 .emoji-pick button { font-size: 20px; width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; }
 .emoji-pick button.on { border-color: var(--accent); background: var(--sel); }
 .import-sources { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; margin: 10px 0 14px; }

@@ -6,7 +6,7 @@ import type { Collection, Vault } from '../../core/types';
 import { api } from '../api';
 import { Plus } from 'lucide-react';
 import { askChoice, Button, Modal, PasswordInput, StrengthMeter, Toggle, useStrength } from '../components/ui';
-import { Ico, SETTINGS_ICONS } from '../components/icons';
+import { Ico, SETTINGS_ICONS, VAULT_ICONS, VaultIcon, vaultIconName } from '../components/icons';
 import { useApp } from '../state';
 import { SshAgentPane } from './SshKey';
 import { BrowserPane } from './BrowserPane';
@@ -138,7 +138,7 @@ function VaultsPane() {
     <Section title="Vaults">
       {data.vaults.map(v => (
         <div key={v.id} className="list-row">
-          <span className="emoji">{v.icon}</span>
+          <span className="list-icon"><VaultIcon icon={v.icon} /></span>
           <span className="grow"><b>{v.name}</b><span className="muted small">{v.description} · {data.items.filter(i => i.vaultId === v.id && i.state !== 'deleted').length} items</span></span>
           <Button small onClick={() => setEditing(v)}>Edit</Button>
           <Button small kind="danger" disabled={data.vaults.length <= 1} onClick={async () => {
@@ -153,7 +153,7 @@ function VaultsPane() {
           }}>Delete</Button>
         </div>
       ))}
-      <Button onClick={() => setEditing({ name: '', description: '', icon: '🗂️' })}><Ico icon={Plus} size={15} />New vault</Button>
+      <Button onClick={() => setEditing({ name: '', description: '', icon: 'folder' })}><Ico icon={Plus} size={15} />New vault</Button>
     </Section>
     <Section title="Collections">
       <p className="hint">Collections group vaults so you can focus on, say, Work or Family. Pick one at the top of the sidebar.</p>
@@ -180,9 +180,13 @@ function VaultsPane() {
         <label className="lbl">Name</label><input autoFocus value={editing.name ?? ''} onChange={e => setEditing({ ...editing, name: e.target.value })} />
         <label className="lbl">Description</label><input value={editing.description ?? ''} onChange={e => setEditing({ ...editing, description: e.target.value })} />
         <label className="lbl">Icon</label>
-        <div className="emoji-pick">{['🏠', '💼', '👪', '💰', '✈️', '🎮', '🧪', '🗂️', '🔒', '🌐', '🏥', '🎓'].map(e => (
-          <button key={e} className={editing.icon === e ? 'on' : ''} onClick={() => setEditing({ ...editing, icon: e })}>{e}</button>
-        ))}</div>
+        <div className="icon-pick-grid" role="radiogroup" aria-label="Vault icon">{Object.entries(VAULT_ICONS).map(([name, v]) => {
+          const on = vaultIconName(editing.icon) === name;
+          return (
+            <button key={name} role="radio" aria-checked={on} aria-label={v.label} title={v.label} className={on ? 'on' : ''}
+              onClick={() => setEditing({ ...editing, icon: name })}><Ico icon={v.icon} size={18} /></button>
+          );
+        })}</div>
         <div className="row gap end"><Button onClick={() => setEditing(null)}>Cancel</Button>
           <Button kind="primary" disabled={!editing.name?.trim()} onClick={async () => { await run(api.saveVault({ ...editing, name: editing.name!.trim() }), 'Vault saved'); setEditing(null); }}>Save</Button></div>
       </Modal>
@@ -193,7 +197,7 @@ function VaultsPane() {
         <label className="lbl">Vaults</label>
         {data.vaults.map(v => (
           <label key={v.id} className="check"><input type="checkbox" checked={col.vaultIds?.includes(v.id) ?? false}
-            onChange={e => setCol({ ...col, vaultIds: e.target.checked ? [...(col.vaultIds ?? []), v.id] : (col.vaultIds ?? []).filter(x => x !== v.id) })} /> {v.icon} {v.name}</label>
+            onChange={e => setCol({ ...col, vaultIds: e.target.checked ? [...(col.vaultIds ?? []), v.id] : (col.vaultIds ?? []).filter(x => x !== v.id) })} /> <VaultIcon icon={v.icon} size={14} /> {v.name}</label>
         ))}
         <div className="row gap end"><Button onClick={() => setCol(null)}>Cancel</Button>
           <Button kind="primary" disabled={!col.name?.trim()} onClick={async () => { await run(api.saveCollection({ ...col, name: col.name!.trim(), vaultIds: col.vaultIds ?? [] }), 'Collection saved'); setCol(null); }}>Save</Button></div>
@@ -228,7 +232,7 @@ function ImportPane() {
           <label className="toggle-row"><span className="toggle-label">Import into</span>
             <select value={target} onChange={e => setTarget(e.target.value)}>
               {preview.vaultNames?.length ? <option value="byName">Matching vaults ({preview.vaultNames.join(', ')})</option> : null}
-              {data.vaults.map(v => <option key={v.id} value={v.id}>{v.icon} {v.name}</option>)}
+              {data.vaults.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
             </select>
           </label>
           <div className="row gap"><Button onClick={() => setPreview(null)}>Cancel</Button>

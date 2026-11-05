@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { Plus } from 'lucide-react';
 import { TEMPLATES } from '../../core/templates';
-import { CategoryIcon, Ico, NAV_ICONS } from '../components/icons';
+import { CategoryIcon, Ico, NAV_ICONS, VaultIcon } from '../components/icons';
 import type { Item, Settings, VaultData } from '../../core/types';
 import { searchItems } from '../../core/search';
 import { api } from '../api';
@@ -94,7 +94,7 @@ export function Sidebar() {
           ))}
         </>)}
         <div className="side-heading">Vaults <button className="side-add" title="New vault" aria-label="New vault" onClick={() => navigate('/settings/vaults')}><Ico icon={Plus} size={14} /></button></div>
-        {vaults.map(v => <Entry key={v.id} f={{ kind: 'vault', vaultId: v.id }} icon={v.icon} label={v.name} n={count(i => i.vaultId === v.id)} />)}
+        {vaults.map(v => <Entry key={v.id} f={{ kind: 'vault', vaultId: v.id }} icon={<VaultIcon icon={v.icon} />} label={v.name} n={count(i => i.vaultId === v.id)} />)}
         {settings.sidebarShowTags && tags.length > 0 && (<>
           <div className="side-heading">Tags</div>
           {tags.map(t => (

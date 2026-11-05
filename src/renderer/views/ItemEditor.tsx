@@ -211,7 +211,7 @@ export function ItemEditor({ id, category }: { id?: string; category?: Category 
             <div className="row gap">
               <span className="muted with-icon"><CategoryIcon category={draft.category} size={14} />{t.name} in</span>
               <select value={draft.vaultId} onChange={e => set({ vaultId: e.target.value })}>
-                {data.vaults.map(v => <option key={v.id} value={v.id}>{v.icon} {v.name}</option>)}
+                {data.vaults.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
               </select>
               {draft.icon && <button className="link" onClick={() => set({ icon: undefined })}>Remove icon</button>}
             </div>
