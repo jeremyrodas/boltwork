@@ -9,6 +9,19 @@ This describes what protects your data and what each part of the system can see.
 - **Account key (KEK)**: Argon2id(password, salt; 128 MiB, 3 passes), then keyed BLAKE2b with the Secret Key. Because of the Secret Key, guessing passwords against stolen data is infeasible even for weak passwords.
 - **Master key**: 256 random bits that encrypt everything. Stored only wrapped (XChaCha20-Poly1305) by the account key. Changing your password re-wraps it; nothing else is re-encrypted.
 
+## Quick unlock (Windows Hello or PIN)
+
+Optional, per device, and only turned on after entering the account password. It stores a copy of the master key on this device,
+sealed with a quick key that always mixes in a random device secret protected by the OS for this Windows user (DPAPI), so the copy is useless elsewhere.
+
+- **Windows Hello**: quick key = BLAKE2b(key = device secret, Hello signature over a random challenge). The Hello key is created by Windows'
+  KeyCredentialManager, kept in the TPM/Hello container, and only signs after face, fingerprint or Windows PIN. Strongroom checks the signature is
+  repeatable before relying on it.
+- **Strongroom PIN**: quick key = BLAKE2b(key = device secret, Argon2id(PIN; 64 MiB, 3 passes)). Five wrong PINs in a row delete the stored copy.
+  Someone already signed in to Windows as you can read the device secret and try PINs offline, so a PIN only protects against people without
+  your Windows account; use 6 or more characters.
+- Both stop working 14 days after the last password unlock, and are separate from the Secret Key, which is still needed on any new computer.
+
 ## Data at rest
 
 The vault file holds one record per vault, collection and item, each sealed with XChaCha20-Poly1305 under the master key.

@@ -129,6 +129,29 @@ export class VaultStore {
     } finally {
       wipe(kek);
     }
+    return VaultStore.openWithKey(dir, file, key);
+  }
+
+  /** The vault's account id without unlocking it (null for an old-format vault or none). */
+  static peekAccountId(dir: string): string | null {
+    try { const f = VaultStore.readFile(dir); return f.version === 2 ? f.accountId : null; } catch { return null; }
+  }
+
+  /** Opens the vault with the master key itself (quick unlock already verified the user). */
+  static unlockWithKey(dir: string, key: Uint8Array): VaultStore {
+    const file = VaultStore.readFile(dir);
+    // Prove the key is right before trusting it: it must be the one the account key wraps.
+    try { VaultStore.checkKey(file, key); } catch { throw new Error('The saved quick-unlock key doesn’t match this vault. Enter your account password.'); }
+    return VaultStore.openWithKey(dir, file, key);
+  }
+
+  /** Throws unless `key` decrypts this vault file. */
+  private static checkKey(file: VaultFile, key: Uint8Array): void {
+    if (file.version === 1) openJson(key, file.data, AAD_DATA);
+    else openJson(key, file.local, AAD_LOCAL);
+  }
+
+  private static openWithKey(dir: string, file: VaultFile, key: Uint8Array): VaultStore {
     if (file.version === 1) {
       // Upgrade: keep the original, then rewrite as separate records.
       const data = openJson<VaultData>(key, file.data, AAD_DATA);
@@ -236,6 +259,9 @@ export class VaultStore {
   }
 
   get locked(): boolean { return this.key === null; }
+
+  /** A copy of the master key, for quick unlock to protect on this device. Wipe it after use. */
+  masterKeyCopy(): Uint8Array { return Uint8Array.from(this.requireKey()); }
 
   lock(): void {
     wipe(this.key);

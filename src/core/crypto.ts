@@ -92,6 +92,11 @@ export function authKeyFrom(kek: Uint8Array): Uint8Array {
   return sodium.crypto_generichash(32, sodium.from_string('strongroom:sync-auth:v1'), kek);
 }
 
+/** Keyed BLAKE2b-256. */
+export function keyedHash(key: Uint8Array, message: Uint8Array): Uint8Array {
+  return sodium.crypto_generichash(32, message, key);
+}
+
 /** Password-only key (used for encrypted exports, where no Secret Key is involved). */
 export function derivePasswordKey(password: string, p: KdfParams): Promise<Uint8Array> {
   return stretch(password, p);

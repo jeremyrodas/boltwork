@@ -72,6 +72,47 @@ export function Setup({ onDone }: { onDone: () => void }) {
 
 export function Unlock({ compact }: { compact?: boolean }) {
   const { app } = useApp();
+  const quick = app?.quickUnlock;
+  const [usePassword, setUsePassword] = useState(false);
+  if (quick?.method && !quick.needsPassword && !usePassword && !app?.needsSecretKey) {
+    return <QuickUnlockForm compact={compact} method={quick.method} onUsePassword={() => setUsePassword(true)} />;
+  }
+  return <PasswordUnlock compact={compact} notice={quick?.needsPassword} />;
+}
+
+function QuickUnlockForm({ compact, method, onUsePassword }: { compact?: boolean; method: 'pin' | 'hello'; onUsePassword: () => void }) {
+  const [pin, setPin] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const go = async () => {
+    if (busy || (method === 'pin' && !pin)) return;
+    setBusy(true); setError('');
+    try { await api.unlockQuick(method === 'pin' ? pin : undefined); } catch (e) { setError((e as Error).message); setPin(''); } finally { setBusy(false); }
+  };
+  return (
+    <div className={compact ? 'unlock-compact' : 'welcome'}>
+      <div className="welcome-card">
+        {!compact && <Brand />}
+        <div className="lock-glyph">{method === 'hello' ? '🙂' : '🔢'}</div>
+        <h1>{compact ? 'Unlock Strongroom' : 'Welcome back'}</h1>
+        {method === 'pin' ? (<>
+          <label className="lbl">PIN</label>
+          <PasswordInput value={pin} onChange={setPin} autoFocus onEnter={go} placeholder="Enter your Strongroom PIN" />
+          {error && <p className="error-text">{error}</p>}
+          <Button kind="primary" disabled={!pin || busy} onClick={go}>{busy ? 'Unlocking…' : 'Unlock'}</Button>
+        </>) : (<>
+          <p className="muted">Use your face, fingerprint or Windows PIN.</p>
+          {error && <p className="error-text">{error}</p>}
+          <Button kind="primary" autoFocus disabled={busy} onClick={go}>{busy ? 'Waiting for Windows Hello…' : 'Unlock with Windows Hello'}</Button>
+        </>)}
+        <p className="muted small"><button className="link" onClick={onUsePassword}>Use account password instead</button></p>
+      </div>
+    </div>
+  );
+}
+
+function PasswordUnlock({ compact, notice }: { compact?: boolean; notice?: string }) {
+  const { app } = useApp();
   const [pw, setPw] = useState('');
   const [sk, setSk] = useState('');
   const [busy, setBusy] = useState(false);
@@ -100,6 +141,7 @@ export function Unlock({ compact }: { compact?: boolean }) {
           <input className="mono" value={sk} onChange={e => setSk(e.target.value)} placeholder="SR1-XXXXXX-XXXXX-XXXXX-XXXXX-XXXXX" spellCheck={false} />
           <p className="hint">This device doesn’t have your Secret Key yet. Find it in your Emergency Kit.</p>
         </>)}
+        {notice && <p className="hint">{notice}</p>}
         <label className="lbl">Account password</label>
         <PasswordInput value={pw} onChange={setPw} autoFocus onEnter={submit} placeholder="Enter your account password" />
         {error && <p className="error-text">{error}</p>}

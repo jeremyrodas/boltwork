@@ -9,6 +9,7 @@ import { useApp } from '../state';
 import { SshAgentPane } from './SshKey';
 import { BrowserPane } from './BrowserPane';
 import { SyncPane } from './SyncPane';
+import { QuickUnlockSection } from './QuickUnlockSection';
 
 const PANES = [
   ['general', '⚙️', 'General'], ['appearance', '🎨', 'Appearance'], ['security', '🔐', 'Security'], ['sync', '🛰️', 'Sync'], ['privacy', '🕶️', 'Privacy'],
@@ -86,6 +87,7 @@ function SecurityPane() {
       </div>
       {settings.securityPreset === 'custom' && <p className="hint">You’re using custom settings.</p>}
     </Section>
+    <QuickUnlockSection />
     <Section title="Auto-lock">
       <NumberSelect label="Lock after the computer is idle for" value={settings.autolockMinutes} onChange={v => updateSettings({ autolockMinutes: v })}
         options={[[1, '1 minute'], [2, '2 minutes'], [5, '5 minutes'], [10, '10 minutes'], [30, '30 minutes'], [60, '1 hour'], [240, '4 hours'], [480, '8 hours'], [0, 'Never']]} />

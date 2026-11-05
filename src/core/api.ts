@@ -45,6 +45,14 @@ export interface AppState {
   platform: NodeJS.Platform;
   version: string;
   window: 'main' | 'quickAccess' | 'largeType';
+  /** Quick unlock offered on the lock screen, if set up on this device. */
+  quickUnlock: { method: 'pin' | 'hello' | null; needsPassword?: string };
+}
+
+export interface QuickUnlockStatus {
+  method: 'pin' | 'hello' | null;
+  needsPassword?: string;
+  helloAvailable: boolean;
 }
 
 export interface ImportPreview {
@@ -64,6 +72,12 @@ export interface Api {
   getState(): AppState;
   createVault(password: string): { secretKey: string };
   unlock(password: string, secretKey?: string): void;
+  /** Unlocks with Windows Hello, or with the Strongroom PIN when `pin` is given. */
+  unlockQuick(pin?: string): void;
+  quickUnlockStatus(): QuickUnlockStatus;
+  /** Turns on quick unlock; needs the account password. */
+  quickUnlockEnable(method: 'pin' | 'hello', password: string, pin?: string): QuickUnlockStatus;
+  quickUnlockDisable(): QuickUnlockStatus;
   lock(): void;
   getData(): VaultData;
 

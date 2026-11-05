@@ -28,6 +28,8 @@ import {
 } from './syncHost';
 import { generateSshKey, importSshKey } from '../core/ssh';
 import { repairSshItems } from '../core/sshRepair';
+import { QuickUnlock, QuickUnlockError } from '../core/quickUnlock';
+import { helloAvailable, helloDelete, helloSign } from './hello';
 
 // ---------- single instance & CLI ----------
 
@@ -101,6 +103,7 @@ function state(wc: WebContents | null = null): AppState {
     platform: process.platform,
     version: app.getVersion(),
     window: windowKind(wc),
+    quickUnlock: quickStatus(),
   };
 }
 
@@ -422,6 +425,32 @@ async function saveEmergencyKit(): Promise<string | null> {
 type Handlers = { [M in keyof Api]: (...a: Parameters<Api[M]>) => ReturnType<Api[M]> | Promise<ReturnType<Api[M]>> };
 let sender: WebContents | null = null;
 
+// ---------- quick unlock (Windows Hello or PIN) ----------
+
+const quick = new QuickUnlock(path.join(userData, 'quick-unlock.json'), {
+  encrypt: data => {
+    if (!safeStorage.isEncryptionAvailable()) throw new Error('This computer can’t protect the quick-unlock key.');
+    return safeStorage.encryptString(Buffer.from(data).toString('base64')).toString('base64');
+  },
+  decrypt: data => Uint8Array.from(Buffer.from(safeStorage.decryptString(Buffer.from(data, 'base64')), 'base64')),
+});
+
+function quickStatus() {
+  const id = store?.accountId ?? VaultStore.peekAccountId(vaultDir);
+  return id ? quick.status(id) : { method: null };
+}
+
+/** Everything that happens after any successful unlock. */
+function afterUnlock() {
+  const s = store!;
+  s.historyLimit = settings.historyLimit;
+  lastActivity = Date.now();
+  if (settings.emptyTrashDays > 0) s.emptyTrash(settings.emptyTrashDays);
+  try { repairSshItems(s); } catch (e) { console.error('SSH item repair failed', e); }
+  broadcastState();
+  startSyncLoop();
+}
+
 async function reauth(password: string) {
   if (!await requireStore().verifyPassword(password, currentSecretKey())) throw new WrongPasswordError();
 }
@@ -443,14 +472,47 @@ const handlers: Handlers = {
     const sk = secretKeyInput ? normalizeSecretKey(secretKeyInput) : (secretKeyInMemory ?? storedSecretKey());
     if (!sk) throw new Error('Enter your Secret Key to unlock on this device.');
     store = await VaultStore.unlock(vaultDir, password, sk);
-    store.historyLimit = settings.historyLimit;
     secretKeyInMemory = sk;
     if (secretKeyInput) rememberSecretKey(sk);
-    lastActivity = Date.now();
-    if (settings.emptyTrashDays > 0) store.emptyTrash(settings.emptyTrashDays);
-    try { repairSshItems(store); } catch (e) { console.error('SSH item repair failed', e); }
-    broadcastState();
-    startSyncLoop();
+    quick.notePasswordUnlock(store.accountId);
+    afterUnlock();
+  },
+
+  unlockQuick: async pin => {
+    const accountId = VaultStore.peekAccountId(vaultDir);
+    const st = accountId ? quick.status(accountId) : { method: null };
+    if (!accountId || !st.method) throw new Error('Quick unlock isn’t set up. Enter your account password.');
+    let key: Uint8Array;
+    try {
+      key = st.method === 'pin' ? await quick.unlockWithPin(accountId, pin ?? '') : await quick.unlockWithHello(accountId, helloSign);
+    } catch (e) {
+      if (e instanceof QuickUnlockError && e.disabled) broadcastState(); // lock screen falls back to the password
+      throw e;
+    }
+    try { store = VaultStore.unlockWithKey(vaultDir, key); } finally { key.fill(0); }
+    afterUnlock();
+  },
+
+  quickUnlockStatus: async () => ({ ...quickStatus(), helloAvailable: await helloAvailable() }),
+
+  quickUnlockEnable: async (method, password, pin) => {
+    await reauth(password);
+    const s = requireStore();
+    if (method === 'hello' && !(await helloAvailable())) throw new Error('Windows Hello isn’t set up on this computer. Set it up in Windows Settings → Accounts → Sign-in options, or use a PIN.');
+    const key = s.masterKeyCopy();
+    try {
+      if (method === 'pin') await quick.enablePin(key, s.accountId, pin ?? '');
+      else await quick.enableHello(key, s.accountId, helloSign);
+    } finally { key.fill(0); }
+    if (method === 'pin') void helloDelete();
+    return { ...quickStatus(), helloAvailable: method === 'hello' || await helloAvailable() };
+  },
+
+  quickUnlockDisable: async () => {
+    const was = quickStatus().method;
+    quick.disable();
+    if (was === 'hello') await helloDelete();
+    return { ...quickStatus(), helloAvailable: await helloAvailable() };
   },
 
   lock: () => lock(),
