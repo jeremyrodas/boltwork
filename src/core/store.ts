@@ -234,6 +234,9 @@ export class VaultStore {
   private withHistory(winner: Item, loser: Item): Item {
     const w = structuredClone(winner);
     w.history = [{ savedAt: loser.updatedAt, content: contentOf(loser) }, ...(w.history ?? [])].slice(0, this.historyLimit);
+    // History doesn't hold attachments, so keep the other side's files on the item rather than lose them.
+    const have = new Set(w.attachments.map(a => a.id));
+    w.attachments.push(...structuredClone(loser.attachments.filter(a => !have.has(a.id))));
     return w;
   }
 
@@ -519,8 +522,59 @@ export class VaultStore {
     const key = this.requireKey();
     const meta = this.getItem(itemId).attachments.find(a => a.id === attachmentId);
     if (!meta) throw new Error('Attachment not found.');
+    if (!this.hasAttachmentFile(meta.id)) {
+      throw new Error(this.syncState ? 'This file hasn’t downloaded to this computer yet. It will after the next sync.' : 'This attachment’s file is missing from the vault folder.');
+    }
     const sealed = JSON.parse(fs.readFileSync(this.attachmentPath(meta.id), 'utf8')) as Sealed;
     return { meta, bytes: open(key, sealed, aadAttachment(meta.id)) };
+  }
+
+  // ---- attachment files, for sync. Files move between devices still sealed; only the master key opens them. ----
+
+  /** Ids of every attachment some item (including ones in Recently Deleted) refers to. */
+  referencedAttachmentIds(): Set<string> {
+    this.requireKey();
+    return new Set(this.data.items.flatMap(i => i.attachments.map(a => a.id)));
+  }
+
+  hasAttachmentFile(id: string): boolean {
+    return fs.existsSync(this.attachmentPath(id));
+  }
+
+  /** The sealed file as stored, for upload. */
+  readAttachmentBlob(id: string): Uint8Array {
+    return fs.readFileSync(this.attachmentPath(id));
+  }
+
+  /**
+   * Stores a sealed file from the sync server, after checking it decrypts as the attachment it claims to be
+   * (the id is bound into the encryption), so a server can't plant or swap files.
+   */
+  writeAttachmentBlob(id: string, blob: Uint8Array): void {
+    const key = this.requireKey();
+    if (!this.referencedAttachmentIds().has(id)) throw new Error('No item refers to that attachment.');
+    let sealed: Sealed;
+    try { sealed = JSON.parse(Buffer.from(blob).toString('utf8')) as Sealed; } catch { throw new Error('Attachment file is damaged.'); }
+    try { wipe(open(key, sealed, aadAttachment(id))); } catch { throw new Error('Attachment file is damaged.'); }
+    fs.mkdirSync(path.join(this.dir, 'attachments'), { recursive: true });
+    const target = this.attachmentPath(id);
+    fs.writeFileSync(`${target}.tmp`, blob);
+    fs.renameSync(`${target}.tmp`, target);
+  }
+
+  /** Deletes files no item refers to any more (removed or deleted on another device). Returns how many. */
+  removeUnreferencedAttachmentFiles(): number {
+    const keep = this.referencedAttachmentIds();
+    let n = 0;
+    let names: string[] = [];
+    try { names = fs.readdirSync(path.join(this.dir, 'attachments')); } catch { return 0; }
+    for (const f of names) {
+      const id = f.endsWith('.tmp') ? '' : f;
+      if (id && keep.has(id)) continue;
+      fs.rmSync(path.join(this.dir, 'attachments', f), { force: true });
+      if (id) n++;
+    }
+    return n;
   }
 
   removeAttachment(itemId: string, attachmentId: string): void {

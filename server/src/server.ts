@@ -10,6 +10,9 @@
  *   DATA_DIR             default ./data   (SQLite database and server secret)
  *   SIGNUPS              first | open | closed   (default first: only the first account may sign up)
  *   TRUST_PROXY          1 to take the client IP from X-Forwarded-For (for rate limiting behind a proxy)
+ *   STORAGE_LIMIT_MB     per-account limit for attachment files (default 0: no limit)
+ *
+ * Attachments are stored as files under DATA_DIR/blobs/<account>/<id>, exactly as the apps sealed them.
  */
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
@@ -17,10 +20,17 @@ import http from 'node:http';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-export interface ServerOptions { port?: number; dataDir?: string; signups?: 'first' | 'open' | 'closed'; trustProxy?: boolean; log?: (s: string) => void }
+export interface ServerOptions {
+  port?: number; dataDir?: string; signups?: 'first' | 'open' | 'closed'; trustProxy?: boolean; log?: (s: string) => void;
+  /** Per-account attachment storage limit in bytes; 0 for none. */
+  storageLimit?: number;
+}
 
 const MAX_BODY = 32 * 1024 * 1024;
 const MAX_RECORD = 4 * 1024 * 1024;
+/** A sealed 100 MB attachment (the app's limit) is about 134 MB of JSON. */
+const MAX_BLOB = 140 * 1024 * 1024;
+const BLOB_ID = /^[A-Za-z0-9_-]{8,64}$/;
 const SESSION_DAYS = 30;
 const API = '/api/v1';
 
@@ -36,7 +46,9 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
   const signups = opts.signups ?? (process.env.SIGNUPS as ServerOptions['signups']) ?? 'first';
   const trustProxy = opts.trustProxy ?? process.env.TRUST_PROXY === '1';
   const log = opts.log ?? (s => console.log(`${new Date().toISOString()} ${s}`));
+  const storageLimit = opts.storageLimit ?? Number(process.env.STORAGE_LIMIT_MB ?? 0) * 1024 * 1024;
   fs.mkdirSync(dataDir, { recursive: true });
+  const blobRoot = path.join(dataDir, 'blobs');
 
   const secretFile = path.join(dataDir, 'server-secret');
   if (!fs.existsSync(secretFile)) fs.writeFileSync(secretFile, randomBytes(32).toString('hex'), { mode: 0o600 });
@@ -66,6 +78,13 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
       PRIMARY KEY (account_id, id)
     );
     CREATE INDEX IF NOT EXISTS records_rev ON records(account_id, rev);
+    CREATE TABLE IF NOT EXISTS blobs (
+      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      id TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (account_id, id)
+    );
     CREATE TABLE IF NOT EXISTS sessions (
       token_hash BLOB PRIMARY KEY,
       account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
@@ -94,7 +113,17 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
     upsertRecord: db.prepare(`INSERT INTO records (account_id, id, kind, rev, updated_at, deleted, data) VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(account_id, id) DO UPDATE SET kind = excluded.kind, rev = excluded.rev, updated_at = excluded.updated_at, deleted = excluded.deleted, data = excluded.data`),
     deleteAccount: db.prepare('DELETE FROM accounts WHERE id = ?'),
+    blobs: db.prepare('SELECT id, size, created_at FROM blobs WHERE account_id = ? ORDER BY id'),
+    blob: db.prepare('SELECT id, size FROM blobs WHERE account_id = ? AND id = ?'),
+    blobUsage: db.prepare('SELECT COALESCE(SUM(size), 0) AS n FROM blobs WHERE account_id = ?'),
+    upsertBlob: db.prepare(`INSERT INTO blobs (account_id, id, size, created_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT(account_id, id) DO UPDATE SET size = excluded.size`),
+    deleteBlob: db.prepare('DELETE FROM blobs WHERE account_id = ? AND id = ?'),
   };
+
+  // Account ids are checked against BLOB_ID-style patterns on sign-up, so they're safe as folder names.
+  const blobDir = (accountId: string) => path.join(blobRoot, accountId);
+  const blobFile = (accountId: string, id: string) => path.join(blobDir(accountId), id);
 
   type Row = Record<string, unknown>;
   const toRecord = (r: Row) => ({ id: r.id as string, kind: r.kind as string, rev: Number(r.rev), updatedAt: Number(r.updated_at), deleted: !!r.deleted, data: r.data ? JSON.parse(r.data as string) : undefined });
@@ -201,7 +230,17 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
       return { ok: true };
     }
 
-    if (r === `DELETE ${API}/account`) { q.deleteAccount.run(accountId); log(`account deleted ${accountId}`); return { ok: true }; }
+    if (r === `DELETE ${API}/account`) {
+      q.deleteAccount.run(accountId);
+      fs.rmSync(blobDir(accountId), { recursive: true, force: true });
+      log(`account deleted ${accountId}`);
+      return { ok: true };
+    }
+
+    if (r === `GET ${API}/blobs`) {
+      const blobs = (q.blobs.all(accountId) as Row[]).map(b => ({ id: b.id as string, size: Number(b.size), createdAt: Number(b.created_at) }));
+      return { blobs, now: Date.now() };
+    }
 
     if (r === `GET ${API}/records`) {
       const since = Number(url.searchParams.get('since') ?? 0) || 0;
@@ -241,13 +280,82 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
     throw new HttpError(404, 'Not found.');
   }
 
+  /**
+   * Attachment files: PUT, GET and DELETE /api/v1/blobs/<id>. Bodies are streamed rather than buffered,
+   * since a sealed attachment can be over 100 MB.
+   */
+  async function blobRoute(req: http.IncomingMessage, res: http.ServerResponse, id: string): Promise<unknown> {
+    if (!BLOB_ID.test(id)) throw new HttpError(400, 'Bad attachment id.');
+    const { accountId } = auth(req);
+    const file = blobFile(accountId, id);
+
+    if (req.method === 'GET') {
+      if (!q.blob.get(accountId, id) || !fs.existsSync(file)) throw new HttpError(404, 'Attachment not found.');
+      const size = fs.statSync(file).size;
+      res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': size, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+      await new Promise<void>((resolve, reject) => fs.createReadStream(file).on('error', reject).on('end', resolve).pipe(res));
+      return undefined;
+    }
+
+    if (req.method === 'DELETE') {
+      q.deleteBlob.run(accountId, id);
+      fs.rmSync(file, { force: true });
+      return { ok: true };
+    }
+
+    if (req.method === 'PUT') {
+      const declared = Number(req.headers['content-length'] ?? NaN);
+      if (Number.isFinite(declared) && declared > MAX_BLOB) throw new HttpError(413, 'Attachments can be up to 100 MB.');
+      if (storageLimit) {
+        const used = Number((q.blobUsage.get(accountId) as Row).n);
+        if (used + (Number.isFinite(declared) ? declared : 0) > storageLimit) throw new HttpError(507, 'This account is out of attachment storage on the sync server.');
+      }
+      fs.mkdirSync(blobDir(accountId), { recursive: true });
+      const tmp = `${file}.${randomBytes(6).toString('hex')}.part`;
+      let size = 0;
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const out = fs.createWriteStream(tmp);
+          req.on('data', (c: Buffer) => {
+            size += c.length;
+            if (size > MAX_BLOB) { req.pause(); out.destroy(); reject(new HttpError(413, 'Attachments can be up to 100 MB.')); return; }
+            if (!out.write(c)) { req.pause(); out.once('drain', () => req.resume()); }
+          });
+          req.on('end', () => out.end());
+          req.on('error', reject);
+          out.on('error', reject);
+          out.on('finish', resolve);
+        });
+        if (!size) throw new HttpError(400, 'Empty attachment.');
+        fs.renameSync(tmp, file);
+      } catch (e) {
+        fs.rmSync(tmp, { force: true });
+        throw e;
+      }
+      q.upsertBlob.run(accountId, id, size, Date.now());
+      return { ok: true, size };
+    }
+
+    throw new HttpError(405, 'Method not allowed.');
+  }
+
   const server = http.createServer((req, res) => {
     const ip = (trustProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() : '') || req.socket.remoteAddress || '';
     const send = (status: number, body: unknown) => {
+      if (res.headersSent) { res.destroy(); return; }
       const json = JSON.stringify(body);
-      res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+      res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', connection: status >= 400 ? 'close' : 'keep-alive' });
       res.end(json);
     };
+    const blob = /^\/api\/v1\/blobs\/([^/]+)$/.exec(new URL(req.url ?? '/', 'http://localhost').pathname);
+    if (blob) {
+      blobRoute(req, res, decodeURIComponent(blob[1])).then(r => { if (r !== undefined) send(200, r); }, (e: unknown) => {
+        if (e instanceof HttpError) send(e.status, { error: e.message });
+        else { log(`error ${req.method} blob: ${(e as Error).stack ?? e}`); send(500, { error: 'Server error.' }); }
+        req.resume();
+      });
+      return;
+    }
     const chunks: Buffer[] = [];
     let size = 0;
     req.on('data', (c: Buffer) => { size += c.length; if (size > MAX_BODY) { send(413, { error: 'Request too large.' }); req.destroy(); } else chunks.push(c); });

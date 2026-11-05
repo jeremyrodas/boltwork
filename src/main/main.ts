@@ -550,7 +550,9 @@ const handlers: Handlers = {
     return filePaths.length;
   },
   saveAttachment: async (itemId, attId) => {
-    const { meta, bytes } = requireStore().readAttachment(itemId, attId);
+    const s = requireStore();
+    if (!s.hasAttachmentFile(attId) && s.syncState) void syncNow();
+    const { meta, bytes } = s.readAttachment(itemId, attId);
     const { filePath, canceled } = await dialog.showSaveDialog(mainWin!, { defaultPath: meta.name });
     if (canceled || !filePath) return false;
     fs.writeFileSync(filePath, bytes);

@@ -59,6 +59,35 @@ export class SyncClient {
   deleteAccount() { return this.req('DELETE', '/account'); }
   account() { return this.req<{ email: string; devices: { device: string; createdAt: number; lastUsedAt: number }[] }>('GET', '/account'); }
   updateKeys(authKey: Uint8Array, kdf: KdfParams, wrappedKey: Sealed) { return this.req('PUT', '/account/keys', { authKey: b64u(authKey), kdf, wrappedKey }); }
+  listBlobs() { return this.req<{ blobs: { id: string; size: number; createdAt: number }[]; now: number }>('GET', '/blobs'); }
+  deleteBlob(id: string) { return this.req('DELETE', `/blobs/${encodeURIComponent(id)}`); }
+
+  async putBlob(id: string, bytes: Uint8Array) {
+    const res = await this.raw('PUT', id, bytes);
+    if (!res.ok) throw new SyncError(res.status, ((await res.json().catch(() => ({}))) as { error?: string }).error ?? `Sync server error ${res.status}.`);
+  }
+
+  /** The sealed file, or null if the server doesn't have it (yet). */
+  async getBlob(id: string): Promise<Uint8Array | null> {
+    const res = await this.raw('GET', id);
+    if (res.status === 404) return null;
+    if (!res.ok) throw new SyncError(res.status, ((await res.json().catch(() => ({}))) as { error?: string }).error ?? `Sync server error ${res.status}.`);
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
+  private async raw(method: string, id: string, body?: Uint8Array): Promise<Response> {
+    try {
+      return await fetch(`${this.serverUrl}/api/v1/blobs/${encodeURIComponent(id)}`, {
+        method,
+        headers: { 'content-type': 'application/octet-stream', authorization: `Bearer ${this.token}` },
+        body: body as BodyInit | undefined,
+        signal: AbortSignal.timeout(10 * 60_000),
+      });
+    } catch (e) {
+      throw new SyncError(0, `Can't reach the sync server (${(e as Error).message}).`);
+    }
+  }
+
   pull(since: number) { return this.req<{ records: SealedRecord[]; cursor: number; more: boolean }>('GET', `/records?since=${since}`); }
   push(records: { id: string; kind: string; baseRev: number; updatedAt: number; deleted: boolean; data?: Sealed }[]) {
     return this.req<{ accepted: { id: string; rev: number }[]; conflicts: SealedRecord[] }>('POST', '/records', { records });
@@ -74,13 +103,16 @@ export async function signIn(client: SyncClient, email: string, password: string
   return client.login(email, auth, device);
 }
 
-export interface SyncResult { pulled: number; pushed: number; conflicts: number }
+export interface SyncResult { pulled: number; pushed: number; conflicts: number; filesUp: number; filesDown: number }
+
+/** Files the server holds that no item refers to are only removed after this long, in case another device just uploaded one. */
+const ORPHAN_GRACE_MS = 6 * 3600_000;
 
 /** One round: pull everything newer than our cursor, then push local changes. */
-export async function syncOnce(store: VaultStore, client: SyncClient): Promise<SyncResult> {
+export async function syncOnce(store: VaultStore, client: SyncClient, opts: { orphanGraceMs?: number } = {}): Promise<SyncResult> {
   const state = store.syncState;
   if (!state) throw new Error('Sync is not set up.');
-  const result: SyncResult = { pulled: 0, pushed: 0, conflicts: 0 };
+  const result: SyncResult = { pulled: 0, pushed: 0, conflicts: 0, filesUp: 0, filesDown: 0 };
 
   const pull = async () => {
     for (;;) {
@@ -107,7 +139,34 @@ export async function syncOnce(store: VaultStore, client: SyncClient): Promise<S
       for (const c of res.conflicts) { if (store.mergeRemote(c) === 'conflict') result.conflicts++; }
     }
   }
+  store.writeFile();
+
+  // Attachment files, after the records: a device only uploads a file once the item that refers to it is on the server.
+  await syncFiles(store, client, result, opts.orphanGraceMs ?? ORPHAN_GRACE_MS);
+
   state.lastSyncAt = Date.now();
   store.writeFile();
   return result;
+}
+
+async function syncFiles(store: VaultStore, client: SyncClient, result: SyncResult, graceMs: number) {
+  const wanted = store.referencedAttachmentIds();
+  const { blobs, now } = await client.listBlobs();
+  const onServer = new Map(blobs.map(b => [b.id, b]));
+
+  for (const id of wanted) {
+    if (store.hasAttachmentFile(id)) {
+      if (!onServer.has(id)) { await client.putBlob(id, store.readAttachmentBlob(id)); result.filesUp++; }
+    } else if (onServer.has(id)) {
+      const blob = await client.getBlob(id);
+      if (!blob) continue;
+      try { store.writeAttachmentBlob(id, blob); result.filesDown++; } catch { /* damaged or tampered: leave it missing and try again next time */ }
+    }
+  }
+
+  // Files no item refers to any more: removed or deleted for good, here or on another device.
+  for (const b of blobs) {
+    if (!wanted.has(b.id) && now - b.createdAt >= graceMs) await client.deleteBlob(b.id);
+  }
+  store.removeUnreferencedAttachmentFiles();
 }

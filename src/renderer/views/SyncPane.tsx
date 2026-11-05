@@ -58,7 +58,7 @@ export function SyncPane() {
       <h3>Run your own server</h3>
       <p className="muted">The server is in the <code>server/</code> folder of the Strongroom source. With Docker, run <code>docker compose up -d</code> there, then put it behind HTTPS (Caddy, Traefik or nginx). Only the first account can sign up unless you set <code>SIGNUPS=open</code>.</p>
     </div>
-    <p className="hint">Not synced yet: file attachments stay on the computer they were added on.</p>
+    <p className="hint">File attachments sync too, still encrypted. Each file can be up to 100 MB.</p>
     {setup && <SetupModal onClose={() => setSetup(false)} onDone={s => { setStatus(s); setSetup(false); }} />}
     {reauth && <ReauthModal onClose={() => setReauth(false)} onDone={s => { setStatus(s); setReauth(false); }} />}
     {off && <OffModal onClose={() => setOff(false)} onDone={() => { setOff(false); void api.syncStatus().then(setStatus); }} />}

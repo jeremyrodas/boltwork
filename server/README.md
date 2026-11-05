@@ -1,7 +1,7 @@
 # Strongroom sync server
 
 A small self-hosted server that keeps your Strongroom vault in step across computers.
-It stores only end-to-end encrypted records: it never sees your password, your Secret Key, your master key or anything in your vault.
+It stores only end-to-end encrypted records and attachment files: it never sees your password, your Secret Key, your master key or anything in your vault.
 One Node.js process with a SQLite file and no other dependencies. Licensed AGPL-3.0-or-later.
 
 ## Run it with Docker
@@ -38,9 +38,12 @@ DATA_DIR=./data PORT=8787 node dist/server.js
 | Variable | Default | Meaning |
 |---|---|---|
 | `PORT` | `8787` | Port to listen on |
-| `DATA_DIR` | `./data` (`/data` in Docker) | Where the SQLite database and server secret live. Back this up. |
+| `DATA_DIR` | `./data` (`/data` in Docker) | Where the SQLite database, attachment files (`blobs/`) and server secret live. Back this up. |
 | `SIGNUPS` | `first` | `first`: only the first account may sign up (good for one person). `open`: anyone who can reach it. `closed`: nobody. |
 | `TRUST_PROXY` | off | Set to `1` behind a reverse proxy, so rate limits use the client address it forwards |
+| `STORAGE_LIMIT_MB` | `0` (no limit) | Attachment storage allowed per account |
+
+Attachments upload as single requests of up to about 140 MB (a 100 MB file once sealed). If you use a reverse proxy, raise its body size limit, for example `client_max_body_size 150m;` in nginx.
 
 ## Backups
 
@@ -63,5 +66,9 @@ All under `/api/v1`, JSON in and out.
 | `DELETE /account` | token | Delete the account and all its records |
 | `GET /records?since=N` | token | Records changed after revision N (paged, 1000 at a time) |
 | `POST /records` | token | Upload records; each says which revision it was based on, and stale ones come back as conflicts |
+| `GET /blobs` | token | List the account's attachment files (id, size, upload time) |
+| `PUT /blobs/<id>` | token | Upload a sealed attachment file (raw body) |
+| `GET /blobs/<id>` | token | Download a sealed attachment file |
+| `DELETE /blobs/<id>` | token | Delete an attachment file |
 
 See [SECURITY.md](../SECURITY.md) for how the encryption and sign-in work.
