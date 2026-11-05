@@ -12,7 +12,12 @@ docker compose up -d
 ```
 
 This builds the image and starts it on `127.0.0.1:8787`, with data in the `strongroom-data` volume.
-Then put it behind HTTPS (the app refuses plain `http://` except for `localhost`). For example, with Caddy:
+On a home network you can connect over plain http, for example `http://192.168.1.20:8787`: the app allows http for
+`localhost`, private addresses (10.x, 172.16–31.x, 192.168.x) and `.local` names. To reach it from other computers, change the
+port mapping in `docker-compose.yml` from `127.0.0.1:8787:8787` to `8787:8787`. Your vault stays end-to-end encrypted over http,
+but anyone on the network could see your sync sign-in, so don't expose an http server to the internet.
+
+For anything reachable from outside your home, put it behind HTTPS. For example, with Caddy:
 
 ```
 vault.example.com {

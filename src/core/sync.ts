@@ -12,12 +12,33 @@ export class SyncError extends Error {
 
 const b64u = (u: Uint8Array) => Buffer.from(u).toString('base64url');
 
+/**
+ * True for this computer and home-network addresses: private IPv4 ranges (10/8, 172.16/12, 192.168/16),
+ * link-local, IPv6 unique-local, and names reserved for local networks (.local, .home.arpa).
+ * Public names aren't included even if they resolve to a private address, since that can change.
+ */
+export function isLocalNetworkHost(hostname: string): boolean {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.home.arpa')) return true;
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254);
+  }
+  return h === '::1' || /^f[cd][0-9a-f]{2}:/.test(h) || /^fe[89ab][0-9a-f]:/.test(h);
+}
+
+/**
+ * Plain http is allowed only on this computer or a home network. Vault data stays end-to-end encrypted
+ * either way, but over http someone on the network could see the sync sign-in, so https is still better.
+ */
 export function normalizeServerUrl(input: string): string {
   let u = input.trim().replace(/\/+$/, '');
   if (!/^https?:\/\//i.test(u)) u = `https://${u}`;
   const url = new URL(u);
-  const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) || url.hostname.endsWith('.localhost');
-  if (url.protocol === 'http:' && !local) throw new Error('Use an https:// address. Plain http is only allowed for localhost.');
+  if (url.protocol === 'http:' && !isLocalNetworkHost(url.hostname)) {
+    throw new Error('Use an https:// address. Plain http is only allowed for this computer or a home-network address (like 192.168.1.20).');
+  }
   return url.origin + url.pathname.replace(/\/+$/, '');
 }
 

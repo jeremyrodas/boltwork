@@ -42,6 +42,9 @@ export function SyncPane() {
         <div className="list-row"><span className="list-icon"><Ico icon={Server} /></span>
           <span className="grow"><b>{status.serverUrl}</b><span className="muted small">{status.email}</span></span>
         </div>
+        {status.serverUrl?.startsWith('http:') && (
+          <p className="hint">This server uses plain http. Your vault is still end-to-end encrypted, but others on the network could see your sync sign-in. Use https if the server is reachable from outside your home.</p>
+        )}
         <div className="row gap">
           {status.signedOut
             ? <Button kind="primary" onClick={() => setReauth(true)}>Sign in again…</Button>
@@ -77,7 +80,7 @@ function SetupModal({ onClose, onDone }: { onClose: () => void; onDone: (s: Sync
       {!checked ? (<>
         <label className="lbl">Server address</label>
         <input value={server} onChange={e => setServer(e.target.value)} placeholder="https://vault.example.com" autoFocus spellCheck={false} />
-        <p className="hint">Use https. Plain http works only for a server on this computer (localhost).</p>
+        <p className="hint">Use https. Plain http works only for a server on this computer or your home network (like 192.168.1.20:8787).</p>
         <div className="row gap end"><Button onClick={onClose}>Cancel</Button>
           <Button kind="primary" disabled={!server.trim() || busy} onClick={async () => { setBusy(true); const r = await run(api.syncCheckServer(server)); setBusy(false); if (r) setChecked(r); }}>{busy ? 'Checking…' : 'Next'}</Button></div>
       </>) : (<>

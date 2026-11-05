@@ -126,10 +126,14 @@ test('a server that swaps records between items is caught', async () => {
   } finally { await srv.close(); }
 });
 
-test('server URLs: https required except for localhost', () => {
+test('server URLs: https required except for this computer and home-network addresses', () => {
   assert.equal(normalizeServerUrl('vault.example.com/'), 'https://vault.example.com');
   assert.equal(normalizeServerUrl('http://localhost:8787'), 'http://localhost:8787');
   assert.throws(() => normalizeServerUrl('http://vault.example.com'));
+  for (const ok of ['http://192.168.1.92:8787', 'http://10.0.0.5', 'http://172.16.0.1', 'http://172.31.255.255', 'http://nas.local:8787', 'http://vault.home.arpa', 'http://[fd12:3456::1]:8787', 'http://127.0.0.1'])
+    assert.equal(normalizeServerUrl(ok), ok, ok);
+  for (const bad of ['http://172.32.0.1', 'http://8.8.8.8', 'http://192.169.1.1', 'http://11.0.0.1', 'http://192.168.1.92.example.com', 'http://local', 'http://[2001:db8::1]'])
+    assert.throws(() => normalizeServerUrl(bad), /https/, bad);
 });
 
 test('attachments sync as sealed files, and removed ones are cleaned up', async () => {
