@@ -44,6 +44,24 @@ async function buildExtension() {
   await build({ ...common, sourcemap: false, entryPoints: ['src/core/iconBitmap.ts'], outfile: 'dist/iconBitmap.cjs', platform: 'node', format: 'cjs' });
   const { drawIcon } = createRequire(import.meta.url)('../dist/iconBitmap.cjs');
   for (const size of [16, 32, 48, 128]) writeFileSync(`${out}/icons/${size}.png`, png(size, drawIcon(size)));
+
+  // The Windows app and installer icon: PNG images in an .ico container.
+  mkdirSync('build', { recursive: true });
+  writeFileSync('build/icon.ico', ico([16, 24, 32, 48, 64, 128, 256].map(size => png(size, drawIcon(size)))));
+}
+
+function ico(pngs) {
+  const header = Buffer.alloc(6); header.writeUInt16LE(1, 2); header.writeUInt16LE(pngs.length, 4);
+  let offset = 6 + 16 * pngs.length;
+  const dir = pngs.map(p => {
+    const size = p.readUInt32BE(16);
+    const e = Buffer.alloc(16);
+    e[0] = size >= 256 ? 0 : size; e[1] = size >= 256 ? 0 : size;
+    e.writeUInt16LE(1, 4); e.writeUInt16LE(32, 6); e.writeUInt32LE(p.length, 8); e.writeUInt32LE(offset, 12);
+    offset += p.length;
+    return e;
+  });
+  return Buffer.concat([header, ...dir, ...pngs]);
 }
 
 function png(size, rgba) {

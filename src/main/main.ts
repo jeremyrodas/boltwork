@@ -36,6 +36,9 @@ import { helloAvailable, helloDelete, helloSign } from './hello';
 // Separate profiles (e.g. for testing): STRONGROOM_PROFILE=C:\path\to\dir
 if (process.env.STRONGROOM_PROFILE) app.setPath('userData', process.env.STRONGROOM_PROFILE);
 
+// Matches the installer's appId, so Windows groups the taskbar button and notifications under Strongroom.
+if (process.platform === 'win32') app.setAppUserModelId('app.strongroom.desktop');
+
 const argv = process.argv.slice(1);
 if (!app.requestSingleInstanceLock({ argv })) {
   app.quit();
@@ -802,13 +805,18 @@ app.whenReady().then(async () => {
 
 // ---------- browser extension ----------
 
+/**
+ * In an installed copy the app is packed into app.asar. Chrome (loading the extension) and the connector
+ * (run by plain Node) can't read inside it, so those files are shipped unpacked next to it.
+ */
 const appRoot = path.resolve(__dirname, '..');
-const extensionFolder = () => path.join(appRoot, 'dist-extension');
+const unpackedRoot = appRoot.replace(/app\.asar$/, 'app.asar.unpacked');
+const extensionFolder = () => path.join(unpackedRoot, 'dist-extension');
 
 async function setBrowserIntegration(on: boolean) {
   if (!on) { stopBrowserHost(); return; }
   if (!process.env.STRONGROOM_NO_BROWSER_REGISTER) {
-    await registerNativeHost(path.join(userData, 'native-messaging'), path.join(appRoot, 'dist', 'nmhost.js'));
+    await registerNativeHost(path.join(userData, 'native-messaging'), path.join(unpackedRoot, 'dist', 'nmhost.js'));
   }
   await startBrowserHost({
     store: () => store,

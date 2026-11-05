@@ -8,7 +8,8 @@
     "build": "node scripts/build.mjs",
     "start": "node scripts/build.mjs && electron .",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/build.mjs && node scripts/build.mjs --tests && node --test dist-test/*.test.js"
+    "test": "node scripts/build.mjs && node scripts/build.mjs --tests && node --test dist-test/*.test.js",
+    "dist": "node scripts/build.mjs && electron-builder --win nsis --publish never"
   },
   "license": "MIT",
   "dependencies": {
@@ -32,11 +33,46 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
   },
   "allowScripts": {
     "electron@45.2.3": true,
     "esbuild@0.28.2": true
+  },
+  "productName": "Strongroom",
+  "author": "Strongroom contributors",
+  "build": {
+    "appId": "app.strongroom.desktop",
+    "productName": "Strongroom",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "!dist/**/*.map",
+      "!dist/iconBitmap.cjs",
+      "dist-extension/**",
+      "package.json",
+      "!node_modules/**"
+    ],
+    "asarUnpack": [
+      "dist/nmhost.js",
+      "dist-extension/**"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "Strongroom",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Strongroom-Setup-${version}.exe",
+      "uninstallDisplayName": "Strongroom"
+    }
   }
 }
