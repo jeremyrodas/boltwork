@@ -12,6 +12,23 @@ export class SyncError extends Error {
 
 const b64u = (u: Uint8Array) => Buffer.from(u).toString('base64url');
 
+/** Turns Node's bare "fetch failed" into something a person can act on. */
+export function unreachable(serverUrl: string, e: unknown): SyncError {
+  const err = e as Error & { cause?: { code?: string; message?: string } };
+  const code = err.cause?.code ?? '';
+  const msg = `${err.cause?.message ?? ''} ${err.message}`;
+  let why: string;
+  if (err.name === 'TimeoutError' || code === 'UND_ERR_CONNECT_TIMEOUT' || code === 'ETIMEDOUT') why = 'it didn’t answer in time. Check the address and that the server is running.';
+  else if (code === 'ECONNREFUSED') why = 'nothing is listening at that address and port. Check the port and that the server is running.';
+  else if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') why = 'that name couldn’t be found. Check the spelling, or use the server’s IP address.';
+  else if (code === 'EHOSTUNREACH' || code === 'ENETUNREACH') why = 'that address can’t be reached from this computer.';
+  else if (/WRONG_VERSION_NUMBER|EPROTO|packet length too long/i.test(code + msg)) {
+    why = serverUrl.startsWith('https:') ? 'it doesn’t use https. If it’s on your home network, use http:// instead.' : 'the connection was garbled.';
+  } else if (/CERT|self.signed|SSL|TLS/i.test(code + msg)) why = 'its https certificate isn’t trusted. Use a certificate from a public authority (Caddy or Let’s Encrypt can do this).';
+  else why = `${err.cause?.message || err.message}.`;
+  return new SyncError(0, `Can’t reach the sync server at ${serverUrl}: ${why}`);
+}
+
 /**
  * True for this computer and home-network addresses: private IPv4 ranges (10/8, 172.16/12, 192.168/16),
  * link-local, IPv6 unique-local, and names reserved for local networks (.local, .home.arpa).
@@ -34,7 +51,9 @@ export function isLocalNetworkHost(hostname: string): boolean {
  */
 export function normalizeServerUrl(input: string): string {
   let u = input.trim().replace(/\/+$/, '');
-  if (!/^https?:\/\//i.test(u)) u = `https://${u}`;
+  if (!u) throw new Error('Enter the server address.');
+  // No scheme given: home-network servers usually have no certificate, so they get http; anything else https.
+  if (!/^https?:\/\//i.test(u)) u = `${isLocalNetworkHost(new URL(`http://${u}`).hostname) ? 'http' : 'https'}://${u}`;
   const url = new URL(u);
   if (url.protocol === 'http:' && !isLocalNetworkHost(url.hostname)) {
     throw new Error('Use an https:// address. Plain http is only allowed for this computer or a home-network address (like 192.168.1.20).');
@@ -55,7 +74,7 @@ export class SyncClient {
         signal: AbortSignal.timeout(30_000),
       });
     } catch (e) {
-      throw new SyncError(0, `Can't reach the sync server (${(e as Error).message}).`);
+      throw unreachable(this.serverUrl, e);
     }
     const json = await res.json().catch(() => ({})) as T & { error?: string };
     if (!res.ok) throw new SyncError(res.status, json.error ?? `Sync server error ${res.status}.`);
@@ -105,7 +124,7 @@ export class SyncClient {
         signal: AbortSignal.timeout(10 * 60_000),
       });
     } catch (e) {
-      throw new SyncError(0, `Can't reach the sync server (${(e as Error).message}).`);
+      throw unreachable(this.serverUrl, e);
     }
   }
 

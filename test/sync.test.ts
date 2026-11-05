@@ -126,8 +126,21 @@ test('a server that swaps records between items is caught', async () => {
   } finally { await srv.close(); }
 });
 
+test('connection errors say what went wrong', async () => {
+  const http = await import('node:http');
+  const plain = http.createServer((_q, r) => r.end('{}'));
+  await new Promise<void>(r => plain.listen(0, r));
+  const port = (plain.address() as { port: number }).port;
+  try {
+    await assert.rejects(new SyncClient(`https://localhost:${port}`).health(), /doesn’t use https.*http:\/\//);
+  } finally { plain.close(); }
+  await assert.rejects(new SyncClient(`http://localhost:${port}`).health(), /nothing is listening/);
+});
+
 test('server URLs: https required except for this computer and home-network addresses', () => {
   assert.equal(normalizeServerUrl('vault.example.com/'), 'https://vault.example.com');
+  assert.equal(normalizeServerUrl('192.168.1.92:8787'), 'http://192.168.1.92:8787', 'home-network address without a scheme gets http');
+  assert.equal(normalizeServerUrl('https://192.168.1.92:8787'), 'https://192.168.1.92:8787', 'an explicit https is kept');
   assert.equal(normalizeServerUrl('http://localhost:8787'), 'http://localhost:8787');
   assert.throws(() => normalizeServerUrl('http://vault.example.com'));
   for (const ok of ['http://192.168.1.92:8787', 'http://10.0.0.5', 'http://172.16.0.1', 'http://172.31.255.255', 'http://nas.local:8787', 'http://vault.home.arpa', 'http://[fd12:3456::1]:8787', 'http://127.0.0.1'])
