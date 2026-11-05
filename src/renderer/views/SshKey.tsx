@@ -3,7 +3,9 @@ import type { SshAgentStatus } from '../../core/api';
 import type { SshKeyInfo, SshKeyType } from '../../core/ssh';
 import type { Field } from '../../core/types';
 import { api } from '../api';
-import { Button, PasswordInput, Toggle } from '../components/ui';
+import { Terminal } from 'lucide-react';
+import { Ico } from '../components/icons';
+import { askConfirm, Button, PasswordInput, Toggle } from '../components/ui';
 import { useApp } from '../state';
 
 /** Editor body for SSH Key items: generate or import a key; the fields themselves are not hand-edited. */
@@ -18,7 +20,7 @@ export function SshKeyEditor({ fields, title, onKey }: { fields: Field[]; title:
   const has = !!f('privateKey');
 
   const generate = async () => {
-    if (has && !confirm('Replace this key with a new one? Servers that trust the old public key will stop accepting it.')) return;
+    if (has && !(await askConfirm('Replace this key?', 'Servers and services that trust the old public key will stop accepting it until you add the new one.', 'Replace key', true))) return;
     setBusy(true);
     const info = await run(api.sshGenerate(type, title.trim()));
     setBusy(false);
@@ -111,7 +113,7 @@ export function SshAgentPane() {
       <h3>Keys the agent offers ({status?.keys.length ?? 0})</h3>
       {status && status.keys.length === 0 && <p className="muted">No SSH keys yet. <button className="link" onClick={() => navigate('/new/sshKey')}>Create one</button></p>}
       {status?.keys.map(k => (
-        <div key={k.fingerprint} className="list-row"><span className="emoji">🗝️</span>
+        <div key={k.fingerprint} className="list-row"><span className="list-icon"><Ico icon={Terminal} /></span>
           <span className="grow"><b>{k.title}</b><span className="muted small mono">{k.keyType} · {k.fingerprint}</span></span>
         </div>
       ))}

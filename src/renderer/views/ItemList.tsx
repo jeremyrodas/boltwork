@@ -1,25 +1,42 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { subtitleOf, TEMPLATES } from '../../core/templates';
+import { Eye, EyeOff, Inbox, Plus, Search, SearchX, Star } from 'lucide-react';
+import { subtitleOf, TEMPLATE_BY_CATEGORY, TEMPLATES } from '../../core/templates';
 import type { Category, Settings } from '../../core/types';
 import { api } from '../api';
-import { Button, Empty, IconButton, ItemIcon, Modal } from '../components/ui';
+import { CategoryIcon, Ico } from '../components/icons';
+import { askConfirm, Button, Empty, IconButton, ItemIcon, Modal } from '../components/ui';
 import { useApp } from '../state';
 import { visibleItems } from './Sidebar';
+
+/** Categories grouped so the four everyday ones come first and the rest are scannable by kind. */
+const CATEGORY_GROUPS: { title: string; categories: Category[] }[] = [
+  { title: 'Everyday', categories: ['login', 'password', 'secureNote', 'creditCard'] },
+  { title: 'Identity & documents', categories: ['identity', 'document', 'passport', 'driverLicense', 'socialSecurityNumber', 'medicalRecord', 'membership', 'rewardProgram', 'outdoorLicense'] },
+  { title: 'Money', categories: ['bankAccount', 'cryptoWallet'] },
+  { title: 'Technical', categories: ['sshKey', 'apiCredential', 'server', 'database', 'router', 'emailAccount', 'softwareLicense'] },
+];
 
 export function CategoryPicker({ onPick, onClose }: { onPick: (c: Category) => void; onClose: () => void }) {
   const [q, setQ] = useState('');
   const list = TEMPLATES.filter(t => t.name.toLowerCase().includes(q.toLowerCase()));
+  const tile = (c: Category) => (
+    <button key={c} className="category-tile" onClick={() => onPick(c)}>
+      <CategoryIcon category={c} size={18} />{TEMPLATE_BY_CATEGORY[c].name}
+    </button>
+  );
   return (
     <Modal title="What would you like to add?" onClose={onClose} wide>
-      <input autoFocus placeholder="Search categories" value={q} onChange={e => setQ(e.target.value)}
+      <input autoFocus placeholder="Search categories" aria-label="Search categories" value={q} onChange={e => setQ(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && list[0]) onPick(list[0].category); }} />
-      <div className="category-grid">
-        {list.map(t => (
-          <button key={t.category} className="category-tile" onClick={() => onPick(t.category)}>
-            <span className="emoji">{t.icon}</span>{t.name}
-          </button>
-        ))}
-      </div>
+      {q ? (
+        <div className="category-grid">{list.map(t => tile(t.category))}</div>
+      ) : CATEGORY_GROUPS.map(g => (
+        <div key={g.title} className="category-group">
+          <h3>{g.title}</h3>
+          <div className="category-grid">{g.categories.map(tile)}</div>
+        </div>
+      ))}
+      {q && !list.length && <p className="muted">No category matches “{q}”.</p>}
     </Modal>
   );
 }
@@ -64,8 +81,9 @@ export function ItemList({ selectedId }: { selectedId?: string }) {
     <section className="list-pane">
       <div className="list-head">
         <div className="search-wrap">
-          <span className="search-icon">⌕</span>
-          <input ref={searchRef} className="search" placeholder="Search  (try tag:work, is:favorite, has:otp)" value={query}
+          <span className="search-icon"><Ico icon={Search} size={15} /></span>
+          <input ref={searchRef} className="search" placeholder="Search" aria-label="Search items" value={query}
+            title="Filters: tag:work, -tag:old, vault:Personal, category:login, is:favorite, has:otp, url:github.com"
             onChange={e => setQuery(e.target.value)} onFocus={() => setShowHistory(true)} onBlur={() => setTimeout(() => setShowHistory(false), 150)}
             onKeyDown={e => {
               if (e.key === 'Enter' && items[0]) { navigate(`/item/${items[0].id}`); void api.addSearchHistory(query); }
@@ -79,12 +97,12 @@ export function ItemList({ selectedId }: { selectedId?: string }) {
           )}
         </div>
         <IconButton title={settings.privacyMode ? 'Turn off Privacy Mode' : 'Privacy Mode: hide details'} active={settings.privacyMode}
-          onClick={() => updateSettings({ privacyMode: !settings.privacyMode })}>{settings.privacyMode ? '🕶️' : '👁'}</IconButton>
-        <Button kind="primary" small onClick={() => setPicker(true)}>＋ New Item</Button>
+          onClick={() => updateSettings({ privacyMode: !settings.privacyMode })}><Ico icon={settings.privacyMode ? EyeOff : Eye} /></IconButton>
+        <Button kind="primary" small onClick={() => setPicker(true)} title="New item (Ctrl+N)"><Ico icon={Plus} size={15} />New Item</Button>
       </div>
       <div className="list-sub">
         <span className="list-title">{query ? `Results for “${query}”` : title} <span className="muted">{items.length}</span></span>
-        <select value={settings.itemSort} onChange={e => updateSettings({ itemSort: e.target.value as Settings['itemSort'] })} title="Sort by">
+        <select value={settings.itemSort} onChange={e => updateSettings({ itemSort: e.target.value as Settings['itemSort'] })} title="Sort by" aria-label="Sort by">
           <option value="title">Title</option>
           <option value="dateModified">Date modified</option>
           <option value="dateCreated">Date created</option>
@@ -94,22 +112,24 @@ export function ItemList({ selectedId }: { selectedId?: string }) {
       </div>
       {filter.kind === 'deleted' && items.length > 0 && (
         <div className="banner">Items here are deleted for good after {settings.emptyTrashDays} days.
-          <button className="link danger" onClick={async () => { if (confirm('Permanently delete everything in Recently Deleted?')) await run(api.emptyTrash(), 'Recently Deleted emptied'); }}>Empty now</button>
+          <button className="link danger" onClick={async () => {
+            if (await askConfirm('Empty Recently Deleted?', `The ${items.length} item${items.length === 1 ? '' : 's'} here will be deleted for good. This can’t be undone.`, 'Delete for good', true)) await run(api.emptyTrash(), 'Recently Deleted emptied');
+          }}>Empty now</button>
         </div>
       )}
       <div className="list" ref={listRef}>
         {items.length === 0 && (query
-          ? <Empty icon="🔍" title="No matches">Try fewer words, or search a different vault.</Empty>
-          : <Empty icon="🗝️" title="Nothing here yet"><Button onClick={() => setPicker(true)}>Add an item</Button></Empty>)}
+          ? <Empty icon={SearchX} title="No matches">Try fewer words, or search a different vault.</Empty>
+          : <Empty icon={Inbox} title="Nothing here yet"><Button onClick={() => setPicker(true)}>Add an item</Button></Empty>)}
         {items.map(item => (
-          <button key={item.id} className={`row-item${item.id === selectedId ? ' selected' : ''}`} onClick={() => navigate(`/item/${item.id}`)}
+          <button key={item.id} className={`row-item${item.id === selectedId ? ' selected' : ''}`} aria-current={item.id === selectedId ? 'true' : undefined} onClick={() => navigate(`/item/${item.id}`)}
             onDoubleClick={() => item.state === 'active' && navigate(`/edit/${item.id}`)}>
             <ItemIcon item={item} />
             <span className="row-text">
               <span className="row-title">{item.title}</span>
               <span className="row-sub">{settings.privacyMode ? '••••••' : subtitleOf(item)}</span>
             </span>
-            {item.favorite && <span className="row-fav">★</span>}
+            {item.favorite && <span className="row-fav" title="Favorite"><Ico icon={Star} size={14} /></span>}
           </button>
         ))}
       </div>

@@ -4,7 +4,9 @@ import { IMPORT_SOURCES } from '../../core/importSources';
 import { SECURITY_PRESETS, type PresetName } from '../../core/settings';
 import type { Collection, Vault } from '../../core/types';
 import { api } from '../api';
-import { Button, Modal, PasswordInput, StrengthMeter, Toggle, useStrength } from '../components/ui';
+import { Plus } from 'lucide-react';
+import { askChoice, Button, Modal, PasswordInput, StrengthMeter, Toggle, useStrength } from '../components/ui';
+import { Ico, SETTINGS_ICONS } from '../components/icons';
 import { useApp } from '../state';
 import { SshAgentPane } from './SshKey';
 import { BrowserPane } from './BrowserPane';
@@ -142,12 +144,16 @@ function VaultsPane() {
           <Button small kind="danger" disabled={data.vaults.length <= 1} onClick={async () => {
             const count = data.items.filter(i => i.vaultId === v.id).length;
             const other = data.vaults.find(x => x.id !== v.id)!;
-            if (count && confirm(`Move ${count} item(s) to “${other.name}” before deleting? Choose Cancel to delete them too.`)) await run(api.deleteVault(v.id, other.id), 'Vault deleted');
-            else if (confirm(`Delete “${v.name}”${count ? ` and its ${count} item(s)` : ''} permanently?`)) await run(api.deleteVault(v.id), 'Vault deleted');
+            const choice = await askChoice(`Delete “${v.name}”?`,
+              count ? `It holds ${count} item${count === 1 ? '' : 's'}. You can move them to “${other.name}” first, or delete them with the vault.` : 'The vault is empty.',
+              count ? [{ label: `Move items to ${other.name}`, value: 'move', kind: 'primary' }, { label: 'Delete vault and items', value: 'all', kind: 'danger' }]
+                : [{ label: 'Delete vault', value: 'all', kind: 'danger' }]);
+            if (choice === 'move') await run(api.deleteVault(v.id, other.id), 'Vault deleted; items moved');
+            else if (choice === 'all') await run(api.deleteVault(v.id), 'Vault deleted');
           }}>Delete</Button>
         </div>
       ))}
-      <Button onClick={() => setEditing({ name: '', description: '', icon: '🗂️' })}>＋ New vault</Button>
+      <Button onClick={() => setEditing({ name: '', description: '', icon: '🗂️' })}><Ico icon={Plus} size={15} />New vault</Button>
     </Section>
     <Section title="Collections">
       <p className="hint">Collections group vaults so you can focus on, say, Work or Family. Pick one at the top of the sidebar.</p>
@@ -158,7 +164,7 @@ function VaultsPane() {
           <Button small kind="danger" onClick={() => run(api.deleteCollection(c.id), 'Collection deleted')}>Delete</Button>
         </div>
       ))}
-      <Button onClick={() => setCol({ name: '', vaultIds: [] })}>＋ New collection</Button>
+      <Button onClick={() => setCol({ name: '', vaultIds: [] })}><Ico icon={Plus} size={15} />New collection</Button>
     </Section>
     {tags.length > 0 && (
       <Section title="Rename a tag">
@@ -284,7 +290,9 @@ export function SettingsView({ pane = 'general' }: { pane?: string }) {
     <section className="settings">
       <nav className="settings-nav">
         {PANES.map(([id, icon, label]) => (
-          <button key={id} className={`side-item${pane === id ? ' active' : ''}`} onClick={() => navigate(`/settings/${id}`)}><span className="side-icon">{icon}</span>{label}</button>
+          <button key={id} className={`side-item${pane === id ? ' active' : ''}`} aria-current={pane === id ? 'page' : undefined} onClick={() => navigate(`/settings/${id}`)}>
+            <span className="side-icon">{SETTINGS_ICONS[id] ? <Ico icon={SETTINGS_ICONS[id]} /> : icon}</span>{label}
+          </button>
         ))}
       </nav>
       <div className="settings-body">
@@ -351,7 +359,7 @@ export function SettingsView({ pane = 'general' }: { pane?: string }) {
               {[
                 [settings.quickAccessShortcut, 'Open Quick Access (from anywhere)'], [settings.showShortcut, 'Show or hide Strongroom (from anywhere)'], [settings.lockShortcut, 'Lock (from anywhere)'],
                 ['Ctrl+F', 'Search'], ['Ctrl+N', 'New item'], ['Ctrl+G', 'Password generator'], ['Ctrl+S', 'Save item while editing'], ['Esc', 'Cancel editing / close'],
-                ['↑ ↓', 'Move through items'], ['Ctrl+Shift+C', 'Copy password of selected item'], ['Ctrl+Alt+C', 'Copy username of selected item'], ['Ctrl+E', 'Edit selected item'],
+                ['↑ ↓', 'Move through items'], ['Ctrl+Shift+C', 'Copy password of selected item'], ['Ctrl+Alt+C', 'Copy username of selected item'], ['Ctrl+Alt+O', 'Copy one-time code of selected item'], ['Ctrl+E', 'Edit selected item'],
                 ['Quick Access: Enter', 'Auto-Type (Windows) or copy password'], ['Quick Access: Ctrl+C', 'Copy password'], ['Quick Access: Ctrl+Shift+C', 'Copy username'],
                 ['Quick Access: Ctrl+Alt+C', 'Copy one-time password'], ['Quick Access: Ctrl+O', 'Open website and copy password'],
               ].map(([k, d]) => <tr key={k + d}><td className="mono">{k.replace('CommandOrControl', 'Ctrl')}</td><td>{d}</td></tr>)}

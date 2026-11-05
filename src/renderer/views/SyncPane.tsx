@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { SyncStatus } from '../../core/api';
 import { api } from '../api';
+import { Server } from 'lucide-react';
+import { Ico } from '../components/icons';
 import { Button, Modal, PasswordInput } from '../components/ui';
 import { useApp } from '../state';
 
@@ -37,7 +39,7 @@ export function SyncPane() {
         <div className={`agent-status ${status.error ? 'bad' : 'ok'}`}>
           {status.syncing ? '● Syncing…' : status.error ? <>● {status.error}</> : <>● Synced {ago(status.lastSyncAt)}</>}
         </div>
-        <div className="list-row"><span className="emoji">🛰️</span>
+        <div className="list-row"><span className="list-icon"><Ico icon={Server} /></span>
           <span className="grow"><b>{status.serverUrl}</b><span className="muted small">{status.email}</span></span>
         </div>
         <div className="row gap">

@@ -3,7 +3,9 @@ import jsQR from 'jsqr';
 import { blankContent, TEMPLATE_BY_CATEGORY } from '../../core/templates';
 import type { Category, Field, FieldType, ItemContent, Section } from '../../core/types';
 import { api } from '../api';
-import { Button, IconButton, ItemIcon, Menu, Modal, StrengthMeter, Toggle, useStrength } from '../components/ui';
+import { Dices, Eye, EyeOff, Paperclip, Plus, Sparkles, Trash2, X } from 'lucide-react';
+import { CategoryIcon, Ico } from '../components/icons';
+import { askConfirm, Button, IconButton, ItemIcon, Menu, Modal, StrengthMeter, Toggle, useStrength } from '../components/ui';
 import { useApp } from '../state';
 import { GeneratorPanel } from './Generator';
 import { useTotp } from './ItemDetail';
@@ -47,9 +49,14 @@ function pickFile(accept: string): Promise<File | null> {
 function TotpEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { run, toast } = useApp();
   const preview = useTotp(value || undefined);
+  const [show, setShow] = useState(!value);
   return (
     <div className="totp-edit">
-      <input className="mono" value={value} placeholder="Paste a setup key or otpauth:// link" onChange={e => onChange(e.target.value.trim())} spellCheck={false} />
+      <div className="pw-input">
+        <input className="mono" type={show ? 'text' : 'password'} value={value} placeholder="Paste a setup key or otpauth:// link" aria-label="Setup key"
+          onChange={e => onChange(e.target.value.trim())} spellCheck={false} />
+        <IconButton title={show ? 'Hide setup key' : 'Show setup key'} onClick={() => setShow(x => !x)}><Ico icon={show ? EyeOff : Eye} /></IconButton>
+      </div>
       <div className="row gap wrap">
         <Button small onClick={async () => {
           const r = await run(api.scanQrFromScreen());
@@ -75,8 +82,8 @@ function ConcealedEditor({ field, onChange, isPassword }: { field: Field; onChan
     <div>
       <div className="pw-input">
         <input type={show ? 'text' : 'password'} className="mono" value={field.value} onChange={e => onChange(e.target.value)} spellCheck={false} />
-        <IconButton title={show ? 'Hide' : 'Show'} onClick={() => setShow(s => !s)}>{show ? '🙈' : '👁'}</IconButton>
-        {isPassword && <IconButton title="Generate password" onClick={() => setGen(true)}>🎲</IconButton>}
+        <IconButton title={show ? 'Hide' : 'Show'} onClick={() => setShow(s => !s)}><Ico icon={show ? EyeOff : Eye} /></IconButton>
+        {isPassword && <IconButton title="Generate password" onClick={() => setGen(true)}><Ico icon={Dices} /></IconButton>}
       </div>
       {isPassword && field.value && <StrengthMeter strength={strength} />}
       {gen && <Modal title="Generate password" onClose={() => setGen(false)}><GeneratorPanel onUse={pw => { onChange(pw); setShow(true); setGen(false); }} /></Modal>}
@@ -104,7 +111,7 @@ function FieldEditor({ field, onChange, onRemove, onLabel }: { field: Field; onC
         <input type={field.type === 'email' ? 'email' : field.type === 'url' ? 'url' : field.type === 'phone' ? 'tel' : 'text'} value={field.value}
           onChange={e => onChange(e.target.value)} spellCheck={false} />
         {field.purpose === 'username' && settings?.suggestUsername && (
-          <Menu trigger={<IconButton title="Suggest" onClick={() => undefined}>✨</IconButton>} items={[
+          <Menu trigger={<IconButton title="Suggest a username" onClick={() => undefined}><Ico icon={Sparkles} /></IconButton>} items={[
             ...(settings.defaultUsername ? [{ label: `Use ${settings.defaultUsername}`, onClick: () => onChange(settings.defaultUsername) }] : []),
             { label: 'Generate a username', onClick: () => void api.suggestUsername().then(onChange) },
           ]} />
@@ -117,7 +124,7 @@ function FieldEditor({ field, onChange, onRemove, onLabel }: { field: Field; onC
       {onLabel ? <input className="label-input" value={field.label} onChange={e => onLabel(e.target.value)} placeholder="label" /> : <label className="lbl">{field.label}</label>}
       <div className="edit-field-row">
         <div className="grow">{input}</div>
-        {onRemove && <IconButton title="Remove field" onClick={onRemove}>✕</IconButton>}
+        {onRemove && <IconButton title="Remove field" onClick={onRemove}><Ico icon={X} /></IconButton>}
       </div>
     </div>
   );
@@ -150,7 +157,11 @@ export function ItemEditor({ id, category }: { id?: string; category?: Category 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); void save(); }
-      if (e.key === 'Escape' && !document.querySelector('.modal')) cancel();
+      if (e.key === 'Escape' && !document.querySelector('.modal') && !document.querySelector('.menu')) {
+        const el = e.target as HTMLElement | null;
+        if (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) { el.blur(); return; }
+        void requestCancel();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -178,11 +189,15 @@ export function ItemEditor({ id, category }: { id?: string; category?: Category 
     if (saved) navigate(`/item/${saved.id}`);
   }
   function cancel() { navigate(draft?.id ? `/item/${draft.id}` : '/'); }
+  async function requestCancel() {
+    const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
+    if (!dirty || await askConfirm('Discard changes?', 'Your changes to this item haven’t been saved.', 'Discard changes', true)) cancel();
+  }
 
   return (
     <section className="detail-pane editor">
       <div className="detail-toolbar">
-        <Button small onClick={cancel}>Cancel</Button>
+        <Button small onClick={() => void requestCancel()} title="Cancel (Esc)">Cancel</Button>
         <span className="spacer" />
         <Button small kind="primary" onClick={save}>Save</Button>
       </div>
@@ -194,7 +209,7 @@ export function ItemEditor({ id, category }: { id?: string; category?: Category 
           <div className="grow">
             <input className="title-input" autoFocus={!draft.id} placeholder={`${t.name} title`} value={draft.title} onChange={e => set({ title: e.target.value })} />
             <div className="row gap">
-              <span className="muted">{t.icon} {t.name} in</span>
+              <span className="muted with-icon"><CategoryIcon category={draft.category} size={14} />{t.name} in</span>
               <select value={draft.vaultId} onChange={e => set({ vaultId: e.target.value })}>
                 {data.vaults.map(v => <option key={v.id} value={v.id}>{v.icon} {v.name}</option>)}
               </select>
@@ -213,10 +228,10 @@ export function ItemEditor({ id, category }: { id?: string; category?: Category 
               {draft.urls.map((u, i) => (
                 <div className="edit-field-row" key={i}>
                   <input className="grow" value={u.url} placeholder="https://example.com" onChange={e => set({ urls: draft.urls.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)) })} />
-                  <IconButton title="Remove website" onClick={() => set({ urls: draft.urls.filter((_, j) => j !== i) })}>✕</IconButton>
+                  <IconButton title="Remove website" onClick={() => set({ urls: draft.urls.filter((_, j) => j !== i) })}><Ico icon={X} /></IconButton>
                 </div>
               ))}
-              <button className="link" onClick={() => set({ urls: [...draft.urls, { label: 'website', url: '', primary: !draft.urls.length }] })}>＋ Add website</button>
+              <button className="link" onClick={() => set({ urls: [...draft.urls, { label: 'website', url: '', primary: !draft.urls.length }] })}><Ico icon={Plus} size={14} />Add website</button>
             </div>
           )}
           {draft.category === 'login' && (
@@ -228,7 +243,7 @@ export function ItemEditor({ id, category }: { id?: string; category?: Category 
           <div key={s.id} className="card padded">
             <div className="row gap">
               <input className="section-title-input grow" placeholder="Section name (optional)" value={s.title} onChange={e => setSection(s.id, x => ({ ...x, title: e.target.value }))} />
-              <IconButton title="Remove section" onClick={() => set({ sections: draft.sections.filter(x => x.id !== s.id) })}>🗑</IconButton>
+              <IconButton title="Remove section" onClick={() => set({ sections: draft.sections.filter(x => x.id !== s.id) })}><Ico icon={Trash2} /></IconButton>
             </div>
             {s.fields.map(f => (
               <FieldEditor key={f.id} field={f}
@@ -240,10 +255,10 @@ export function ItemEditor({ id, category }: { id?: string; category?: Category 
         ))}
 
         <div className="row gap">
-          <Menu trigger={<Button small>＋ Add field</Button>} items={ADDABLE.map(a => ({ label: a.label, onClick: () => addField(a.type, a.label) }))} />
-          <Button small onClick={() => set({ sections: [...draft.sections, { id: uid(), title: 'New section', fields: [] }] })}>＋ Add section</Button>
+          <Menu trigger={<Button small><Ico icon={Plus} size={14} />Add field</Button>} items={ADDABLE.map(a => ({ label: a.label, onClick: () => addField(a.type, a.label) }))} />
+          <Button small onClick={() => set({ sections: [...draft.sections, { id: uid(), title: 'New section', fields: [] }] })}><Ico icon={Plus} size={14} />Add section</Button>
           {draft.id
-            ? <Button small onClick={async () => { const n = await run(api.addAttachments(draft.id!)); if (n) toast(`Attached ${n} file${n > 1 ? 's' : ''}`); }}>📎 Attach files</Button>
+            ? <Button small onClick={async () => { const n = await run(api.addAttachments(draft.id!)); if (n) toast(`Attached ${n} file${n > 1 ? 's' : ''}`); }}><Ico icon={Paperclip} size={14} />Attach files</Button>
             : <span className="hint">Save the item to attach files.</span>}
         </div>
 
@@ -252,8 +267,10 @@ export function ItemEditor({ id, category }: { id?: string; category?: Category 
             <div className="card-title">Attachments</div>
             {existing.attachments.map(a => (
               <div key={a.id} className="edit-field-row">
-                <span className="grow">📎 {a.name}</span>
-                <IconButton title="Remove attachment" onClick={() => { if (confirm(`Remove ${a.name}?`)) void run(api.removeAttachment(existing.id, a.id)); }}>✕</IconButton>
+                <span className="grow with-icon"><Ico icon={Paperclip} size={14} />{a.name}</span>
+                <IconButton title={`Remove ${a.name}`} onClick={async () => {
+                  if (await askConfirm('Remove attachment?', `“${a.name}” will be removed from this item.`, 'Remove', true)) void run(api.removeAttachment(existing.id, a.id));
+                }}><Ico icon={X} /></IconButton>
               </div>
             ))}
           </div>
@@ -264,7 +281,7 @@ export function ItemEditor({ id, category }: { id?: string; category?: Category 
           <textarea rows={5} value={draft.notes} onChange={e => set({ notes: e.target.value })} placeholder="Add notes (Markdown-style text is kept as written)" />
           <label className="lbl">tags</label>
           <div className="tag-editor">
-            {draft.tags.map(tag => <span key={tag} className="tag">{tag} <button onClick={() => set({ tags: draft.tags.filter(x => x !== tag) })}>✕</button></span>)}
+            {draft.tags.map(tag => <span key={tag} className="tag">{tag} <button aria-label={`Remove tag ${tag}`} onClick={() => set({ tags: draft.tags.filter(x => x !== tag) })}><Ico icon={X} size={12} /></button></span>)}
             <input value={tagInput} placeholder="Add tag (use / to nest, e.g. work/clients)" onChange={e => setTagInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagInput); } if (e.key === 'Backspace' && !tagInput) set({ tags: draft.tags.slice(0, -1) }); }} />
           </div>

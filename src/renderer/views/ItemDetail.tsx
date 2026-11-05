@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { TEMPLATE_BY_CATEGORY } from '../../core/templates';
+import { Copy, Download, Ellipsis, ExternalLink, Eye, EyeOff, FileQuestion, Paperclip, Pencil, Star } from 'lucide-react';
+import { fieldByPurpose, TEMPLATE_BY_CATEGORY } from '../../core/templates';
 import type { Field, Item, Strength, WatchtowerCheck } from '../../core/types';
 import { api } from '../api';
-import { Button, ColoredPassword, Empty, IconButton, ItemIcon, Menu, Modal, StrengthMeter, timeAgo } from '../components/ui';
+import { Ico } from '../components/icons';
+import { askConfirm, Button, ColoredPassword, copiedMessage, Empty, IconButton, ItemIcon, Menu, Modal, StrengthMeter, timeAgo } from '../components/ui';
 import { useApp } from '../state';
 
 export function useTotp(value: string | undefined) {
@@ -18,18 +20,21 @@ export function useTotp(value: string | undefined) {
   return state;
 }
 
-function TotpValue({ value, onCopy }: { value: string; onCopy: (code: string) => void }) {
-  const t = useTotp(value);
+function TotpValue({ t }: { t: ReturnType<typeof useTotp> }) {
   if (!t) return null;
   if ('error' in t) return <span className="error-text">{t.error}</span>;
   const pct = (t.remaining / t.period) * 100;
+  // The ring turns amber for the last five seconds, so you don't type a code that's about to expire.
+  const ring = t.remaining <= 5 ? 'var(--warn)' : 'var(--accent)';
   return (
-    <span className="totp" onClick={() => onCopy(t.code)} title="Click to copy">
+    <span className="totp">
       <span className="mono totp-code">{t.code.slice(0, Math.ceil(t.code.length / 2))} {t.code.slice(Math.ceil(t.code.length / 2))}</span>
-      <span className="totp-ring" style={{ background: `conic-gradient(var(--accent) ${pct}%, var(--line) 0)` }}><span>{t.remaining}</span></span>
+      <span className="totp-ring" style={{ background: `conic-gradient(${ring} ${pct}%, var(--line) 0)` }} aria-label={`${t.remaining} seconds left`}><span>{t.remaining}</span></span>
     </span>
   );
 }
+
+const SHORTCUT: Partial<Record<string, string>> = { password: 'Ctrl+Shift+C', username: 'Ctrl+Alt+C', totp: 'Ctrl+Alt+O' };
 
 function FieldRow({ itemId, field }: { itemId: string; field: Field }) {
   const { settings, run, reveal, toggleReveal } = useApp();
@@ -40,11 +45,19 @@ function FieldRow({ itemId, field }: { itemId: string; field: Field }) {
   useEffect(() => {
     if (field.purpose === 'password' && field.value) void api.rateStrength(field.value).then(setStrength);
   }, [field.purpose, field.value]);
+  const totp = useTotp(field.type === 'totp' ? field.value : undefined);
   if (!field.value) return null;
-  const copy = (text = field.value, label = field.label) => run(api.copy(text, field.type === 'concealed' || field.type === 'totp').then(() => api.markUsed(itemId)), `Copied ${label}`);
+  const secret = field.type === 'concealed' || field.type === 'totp';
+  const copy = (text = field.value, label = field.label) => run(api.copy(text, secret).then(() => api.markUsed(itemId)), copiedMessage(label, secret, settings));
+  const copyThis = () => {
+    if (field.type !== 'totp') { void copy(); return; }
+    if (totp && 'code' in totp) void copy(totp.code, 'one-time code');
+  };
+  const shortcut = field.purpose ? SHORTCUT[field.purpose] : undefined;
+  const copyTitle = `Copy ${field.type === 'totp' ? 'one-time code' : field.label}${shortcut ? ` (${shortcut})` : ''}`;
   const concealed = field.type === 'concealed';
   let body: React.ReactNode;
-  if (field.type === 'totp') body = <TotpValue value={field.value} onCopy={code => copy(code, 'one-time password')} />;
+  if (field.type === 'totp') body = <TotpValue t={totp} />;
   else if (concealed && field.id === 'privateKey' && field.value.includes('PRIVATE KEY')) body = shown ? <pre className="mono small key-pre">{field.value}</pre> : <span className="mono dots">••••••••••</span>;
   else if (concealed) body = shown ? <ColoredPassword value={field.value} /> : <span className="mono dots">••••••••••</span>;
   else if (settings?.privacyMode) body = <span className="muted">••••••</span>;
@@ -52,26 +65,32 @@ function FieldRow({ itemId, field }: { itemId: string; field: Field }) {
   else body = <span className={field.type === 'multiline' ? 'pre' : ''}>{field.value}</span>;
   return (
     <div className="field-row">
-      <div className="field-main" onClick={() => field.type !== 'totp' && copy()}>
+      <div className="field-main" role="button" tabIndex={0} aria-label={copyTitle} title={copyTitle} onClick={copyThis}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyThis(); } }}>
         <div className="field-label">{field.label}</div>
         <div className="field-value">{body}</div>
         {field.purpose === 'password' && <StrengthMeter strength={strength} />}
       </div>
       <div className="field-actions">
-        {concealed && <IconButton title={shown ? 'Conceal' : 'Reveal'} onClick={() => toggleReveal(key)}>{shown ? '🙈' : '👁'}</IconButton>}
-        {field.type !== 'totp' && <IconButton title="Copy" onClick={() => copy()}>⧉</IconButton>}
-        <Menu trigger={<IconButton title="More" onClick={() => undefined}>⋯</IconButton>} items={[
-          { label: 'Show in Large Type', onClick: () => api.largeType(field.value) },
-          { label: 'Copy', onClick: () => copy() },
-        ]} />
+        {concealed && <IconButton title={shown ? 'Conceal' : 'Reveal'} onClick={() => toggleReveal(key)}><Ico icon={shown ? EyeOff : Eye} /></IconButton>}
+        <IconButton title={copyTitle} onClick={copyThis}><Ico icon={Copy} /></IconButton>
+        {field.type !== 'totp' && (
+          <Menu trigger={<IconButton title={`More for ${field.label}`} onClick={() => undefined}><Ico icon={Ellipsis} /></IconButton>} items={[
+            { label: 'Show in Large Type', onClick: () => api.largeType(field.value) },
+          ]} />
+        )}
       </div>
     </div>
   );
 }
 
-const IGNORABLE: { check: WatchtowerCheck; label: string }[] = [
-  { check: 'weak', label: 'Weak password' }, { check: 'reused', label: 'Reused password' }, { check: 'inactive2fa', label: 'Two-factor authentication' },
-  { check: 'unsecured', label: 'Unsecured website' }, { check: 'duplicate', label: 'Duplicate item' }, { check: 'expiring', label: 'Expiring' },
+const IGNORABLE: { check: WatchtowerCheck; label: string; applies: (i: Item) => boolean }[] = [
+  { check: 'weak', label: 'weak password', applies: i => !!fieldByPurpose(i, 'password') },
+  { check: 'reused', label: 'reused password', applies: i => !!fieldByPurpose(i, 'password') },
+  { check: 'inactive2fa', label: 'two-factor authentication', applies: i => i.category === 'login' && i.urls.length > 0 && !fieldByPurpose(i, 'totp') },
+  { check: 'unsecured', label: 'unsecured website', applies: i => i.urls.some(u => u.url.startsWith('http:')) },
+  { check: 'duplicate', label: 'duplicate item', applies: i => i.category === 'login' },
+  { check: 'expiring', label: 'expiry date', applies: i => ['creditCard', 'passport', 'driverLicense', 'membership', 'outdoorLicense', 'identity'].includes(i.category) },
 ];
 
 function HistoryModal({ item, onClose }: { item: Item; onClose: () => void }) {
@@ -109,34 +128,47 @@ export function ItemDetail({ id }: { id: string }) {
   const { data, navigate, run, settings } = useApp();
   const [modal, setModal] = useState<'history' | 'move' | null>(null);
   const item = data?.items.find(i => i.id === id);
-  if (!item) return <div className="detail-pane"><Empty icon="🗝️" title="Item not found" /></div>;
+  if (!item) return <div className="detail-pane"><Empty icon={FileQuestion} title="Item not found" /></div>;
   const vault = data!.vaults.find(v => v.id === item.vaultId);
   const t = TEMPLATE_BY_CATEGORY[item.category];
   const deleted = item.state === 'deleted';
+  const password = fieldByPurpose(item, 'password')?.value;
+  const ignorable = IGNORABLE.filter(x => x.applies(item) || item.watchtowerIgnore.includes(x.check));
 
   return (
     <section className="detail-pane">
       <div className="detail-toolbar">
-        {item.state === 'active' && <Button small kind="primary" onClick={() => navigate(`/edit/${item.id}`)}>Edit</Button>}
-        {item.state !== 'active' && <Button small onClick={() => run(api.restore(item.id), 'Item restored')}>Restore</Button>}
-        {deleted && <Button small kind="danger" onClick={async () => { if (confirm('Delete this item permanently? This cannot be undone.')) { await run(api.purge(item.id), 'Deleted permanently'); navigate('/'); } }}>Delete permanently</Button>}
+        {item.state === 'active' && password && (
+          <Button small kind="primary" title="Copy password (Ctrl+Shift+C)"
+            onClick={() => run(api.copy(password, true).then(() => api.markUsed(item.id)), copiedMessage('password', true, settings))}><Ico icon={Copy} size={15} />Copy password</Button>
+        )}
+        {item.state === 'active' && <Button small kind={password ? 'default' : 'primary'} title="Edit (Ctrl+E)" onClick={() => navigate(`/edit/${item.id}`)}><Ico icon={Pencil} size={15} />Edit</Button>}
+        {item.state !== 'active' && <Button small kind="primary" onClick={() => run(api.restore(item.id), 'Item restored')}>Restore</Button>}
+        {deleted && <Button small kind="danger" onClick={async () => {
+          if (await askConfirm('Delete for good?', `“${item.title}” will be deleted permanently. This can’t be undone.`, 'Delete for good', true)) { await run(api.purge(item.id), 'Deleted permanently'); navigate('/'); }
+        }}>Delete permanently</Button>}
         <span className="spacer" />
-        {item.state === 'active' && <IconButton title={item.favorite ? 'Remove from favorites' : 'Add to favorites'} active={item.favorite} onClick={() => run(api.setFavorite(item.id, !item.favorite))}>{item.favorite ? '★' : '☆'}</IconButton>}
-        <Menu trigger={<IconButton title="More actions" onClick={() => undefined}>⋯</IconButton>} items={[
+        {item.state === 'active' && <IconButton title={item.favorite ? 'Remove from favorites' : 'Add to favorites'} active={item.favorite} onClick={() => run(api.setFavorite(item.id, !item.favorite))}><Ico icon={Star} /></IconButton>}
+        <Menu trigger={<IconButton title="More actions" onClick={() => undefined}><Ico icon={Ellipsis} /></IconButton>} items={[
           { label: 'Duplicate', onClick: async () => { const d = await run(api.duplicateItem(item.id), 'Item duplicated'); if (d) navigate(`/edit/${d.id}`); } },
           { label: 'Move to vault…', onClick: () => setModal('move') },
           { label: 'Item history…', onClick: () => setModal('history') },
           ...(item.category === 'sshKey' ? [
             { label: 'Save public key (.pub)…', onClick: () => run(api.sshExport(item.id, 'public')) },
-            { label: 'Export private key…', onClick: () => { if (confirm('The exported file is not encrypted. Anyone who gets it can use this key. Continue?')) void run(api.sshExport(item.id, 'private')); } },
+            { label: 'Export private key…', onClick: async () => {
+              if (await askConfirm('Export the private key?', 'The exported file isn’t encrypted. Anyone who gets a copy can sign in with this key.', 'Export key')) void run(api.sshExport(item.id, 'private'));
+            } },
           ] : []),
           { label: 'Copy item link', onClick: () => run(api.copy(`strongroom://item/${item.id}`, false), 'Link copied (opens this item in Strongroom)') },
           { separator: true },
-          ...IGNORABLE.map(x => ({
-            label: `${item.watchtowerIgnore.includes(x.check) ? '✓ ' : ''}Ignore Watchtower: ${x.label}`,
-            onClick: () => run(api.setWatchtowerIgnore(item.id, item.watchtowerIgnore.includes(x.check) ? item.watchtowerIgnore.filter(c => c !== x.check) : [...item.watchtowerIgnore, x.check])),
-          })),
-          { separator: true },
+          ...ignorable.map(x => {
+            const ignored = item.watchtowerIgnore.includes(x.check);
+            return {
+              label: ignored ? `Watchtower: check ${x.label} again` : `Watchtower: ignore ${x.label}`,
+              onClick: () => run(api.setWatchtowerIgnore(item.id, ignored ? item.watchtowerIgnore.filter(c => c !== x.check) : [...item.watchtowerIgnore, x.check])),
+            };
+          }),
+          ...(ignorable.length ? [{ separator: true as const }] : []),
           ...(item.state === 'active' ? [{ label: 'Archive', onClick: () => run(api.archive(item.id), 'Moved to Archive') }] : []),
           ...(!deleted ? [{ label: 'Delete', danger: true, onClick: () => run(api.trash(item.id), 'Moved to Recently Deleted') }] : []),
         ]} />
@@ -159,11 +191,11 @@ export function ItemDetail({ id }: { id: string }) {
                 <div className="field-value"><a href="#" onClick={e => e.preventDefault()}>{settings?.privacyMode ? '••••••' : u.url}</a></div>
               </div>
               <div className="field-actions">
-                <IconButton title="Copy" onClick={() => run(api.copy(u.url, false), 'Copied website')}>⧉</IconButton>
+                <IconButton title="Copy website" onClick={() => run(api.copy(u.url, false), 'Copied website')}><Ico icon={Copy} /></IconButton>
                 <IconButton title="Open and copy password" onClick={() => {
                   const pw = item.fields.find(f => f.purpose === 'password')?.value;
                   void run(api.openUrl(u.url).then(() => (pw ? api.copy(pw, true) : undefined)).then(() => api.markUsed(item.id)), pw ? 'Opened; password copied' : undefined);
-                }}>↗</IconButton>
+                }}><Ico icon={ExternalLink} /></IconButton>
               </div>
             </div>
           ))}
@@ -186,10 +218,10 @@ export function ItemDetail({ id }: { id: string }) {
             {item.attachments.map(a => (
               <div key={a.id} className="field-row">
                 <div className="field-main" onClick={() => run(api.saveAttachment(item.id, a.id))}>
-                  <div className="field-value">📎 {a.name}</div>
+                  <div className="field-value with-icon"><Ico icon={Paperclip} size={14} />{a.name}</div>
                   <div className="field-label">{(a.size / 1024).toFixed(1)} KB · added {timeAgo(a.addedAt)}</div>
                 </div>
-                <div className="field-actions"><IconButton title="Save a copy" onClick={() => run(api.saveAttachment(item.id, a.id))}>⬇</IconButton></div>
+                <div className="field-actions"><IconButton title="Save a copy" onClick={() => run(api.saveAttachment(item.id, a.id))}><Ico icon={Download} /></IconButton></div>
               </div>
             ))}
           </div>

@@ -80,6 +80,15 @@ export function Unlock({ compact }: { compact?: boolean }) {
   return <PasswordUnlock compact={compact} notice={quick?.needsPassword} />;
 }
 
+/** The vault dial is the lock screen's mark; it turns while the vault opens. */
+function LockHeading({ compact, busy }: { compact?: boolean; busy: boolean }) {
+  return (<>
+    <div className={`dial${busy ? ' turning' : ''}`} aria-hidden="true" />
+    <h1>{compact ? 'Unlock Strongroom' : 'Strongroom is locked'}</h1>
+    <p className="muted lock-sub">Your vault is encrypted on this device. It opens only with your password.</p>
+  </>);
+}
+
 function QuickUnlockForm({ compact, method, onUsePassword }: { compact?: boolean; method: 'pin' | 'hello'; onUsePassword: () => void }) {
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
@@ -92,17 +101,15 @@ function QuickUnlockForm({ compact, method, onUsePassword }: { compact?: boolean
   return (
     <div className={compact ? 'unlock-compact' : 'welcome'}>
       <div className="welcome-card">
-        {!compact && <Brand />}
-        <div className="lock-glyph">{method === 'hello' ? '🙂' : '🔢'}</div>
-        <h1>{compact ? 'Unlock Strongroom' : 'Welcome back'}</h1>
+        <LockHeading compact={compact} busy={busy} />
         {method === 'pin' ? (<>
-          <label className="lbl">PIN</label>
-          <PasswordInput value={pin} onChange={setPin} autoFocus onEnter={go} placeholder="Enter your Strongroom PIN" />
-          {error && <p className="error-text">{error}</p>}
+          <label className="lbl" htmlFor="unlock-pin">PIN</label>
+          <PasswordInput id="unlock-pin" value={pin} onChange={setPin} autoFocus onEnter={go} placeholder="Enter your Strongroom PIN" invalid={!!error} />
+          {error && <p className="error-text" role="alert">{error}</p>}
           <Button kind="primary" disabled={!pin || busy} onClick={go}>{busy ? 'Unlocking…' : 'Unlock'}</Button>
         </>) : (<>
           <p className="muted">Use your face, fingerprint or Windows PIN.</p>
-          {error && <p className="error-text">{error}</p>}
+          {error && <p className="error-text" role="alert">{error}</p>}
           <Button kind="primary" autoFocus disabled={busy} onClick={go}>{busy ? 'Waiting for Windows Hello…' : 'Unlock with Windows Hello'}</Button>
         </>)}
         <p className="muted small"><button className="link" onClick={onUsePassword}>Use account password instead</button></p>
@@ -133,18 +140,16 @@ function PasswordUnlock({ compact, notice }: { compact?: boolean; notice?: strin
   return (
     <div className={compact ? 'unlock-compact' : 'welcome'}>
       <div className="welcome-card">
-        {!compact && <Brand />}
-        <div className="lock-glyph">🔒</div>
-        <h1>{compact ? 'Unlock Strongroom' : 'Welcome back'}</h1>
+        <LockHeading compact={compact} busy={busy} />
         {app?.needsSecretKey && (<>
-          <label className="lbl">Secret Key</label>
-          <input className="mono" value={sk} onChange={e => setSk(e.target.value)} placeholder="SR1-XXXXXX-XXXXX-XXXXX-XXXXX-XXXXX" spellCheck={false} />
+          <label className="lbl" htmlFor="unlock-sk">Secret Key</label>
+          <input id="unlock-sk" className="mono" value={sk} onChange={e => setSk(e.target.value)} placeholder="SR1-XXXXXX-XXXXX-XXXXX-XXXXX-XXXXX" spellCheck={false} />
           <p className="hint">This device doesn’t have your Secret Key yet. Find it in your Emergency Kit.</p>
         </>)}
         {notice && <p className="hint">{notice}</p>}
-        <label className="lbl">Account password</label>
-        <PasswordInput value={pw} onChange={setPw} autoFocus onEnter={submit} placeholder="Enter your account password" />
-        {error && <p className="error-text">{error}</p>}
+        <label className="lbl" htmlFor="unlock-pw">Account password</label>
+        <PasswordInput id="unlock-pw" value={pw} onChange={setPw} autoFocus onEnter={submit} placeholder="Enter your account password" invalid={!!error} />
+        {error && <p className="error-text" role="alert">{error}</p>}
         <Button kind="primary" disabled={!pw || busy} onClick={submit}>{busy ? 'Unlocking…' : 'Unlock'}</Button>
       </div>
     </div>

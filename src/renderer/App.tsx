@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { fieldByPurpose } from '../core/templates';
 import type { Category } from '../core/types';
 import { api } from './api';
-import { Toasts } from './components/ui';
+import { LockKeyhole } from 'lucide-react';
+import { ConfirmHost, copiedMessage, Toasts } from './components/ui';
+import { Ico } from './components/icons';
 import { useApp } from './state';
 import { GeneratorView } from './views/Generator';
 import { HomeView } from './views/Home';
@@ -40,7 +42,7 @@ function useTheme() {
 }
 
 function MainWindow() {
-  const { app, data, route, navigate, run } = useApp();
+  const { app, data, route, navigate, run, settings } = useApp();
   const [picker, setPicker] = useState(false);
   const setupStarted = useRef(false);
   const [setupDone, setSetupDone] = useState(false);
@@ -58,18 +60,23 @@ function MainWindow() {
       if (mod && e.shiftKey && e.key.toLowerCase() === 'c') {
         e.preventDefault();
         const pw = fieldByPurpose(item, 'password')?.value;
-        if (pw) void run(api.copy(pw, true).then(() => api.markUsed(item.id)), 'Copied password');
+        if (pw) void run(api.copy(pw, true).then(() => api.markUsed(item.id)), copiedMessage('password', true, settings));
       }
       if (mod && e.altKey && e.key.toLowerCase() === 'c') {
         e.preventDefault();
         const u = fieldByPurpose(item, 'username')?.value;
         if (u) void run(api.copy(u, false), 'Copied username');
       }
+      if (mod && e.altKey && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        const secret = fieldByPurpose(item, 'totp')?.value;
+        if (secret) void api.totp(secret).then(r => { if ('code' in r) void run(api.copy(r.code, true).then(() => api.markUsed(item.id)), copiedMessage('one-time code', true, settings)); });
+      }
       if (mod && e.key.toLowerCase() === 'e' && item.state === 'active') { e.preventDefault(); navigate(`/edit/${item.id}`); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [route, data, navigate, run]);
+  }, [route, data, navigate, run, settings]);
 
   useEffect(() => { if (route === '/new') { setPicker(true); navigate('/'); } }, [route, navigate]);
 
@@ -92,7 +99,7 @@ function MainWindow() {
       {kind === 'item' && arg && <ItemDetail id={arg} />}
       {kind === 'edit' && arg && <ItemEditor id={arg} />}
       {kind === 'new' && arg && <ItemEditor key={`new-${arg}`} category={arg as Category} />}
-      {!kind && <section className="detail-pane placeholder"><div className="empty"><div className="empty-icon">🔐</div><p className="muted">Select an item, or press Ctrl+N to add one.</p></div></section>}
+      {!kind && <section className="detail-pane placeholder"><div className="empty"><div className="empty-icon"><Ico icon={LockKeyhole} size={28} /></div><p className="muted">Select an item, or press Ctrl+N to add one.</p></div></section>}
     </>);
   }
   return (
@@ -112,6 +119,7 @@ export function App() {
     <>
       {kind === 'quickAccess' ? <QuickAccess /> : kind === 'largeType' ? <LargeType /> : <MainWindow />}
       <Toasts />
+      <ConfirmHost />
     </>
   );
 }

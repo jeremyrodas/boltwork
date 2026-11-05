@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { GeneratorOptions, Strength } from '../../core/types';
 import { api } from '../api';
+import { RefreshCw } from 'lucide-react';
+import { Ico } from '../components/icons';
 import { Button, ColoredPassword, IconButton, StrengthMeter } from '../components/ui';
 import { useApp } from '../state';
 
@@ -24,7 +26,7 @@ export function GeneratorPanel({ onUse, useLabel = 'Use' }: { onUse?: (pw: strin
     <div className="generator">
       <div className="gen-output">
         <div className="gen-password">{result && <ColoredPassword value={result.password} />}</div>
-        <IconButton title="Generate another" onClick={() => regenerate(opts)}>↻</IconButton>
+        <IconButton title="Generate another" onClick={() => regenerate(opts)}><Ico icon={RefreshCw} /></IconButton>
       </div>
       <StrengthMeter strength={result?.strength ?? null} />
       <div className="seg">

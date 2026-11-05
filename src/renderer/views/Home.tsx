@@ -1,4 +1,6 @@
+import { Download, Layers, ShieldCheck } from 'lucide-react';
 import { subtitleOf } from '../../core/templates';
+import { Ico } from '../components/icons';
 import type { Item } from '../../core/types';
 import { Button, ItemIcon } from '../components/ui';
 import { useApp } from '../state';
@@ -36,14 +38,14 @@ export function HomeView() {
       <h1>{hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'}</h1>
       <div className="home-grid">
         <button className="card padded home-stat" onClick={() => navigate('/watchtower')}>
-          <span className="emoji">🛡️</span>
+          <span className="stat-icon"><Ico icon={ShieldCheck} size={20} /></span>
           <span><b>Watchtower</b><span className="muted">{report ? `Score ${report.score} · ${report.issues.length} issue${report.issues.length === 1 ? '' : 's'}` : 'Checking…'}</span></span>
         </button>
         <button className="card padded home-stat" onClick={() => setFilter({ kind: 'all' })}>
-          <span className="emoji">🗃️</span><span><b>{active.length} items</b><span className="muted">in {ids ? ids.size : data.vaults.length} vault{data.vaults.length === 1 ? '' : 's'}</span></span>
+          <span className="stat-icon"><Ico icon={Layers} size={20} /></span><span><b>{active.length} items</b><span className="muted">in {ids ? ids.size : data.vaults.length} vault{data.vaults.length === 1 ? '' : 's'}</span></span>
         </button>
         <button className="card padded home-stat" onClick={() => navigate('/settings/import')}>
-          <span className="emoji">📥</span><span><b>Import</b><span className="muted">from 1Password, Bitwarden, browsers…</span></span>
+          <span className="stat-icon"><Ico icon={Download} size={20} /></span><span><b>Import</b><span className="muted">from 1Password, Bitwarden, browsers…</span></span>
         </button>
       </div>
       {active.length === 0 && (

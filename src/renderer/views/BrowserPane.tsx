@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { BrowserStatus } from '../../core/api';
 import { api } from '../api';
+import { Puzzle } from 'lucide-react';
+import { Ico } from '../components/icons';
 import { Button, Toggle } from '../components/ui';
 import { useApp } from '../state';
 
@@ -46,7 +48,7 @@ export function BrowserPane() {
       <h3>Connected browsers ({status?.pairings.length ?? 0})</h3>
       {status?.pairings.length === 0 && <p className="muted">None yet.</p>}
       {status?.pairings.map(p => (
-        <div key={p.id} className="list-row"><span className="emoji">🧩</span>
+        <div key={p.id} className="list-row"><span className="list-icon"><Ico icon={Puzzle} /></span>
           <span className="grow"><b>{p.name}</b><span className="muted small">Connected {new Date(p.createdAt).toLocaleDateString()} · last used {new Date(p.lastUsedAt).toLocaleString()}</span></span>
           <Button small onClick={() => run(api.browserRevoke(p.id), 'Disconnected')}>Disconnect</Button>
         </div>
