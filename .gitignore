@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-test/
+dist-extension/
+server/dist/
+server/data/
+*.log
+/data/

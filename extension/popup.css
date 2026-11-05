@@ -1,0 +1,30 @@
+:root { color-scheme: dark; }
+body { margin: 0; width: 360px; min-height: 220px; font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; background: #15151c; color: #e7e7ee; }
+.logo { width: 22px; height: 22px; border-radius: 6px; flex: none; background: linear-gradient(#2563eb, #6d28d9); }
+.logo.big { width: 44px; height: 44px; border-radius: 12px; margin: 0 auto 10px; }
+.screen { padding: 28px 24px; text-align: center; }
+.screen h1 { font-size: 16px; margin: 0 0 6px; }
+.muted { color: #a3a3b8; }
+.center { text-align: center; padding: 40px 0; }
+.pad { padding: 8px 14px; }
+.code { font-family: ui-monospace, Consolas, monospace; color: #fff; letter-spacing: 1px; }
+.btn { border: 0; cursor: pointer; padding: 8px 14px; border-radius: 8px; background: #2c2c3a; color: #e7e7ee; font: inherit; font-weight: 600; margin-top: 8px; }
+.btn.primary { background: #4f46e5; color: #fff; }
+.btn.small { padding: 4px 10px; margin: 0; font-size: 12px; }
+.btn:hover { filter: brightness(1.15); }
+.btn[disabled] { opacity: .5; cursor: default; }
+.top { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #2a2a36; }
+.search { flex: 1; background: #22222c; border: 1px solid #34344a; border-radius: 8px; color: inherit; padding: 7px 10px; font: inherit; outline: none; }
+.search:focus { border-color: #6366f1; }
+.icon { border: 0; background: transparent; color: #c7c7d8; cursor: pointer; font-size: 14px; padding: 4px 6px; border-radius: 6px; }
+.icon:hover { background: #2a2a38; }
+.list { max-height: 420px; overflow-y: auto; padding-bottom: 6px; }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #8b8ba0; padding: 10px 14px 4px; }
+.row { display: flex; align-items: center; gap: 8px; padding: 7px 10px 7px 14px; }
+.row:hover { background: #1e1e28; }
+.info { flex: 1; min-width: 0; }
+.t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.s { color: #a3a3b8; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.actions { display: flex; align-items: center; gap: 2px; flex: none; }
+.toast { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); background: #4f46e5; color: #fff; padding: 6px 12px; border-radius: 8px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.toast.on { opacity: 1; }

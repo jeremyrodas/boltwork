@@ -1,0 +1,16 @@
+{
+  "name": "strongroom-server",
+  "version": "0.1.0",
+  "description": "Self-hosted sync server for Strongroom. Stores only end-to-end encrypted records.",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "main": "dist/server.js",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --format=cjs --target=node22 --outfile=dist/server.js",
+    "start": "node dist/server.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
