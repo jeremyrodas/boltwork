@@ -4,12 +4,14 @@ import { createHmac, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { ready, generateSecretKey, KDF_FAST_FOR_TESTS } from '../src/core/crypto';
+import { ready, generateSecretKey, open, seal, sealJson, KDF_FAST_FOR_TESTS } from '../src/core/crypto';
+import { recordAad } from '../src/core/records';
 import { VaultStore } from '../src/core/store';
 import { blankContent } from '../src/core/templates';
 import { QuickUnlock, QuickUnlockError, MAX_PIN_FAILURES, PASSWORD_EVERY_MS, type DeviceProtector } from '../src/core/quickUnlock';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'sr-quick-'));
+const PW = 'correct horse battery';
 
 /** Stand-in for DPAPI: a per-"user" key that never leaves this object. */
 function protector(): DeviceProtector & { key: Buffer } {
@@ -107,4 +109,81 @@ test('unlockWithKey rejects a key that isn’t this vault’s', async () => {
   const { dir, s } = await vault();
   s.lock();
   assert.throws(() => VaultStore.unlockWithKey(dir, Uint8Array.from(randomBytes(32))), /doesn.t match/);
+});
+
+test('the vault keeps its own key: wiping the key quick unlock passed in breaks nothing', async () => {
+  await ready();
+  const dir = tmp();
+  const sk = generateSecretKey();
+  const s = await VaultStore.create(dir, PW, sk, KDF_FAST_FOR_TESTS);
+  const vaultId = s.snapshot().vaults[0].id;
+  const key = s.masterKeyCopy();
+  s.lock();
+
+  const q = VaultStore.unlockWithKey(dir, key);
+  key.fill(0); // what main.ts does after a quick unlock
+  const id = q.saveItem({ ...blankContent('secureNote'), title: 'After PIN unlock', notes: 'still readable', vaultId }).id;
+  q.lock();
+
+  // Opens with the password, and nothing on disk is sealed with a blank key.
+  const p = await VaultStore.unlock(dir, PW, sk);
+  assert.equal(p.getItem(id).notes, 'still readable');
+  assert.equal(p.repairedBlankKey, 0);
+  const file = JSON.parse(fs.readFileSync(path.join(dir, 'vault.json'), 'utf8'));
+  const zero = new Uint8Array(32);
+  for (const r of file.records) if (r.data) assert.throws(() => open(zero, r.data, recordAad(r.kind, r.id)));
+  assert.throws(() => open(zero, file.local, 'strongroom:local-data:v2'));
+});
+
+test('data an earlier version sealed with a blank key is repaired on unlock and queued for sync', async () => {
+  const dir = tmp();
+  const sk = generateSecretKey();
+  const s = await VaultStore.create(dir, PW, sk, KDF_FAST_FOR_TESTS);
+  const vaultId = s.snapshot().vaults[0].id;
+  const good = s.saveItem({ ...blankContent('secureNote'), title: 'Sealed properly', vaultId }).id;
+  const bad = s.saveItem({ ...blankContent('secureNote'), title: 'Sealed blank', notes: 'edit after PIN unlock', vaultId });
+  const att = s.addAttachment(bad.id, 'a.txt', 'text/plain', Buffer.from('attached after PIN unlock'));
+  const badItem = s.getItem(bad.id);
+  const key = s.masterKeyCopy();
+  s.lock();
+
+  // Recreate what 0.2.0 left on disk: that item, the local data and the attachment sealed with zeros, item synced at rev 5.
+  const zero = new Uint8Array(32);
+  const f = JSON.parse(fs.readFileSync(path.join(dir, 'vault.json'), 'utf8'));
+  const rec = f.records.find((r: { id: string }) => r.id === bad.id);
+  rec.data = sealJson(zero, badItem, recordAad('item', bad.id)); rec.rev = 5; rec.dirty = false;
+  f.local = sealJson(zero, { pwnedCache: {}, searchHistory: ['bank'] }, 'strongroom:local-data:v2');
+  fs.writeFileSync(path.join(dir, 'vault.json'), JSON.stringify(f));
+  fs.writeFileSync(path.join(dir, 'attachments', att.id), JSON.stringify(seal(zero, Buffer.from('attached after PIN unlock'), `strongroom:attachment:v1:${att.id}`)));
+
+  // Quick unlock still recognises the real key, and repairs.
+  const q = VaultStore.unlockWithKey(dir, key);
+  assert.equal(q.repairedBlankKey, 2); // the item and its attachment
+  assert.equal(q.getItem(bad.id).notes, 'edit after PIN unlock');
+  assert.equal(q.getItem(good).title, 'Sealed properly');
+  assert.equal(Buffer.from(q.readAttachment(bad.id, att.id).bytes).toString(), 'attached after PIN unlock');
+  assert.deepEqual(q.snapshot().searchHistory, ['bank']);
+  const fixed = q.records.get(bad.id)!;
+  assert.equal(fixed.dirty, true, 'queued for sync');
+  assert.equal(fixed.rev, 5, 'based on the server revision, so the push is accepted');
+  q.lock();
+
+  // Afterwards it's all sealed with the real key: the password opens it with nothing left to repair.
+  const p = await VaultStore.unlock(dir, PW, sk);
+  assert.equal(p.repairedBlankKey, 0);
+  assert.equal(p.getItem(bad.id).notes, 'edit after PIN unlock');
+
+  // A wrong key is still refused.
+  p.lock();
+  assert.throws(() => VaultStore.unlockWithKey(dir, new Uint8Array(32).fill(7)), /doesn’t match/);
+  assert.throws(() => VaultStore.unlockWithKey(dir, zero), /doesn’t match/);
+});
+
+test('records from a sync server never get the blank-key fallback', async () => {
+  const s = await VaultStore.create(tmp(), PW, generateSecretKey(), KDF_FAST_FOR_TESTS);
+  const vaultId = s.snapshot().vaults[0].id;
+  const forged = { ...blankContent('secureNote'), id: 'forgedItem00001', title: 'Planted by server', vaultId, favorite: false, state: 'active', createdAt: 1, updatedAt: 1, useCount: 0, attachments: [], history: [], watchtowerIgnore: [] };
+  const r = { id: forged.id, kind: 'item' as const, rev: 99, updatedAt: 1, dirty: false, data: sealJson(new Uint8Array(32), forged, recordAad('item', forged.id)) };
+  assert.throws(() => s.mergeRemote(r));
+  assert.ok(!s.snapshot().items.some(i => i.title === 'Planted by server'));
 });

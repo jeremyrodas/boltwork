@@ -27,6 +27,14 @@ const AAD_DATA = 'strongroom:vault-data:v1';
 const AAD_LOCAL = 'strongroom:local-data:v2';
 const aadAttachment = (id: string) => `strongroom:attachment:v1:${id}`;
 
+/**
+ * An all-zero key. Strongroom 0.1.x and 0.2.0 wiped the master key after a quick unlock (PIN or Windows Hello)
+ * while the open vault still used that same buffer, so anything saved afterwards on that device was sealed
+ * with zeros. On unlock, data on this device's own disk that only opens with this key is re-sealed with the
+ * real key. Data from a sync server never gets this fallback.
+ */
+const BLANK_KEY = new Uint8Array(32);
+
 /** Version 1: everything in one sealed blob. Read only, to upgrade it. */
 interface VaultFileV1 {
   format: typeof FORMAT;
@@ -147,11 +155,18 @@ export class VaultStore {
 
   /** Throws unless `key` decrypts this vault file. */
   private static checkKey(file: VaultFile, key: Uint8Array): void {
-    if (file.version === 1) openJson(key, file.data, AAD_DATA);
-    else openJson(key, file.local, AAD_LOCAL);
+    if (file.version === 1) { openJson(key, file.data, AAD_DATA); return; }
+    try { openJson(key, file.local, AAD_LOCAL); return; } catch { /* may be sealed with BLANK_KEY: check a record instead */ }
+    for (const r of file.records) {
+      if (!r.data) continue;
+      try { open(key, r.data, recordAad(r.kind, r.id)); return; } catch { /* try the next */ }
+    }
+    throw new Error('Wrong key.');
   }
 
-  private static openWithKey(dir: string, file: VaultFile, key: Uint8Array): VaultStore {
+  private static openWithKey(dir: string, file: VaultFile, keyIn: Uint8Array): VaultStore {
+    // The store keeps its own copy: callers wipe the key they passed in.
+    const key = Uint8Array.from(keyIn);
     if (file.version === 1) {
       // Upgrade: keep the original, then rewrite as separate records.
       const data = openJson<VaultData>(key, file.data, AAD_DATA);
@@ -164,11 +179,38 @@ export class VaultStore {
       store.persist();
       return store;
     }
-    const { set, vaults, collections, items } = RecordSet.open(key, file.records);
-    const local = openJson<Pick<VaultData, 'pwnedCache' | 'searchHistory'>>(key, file.local, AAD_LOCAL);
+    const { set, vaults, collections, items, recovered } = RecordSet.open(key, file.records, BLANK_KEY);
+    let local: Pick<VaultData, 'pwnedCache' | 'searchHistory'>;
+    let localRecovered = false;
+    try { local = openJson(key, file.local, AAD_LOCAL); } catch { local = openJson(BLANK_KEY, file.local, AAD_LOCAL); localRecovered = true; }
     vaults.sort((a, b) => a.createdAt - b.createdAt);
     const data: VaultData = { vaults, collections, items, pwnedCache: local.pwnedCache ?? {}, searchHistory: local.searchHistory ?? [] };
-    return new VaultStore(dir, file.kdf, file.wrappedKey, key, data, set, file.accountId, file.sync);
+    const store = new VaultStore(dir, file.kdf, file.wrappedKey, key, data, set, file.accountId, file.sync);
+    if (recovered.length || localRecovered) {
+      // Re-seal with the real key; recovered records become local changes, so sync sends the fixed versions.
+      store.repairedBlankKey = recovered.length + store.resealBlankAttachments();
+      store.persist();
+    }
+    return store;
+  }
+
+  /** How many records and attachments were re-sealed on unlock because they were sealed with BLANK_KEY. */
+  repairedBlankKey = 0;
+
+  private resealBlankAttachments(): number {
+    const key = this.requireKey();
+    let n = 0;
+    for (const id of this.referencedAttachmentIds()) {
+      if (!this.hasAttachmentFile(id)) continue;
+      const sealed = JSON.parse(fs.readFileSync(this.attachmentPath(id), 'utf8')) as Sealed;
+      try { open(key, sealed, aadAttachment(id)); continue; } catch { /* check the blank key */ }
+      let bytes: Uint8Array;
+      try { bytes = open(BLANK_KEY, sealed, aadAttachment(id)); } catch { continue; }
+      fs.writeFileSync(`${this.attachmentPath(id)}.tmp`, JSON.stringify(seal(key, bytes, aadAttachment(id))));
+      fs.renameSync(`${this.attachmentPath(id)}.tmp`, this.attachmentPath(id));
+      n++;
+    }
+    return n;
   }
 
   /**

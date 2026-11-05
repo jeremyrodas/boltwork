@@ -47,20 +47,32 @@ export class RecordSet {
   private records = new Map<string, SealedRecord>();
   private hashes = new Map<string, string>();
 
-  /** Loads records and the plaintext they decrypt to (for change detection). */
-  static open(key: Uint8Array, sealed: SealedRecord[]): { set: RecordSet; vaults: Vault[]; collections: Collection[]; items: Item[] } {
+  /**
+   * Loads records and the plaintext they decrypt to (for change detection).
+   * With `fallbackKey`, records that only open with that key are loaded too and left without a hash,
+   * so the next update() re-seals them with `key` (see BLANK_KEY in store.ts). Their ids are in `recovered`.
+   */
+  static open(key: Uint8Array, sealed: SealedRecord[], fallbackKey?: Uint8Array): { set: RecordSet; vaults: Vault[]; collections: Collection[]; items: Item[]; recovered: string[] } {
     const set = new RecordSet();
     const vaults: Vault[] = [], collections: Collection[] = [], items: Item[] = [];
+    const recovered: string[] = [];
     for (const r of sealed) {
       set.records.set(r.id, r);
       if (r.deleted || !r.data) continue;
-      const value = openJson<Plain>(key, r.data, recordAad(r.kind, r.id));
-      set.hashes.set(r.id, hash(JSON.stringify(value)));
+      let value: Plain;
+      try {
+        value = openJson<Plain>(key, r.data, recordAad(r.kind, r.id));
+        set.hashes.set(r.id, hash(JSON.stringify(value)));
+      } catch (e) {
+        if (!fallbackKey) throw e;
+        value = openJson<Plain>(fallbackKey, r.data, recordAad(r.kind, r.id)); // throws if it doesn't open either
+        recovered.push(r.id);
+      }
       if (r.kind === 'vault') vaults.push(value as Vault);
       else if (r.kind === 'collection') collections.push(value as Collection);
       else items.push(value as Item);
     }
-    return { set, vaults, collections, items };
+    return { set, vaults, collections, items, recovered };
   }
 
   /** Brings the sealed records in line with `data`: seals new or changed records, tombstones removed ones. */
