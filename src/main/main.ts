@@ -452,6 +452,7 @@ function afterUnlock() {
 }
 
 async function reauth(password: string) {
+  if (typeof password !== 'string' || !password) throw new Error('Enter your account password.');
   if (!await requireStore().verifyPassword(password, currentSecretKey())) throw new WrongPasswordError();
 }
 
@@ -624,7 +625,7 @@ const handlers: Handlers = {
     return filePath;
   },
 
-  emergencyKit: () => saveEmergencyKit(),
+  emergencyKit: async password => { await reauth(password); return saveEmergencyKit(); },
   changePassword: async (oldPw, newPw) => {
     const s = requireStore();
     const auth = await s.changePassword(oldPw, newPw, currentSecretKey());

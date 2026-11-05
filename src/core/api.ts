@@ -119,7 +119,8 @@ export interface Api {
   importPreview(password: string): ImportPreview;
   importCommit(vaultId: string | 'byName'): number;
   exportData(format: 'csv' | 'json' | 'encrypted', accountPassword: string, exportPassword?: string): string | null;
-  emergencyKit(): string | null;
+  /** Saves the Emergency Kit PDF (it contains the Secret Key); needs the account password. */
+  emergencyKit(password: string): string | null;
   changePassword(oldPassword: string, newPassword: string): void;
   revealSecretKey(accountPassword: string): string;
 

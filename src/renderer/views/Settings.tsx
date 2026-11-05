@@ -73,7 +73,7 @@ function ChangePassword({ onClose }: { onClose: () => void }) {
 
 function SecurityPane() {
   const { settings, updateSettings, run } = useApp();
-  const [modal, setModal] = useState<'password' | 'reveal' | null>(null);
+  const [modal, setModal] = useState<'password' | 'reveal' | 'kit' | null>(null);
   const [secretKey, setSecretKey] = useState('');
   if (!settings) return null;
   return (<>
@@ -108,7 +108,7 @@ function SecurityPane() {
       <div className="row gap wrap">
         <Button onClick={() => setModal('password')}>Change account password…</Button>
         <Button onClick={() => setModal('reveal')}>Show Secret Key…</Button>
-        <Button onClick={() => run(api.emergencyKit(), 'Emergency Kit saved')}>Save Emergency Kit…</Button>
+        <Button onClick={() => setModal('kit')}>Save Emergency Kit…</Button>
       </div>
       {secretKey && <div className="secret-key small-key" onClick={() => setSecretKey('')} title="Click to hide">{secretKey}</div>}
     </Section>
@@ -119,6 +119,7 @@ function SecurityPane() {
         options={[[7, '7 days'], [30, '30 days'], [90, '90 days'], [0, 'Never']]} />
     </Section>
     {modal === 'password' && <ChangePassword onClose={() => setModal(null)} />}
+    {modal === 'kit' && <ReauthModal title="Save Emergency Kit" onClose={() => setModal(null)} action={async pw => { if (await api.emergencyKit(pw)) void run(Promise.resolve(), 'Emergency Kit saved'); }} />}
     {modal === 'reveal' && <ReauthModal title="Show Secret Key" onClose={() => setModal(null)} action={async pw => setSecretKey(await api.revealSecretKey(pw))} />}
   </>);
 }

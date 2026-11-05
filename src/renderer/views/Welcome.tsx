@@ -59,7 +59,7 @@ export function Setup({ onDone }: { onDone: () => void }) {
           <p className="muted">Your Secret Key protects your vault together with your password. You’ll need it to unlock on a new computer or after reinstalling. This device remembers it, protected by Windows.</p>
           <div className="secret-key">{secretKey}</div>
           <div className="row gap">
-            <Button onClick={async () => { const p = await run(api.emergencyKit()); if (p) setSaved(true); }}>Download Emergency Kit (PDF)</Button>
+            <Button onClick={async () => { const p = await run(api.emergencyKit(pw)); if (p) setSaved(true); }}>Download Emergency Kit (PDF)</Button>
             <Button onClick={() => run(api.copy(secretKey, true), 'Secret Key copied')}>Copy Secret Key</Button>
           </div>
           <label className="check"><input type="checkbox" checked={saved} onChange={e => setSaved(e.target.checked)} /> I saved my Secret Key somewhere safe</label>
