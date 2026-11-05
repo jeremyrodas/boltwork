@@ -8,3 +8,4 @@ server/data/
 /data/
 release/
 build/
+release.local.json
