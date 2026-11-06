@@ -72,9 +72,11 @@ public struct SyncClient: Sendable {
         case .cannotConnectToHost: "nothing is listening at that address and port. Check the port and that the server is running."
         case .cannotFindHost, .dnsLookupFailed: "that name couldn’t be found. Check the spelling, or use the server’s IP address."
         case .notConnectedToInternet: "this device is offline."
+        case .secureConnectionFailed where serverURL.hasPrefix("https:"):
+            "it doesn’t use https. If it’s on your home network or Tailscale, use http:// instead."
         case .serverCertificateUntrusted, .serverCertificateHasBadDate, .serverCertificateHasUnknownRoot, .secureConnectionFailed:
             "its https certificate isn’t trusted. Use a certificate from a public authority (Caddy or Let’s Encrypt can do this)."
-        case .appTransportSecurityRequiresSecureConnection: "this app only allows http for home-network addresses."
+        case .appTransportSecurityRequiresSecureConnection: "this app only allows http for home-network and Tailscale addresses."
         default: e.localizedDescription
         }
         return SyncError(status: 0, message: "Can’t reach the sync server at \(serverURL): \(why)")

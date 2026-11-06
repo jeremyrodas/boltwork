@@ -23,7 +23,7 @@ export function unreachable(serverUrl: string, e: unknown): SyncError {
   else if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') why = 'that name couldn’t be found. Check the spelling, or use the server’s IP address.';
   else if (code === 'EHOSTUNREACH' || code === 'ENETUNREACH') why = 'that address can’t be reached from this computer.';
   else if (/WRONG_VERSION_NUMBER|EPROTO|packet length too long/i.test(code + msg)) {
-    why = serverUrl.startsWith('https:') ? 'it doesn’t use https. If it’s on your home network, use http:// instead.' : 'the connection was garbled.';
+    why = serverUrl.startsWith('https:') ? 'it doesn’t use https. If it’s on your home network or Tailscale, use http:// instead.' : 'the connection was garbled.';
   } else if (/CERT|self.signed|SSL|TLS/i.test(code + msg)) why = 'its https certificate isn’t trusted. Use a certificate from a public authority (Caddy or Let’s Encrypt can do this).';
   else why = `${err.cause?.message || err.message}.`;
   return new SyncError(0, `Can’t reach the sync server at ${serverUrl}: ${why}`);
@@ -31,7 +31,7 @@ export function unreachable(serverUrl: string, e: unknown): SyncError {
 
 /**
  * True for this computer and home-network addresses: private IPv4 ranges (10/8, 172.16/12, 192.168/16),
- * link-local, IPv6 unique-local, and names reserved for local networks (.local, .home.arpa).
+ * Tailscale and other carrier-grade NAT addresses (100.64/10, which Tailscale encrypts end to end), link-local, IPv6 unique-local, and names reserved for local networks (.local, .home.arpa).
  * Public names aren't included even if they resolve to a private address, since that can change.
  */
 export function isLocalNetworkHost(hostname: string): boolean {
@@ -40,7 +40,8 @@ export function isLocalNetworkHost(hostname: string): boolean {
   const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
   if (v4) {
     const [a, b] = [Number(v4[1]), Number(v4[2])];
-    return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254);
+    return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254)
+      || (a === 100 && b >= 64 && b <= 127);
   }
   return h === '::1' || /^f[cd][0-9a-f]{2}:/.test(h) || /^fe[89ab][0-9a-f]:/.test(h);
 }
@@ -56,7 +57,7 @@ export function normalizeServerUrl(input: string): string {
   if (!/^https?:\/\//i.test(u)) u = `${isLocalNetworkHost(new URL(`http://${u}`).hostname) ? 'http' : 'https'}://${u}`;
   const url = new URL(u);
   if (url.protocol === 'http:' && !isLocalNetworkHost(url.hostname)) {
-    throw new Error('Use an https:// address. Plain http is only allowed for this computer or a home-network address (like 192.168.1.20).');
+    throw new Error('Use an https:// address. Plain http is only allowed for this computer, a home-network address (like 192.168.1.20) or a Tailscale address (100.x.y.z).');
   }
   return url.origin + url.pathname.replace(/\/+$/, '');
 }

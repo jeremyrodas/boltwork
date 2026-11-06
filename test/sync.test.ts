@@ -143,9 +143,9 @@ test('server URLs: https required except for this computer and home-network addr
   assert.equal(normalizeServerUrl('https://192.168.1.92:8787'), 'https://192.168.1.92:8787', 'an explicit https is kept');
   assert.equal(normalizeServerUrl('http://localhost:8787'), 'http://localhost:8787');
   assert.throws(() => normalizeServerUrl('http://vault.example.com'));
-  for (const ok of ['http://192.168.1.92:8787', 'http://10.0.0.5', 'http://172.16.0.1', 'http://172.31.255.255', 'http://nas.local:8787', 'http://vault.home.arpa', 'http://[fd12:3456::1]:8787', 'http://127.0.0.1'])
+  for (const ok of ['http://192.168.1.92:8787', 'http://10.0.0.5', 'http://172.16.0.1', 'http://172.31.255.255', 'http://nas.local:8787', 'http://vault.home.arpa', 'http://[fd12:3456::1]:8787', 'http://127.0.0.1', 'http://100.73.181.32:8787', 'http://100.64.0.1', 'http://100.127.255.255'])
     assert.equal(normalizeServerUrl(ok), ok, ok);
-  for (const bad of ['http://172.32.0.1', 'http://8.8.8.8', 'http://192.169.1.1', 'http://11.0.0.1', 'http://192.168.1.92.example.com', 'http://local', 'http://[2001:db8::1]'])
+  for (const bad of ['http://172.32.0.1', 'http://8.8.8.8', 'http://192.169.1.1', 'http://11.0.0.1', 'http://192.168.1.92.example.com', 'http://local', 'http://[2001:db8::1]', 'http://100.63.255.255', 'http://100.128.0.1'])
     assert.throws(() => normalizeServerUrl(bad), /https/, bad);
 });
 
