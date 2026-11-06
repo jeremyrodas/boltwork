@@ -3,7 +3,7 @@ import Testing
 
 /// Mirrors `server URLs` in `test/sync.test.ts`.
 struct SyncServerURLTests {
-    @Test func httpsRequiredExceptLocalAndTailscale() throws {
+    @Test func httpsRequiredExceptPrivateNetworks() throws {
         #expect(try SyncServerURL.normalize("vault.example.com/") == "https://vault.example.com")
         #expect(try SyncServerURL.normalize("192.168.1.92:8787") == "http://192.168.1.92:8787")
         #expect(try SyncServerURL.normalize("100.73.181.32:8787") == "http://100.73.181.32:8787")

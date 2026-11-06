@@ -41,7 +41,7 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Boltwork
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         INFOPLIST_KEY_NSFaceIDUsageDescription: Boltwork uses Face ID to unlock your vault without your account password.
-        INFOPLIST_KEY_NSLocalNetworkUsageDescription: Boltwork connects to a sync server on your home network if you set one up.
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: Boltwork connects to a sync server on your private network if you set one up.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortraitUpsideDown"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES

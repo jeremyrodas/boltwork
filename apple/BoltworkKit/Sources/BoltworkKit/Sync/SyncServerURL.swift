@@ -1,13 +1,14 @@
 import Foundation
 
-/// Plain http is allowed only for this device, home-network and Tailscale addresses (see `src/core/sync.ts`).
+/// Plain http is allowed only for this device and private-network addresses, which home networks and VPNs use
+/// (see `isLocalNetworkHost` in `src/core/sync.ts`).
 public enum SyncServerURL {
     public enum ValidationError: LocalizedError {
         case empty, needsHTTPS, invalid
         public var errorDescription: String? {
             switch self {
             case .empty: "Enter the server address."
-            case .needsHTTPS: "Use an https:// address. Plain http is only allowed for this device, a home-network address (like 192.168.1.20) or a Tailscale address (100.x.y.z)."
+            case .needsHTTPS: "Use an https:// address. Plain http is only allowed for this device or a private network address, such as your home network or a VPN (like 192.168.1.20)."
             case .invalid: "That server address isn’t valid."
             }
         }

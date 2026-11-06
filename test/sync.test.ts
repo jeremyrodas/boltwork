@@ -137,9 +137,9 @@ test('connection errors say what went wrong', async () => {
   await assert.rejects(new SyncClient(`http://localhost:${port}`).health(), /nothing is listening/);
 });
 
-test('server URLs: https required except for this computer and home-network addresses', () => {
+test('server URLs: https required except for this computer and private-network addresses', () => {
   assert.equal(normalizeServerUrl('vault.example.com/'), 'https://vault.example.com');
-  assert.equal(normalizeServerUrl('192.168.1.92:8787'), 'http://192.168.1.92:8787', 'home-network address without a scheme gets http');
+  assert.equal(normalizeServerUrl('192.168.1.92:8787'), 'http://192.168.1.92:8787', 'private-network address without a scheme gets http');
   assert.equal(normalizeServerUrl('https://192.168.1.92:8787'), 'https://192.168.1.92:8787', 'an explicit https is kept');
   assert.equal(normalizeServerUrl('http://localhost:8787'), 'http://localhost:8787');
   assert.throws(() => normalizeServerUrl('http://vault.example.com'));

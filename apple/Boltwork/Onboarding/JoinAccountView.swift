@@ -27,7 +27,7 @@ struct JoinAccountView: View {
             } header: {
                 Text("Sync server")
             } footer: {
-                Text("The address of the Boltwork sync server your other devices use. Plain http works only on your home network or Tailscale.")
+                Text("The address of the Boltwork sync server your other devices use. Plain http works only on a private network, such as your home network or a VPN.")
             }
             Section("Account") {
                 SecureField("Account password", text: $password)
