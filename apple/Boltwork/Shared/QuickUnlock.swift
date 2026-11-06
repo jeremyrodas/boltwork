@@ -30,6 +30,18 @@ enum QuickUnlock {
         }
     }
 
+    /// The biometric this device has, enrolled or not, so settings can explain why it's off.
+    static var hardwareName: String? {
+        let context = LAContext()
+        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
+        return switch context.biometryType {
+        case .faceID: "Face ID"
+        case .touchID: "Touch ID"
+        case .opticID: "Optic ID"
+        default: nil
+        }
+    }
+
     static var symbolName: String {
         switch LAContext().biometryType {
         case .faceID: "faceid"

@@ -83,6 +83,30 @@ final class VaultFlowUITests: XCTestCase {
         app.buttons["Secret Key and Emergency Kit"].tap()
         XCTAssertTrue(app.secureTextFields["Account password"].waitForExistence(timeout: 5))
     }
+
+    /// Needs Face ID enrolled on the simulator, and a face match sent while it waits:
+    /// `xcrun simctl spawn booted notifyutil -p com.apple.BiometricKit_Sim.pearl.match`.
+    func testUnlockWithFaceID() throws {
+        let app = launchWithNewVault()
+        let back = app.navigationBars.buttons["BackButton"]
+        if back.waitForExistence(timeout: 5) { back.tap() }
+        app.buttons["Settings"].firstMatch.tap()
+        let toggle = app.switches["Unlock with Face ID"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "Face ID isn't enrolled on this simulator")
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        XCTAssertEqual(toggle.value as? String, "1")
+        app.buttons["Done"].tap()
+
+        app.buttons["Lock"].tap()
+        // The first time, iOS asks whether Boltwork may use Face ID.
+        let allow = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["OK"]
+        if allow.waitForExistence(timeout: 5) { allow.tap() }
+        // Unlocked: the items list or the sidebar is back.
+        let unlocked = app.buttons.matching(NSPredicate(format: "label IN {'New Item', 'Settings'}")).firstMatch
+        XCTAssertTrue(unlocked.waitForExistence(timeout: 30), "Face ID unlocked the vault")
+        XCTAssertFalse(app.secureTextFields["Account password"].exists)
+        attach(app, "face-id-unlocked")
+    }
     #endif
 
     /// Creates a vault in a fresh folder and saves its Secret Key.
