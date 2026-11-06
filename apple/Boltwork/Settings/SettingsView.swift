@@ -18,7 +18,9 @@ struct SettingsView: View {
                 Form { UnlockedOnly { VaultsSettingsSection() } }.formStyle(.grouped)
             }
             Tab("Account", systemImage: "person.crop.circle") {
-                Form { UnlockedOnly { AccountSettingsSection() } }.formStyle(.grouped)
+                NavigationStack {
+                    Form { UnlockedOnly { AccountSettingsSection() } }.formStyle(.grouped)
+                }
             }
         }
         #else

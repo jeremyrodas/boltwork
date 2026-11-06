@@ -22,6 +22,7 @@
 		1C7332675654D48D65C7A930 /* SecuritySettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02BCDCC2578427557E469CB9 /* SecuritySettingsSection.swift */; };
 		243201EDF93A28EB592B8D54 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84386401B4242FF9C70215D8 /* AppSettings.swift */; };
 		28D2188CE94BCC59BB99BBAE /* EmergencyKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 510D53798880146B88B760EC /* EmergencyKit.swift */; };
+		2B01889DEEA3A887A0C2BC27 /* AccountRecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0266B3623F396B1E3CB31327 /* AccountRecoveryView.swift */; };
 		2BB5E381B5C3CB629D52BDA0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A111F84538E99BA534A8D0 /* Theme.swift */; };
 		2BF1E8BEC67A65A0A38C4CF7 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8E2FAD51BA0E1291E69DA4 /* WelcomeView.swift */; };
 		2E2A11BA9A900C5A076A5049 /* EmergencyKitButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FC9C164253A1ADE2769A0C /* EmergencyKitButton.swift */; };
@@ -62,7 +63,6 @@
 		946C3302DF9E9BEC65DE5C0D /* SidebarSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB7EEBBEB23D3B8DC7B01AA3 /* SidebarSelection.swift */; };
 		9938AAF2500A4C55A596C530 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3632FF2FE1339B3B7F36B6F /* AppModel.swift */; };
 		9979EF3BA34AB46CF3544723 /* SecretKeyCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB343CF8E1CABAC11712E9C /* SecretKeyCard.swift */; };
-		9EF820F3252F5BFA60589DA5 /* RevealSecretKeySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E6BA5597EB2C45152950A52 /* RevealSecretKeySheet.swift */; };
 		9F144FA5632B09269B34B0D9 /* VaultsSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB5BAE70BBD90E8621E4A28 /* VaultsSettingsSection.swift */; };
 		A00241E5F64FDDC7F7325594 /* SecretKeySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3528C0245C780F55A24B98 /* SecretKeySheet.swift */; };
 		A41C64BA986E536BE0090A3D /* StrengthMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27C88A8EBEF917595C7DCC23 /* StrengthMeter.swift */; };
@@ -96,6 +96,7 @@
 
 /* Begin PBXFileReference section */
 		0048D17D108EAB1692288C1E /* ItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailView.swift; sourceTree = "<group>"; };
+		0266B3623F396B1E3CB31327 /* AccountRecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountRecoveryView.swift; sourceTree = "<group>"; };
 		02BCDCC2578427557E469CB9 /* SecuritySettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsSection.swift; sourceTree = "<group>"; };
 		032F0FDC7CC234E4AE559ED1 /* EditableFieldRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditableFieldRow.swift; sourceTree = "<group>"; };
 		085731E759FC55AFCF164A5F /* ItemHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemHistoryView.swift; sourceTree = "<group>"; };
@@ -124,7 +125,6 @@
 		4332D9258778A2BCCECBF1ED /* ItemCategory+Display.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ItemCategory+Display.swift"; sourceTree = "<group>"; };
 		4AD57C86098EE13C906F2F54 /* LockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockView.swift; sourceTree = "<group>"; };
 		4DA65F62921350FE328EF2BA /* VaultCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultCommands.swift; sourceTree = "<group>"; };
-		4E6BA5597EB2C45152950A52 /* RevealSecretKeySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealSecretKeySheet.swift; sourceTree = "<group>"; };
 		4F3528C0245C780F55A24B98 /* SecretKeySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretKeySheet.swift; sourceTree = "<group>"; };
 		510D53798880146B88B760EC /* EmergencyKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyKit.swift; sourceTree = "<group>"; };
 		53A9E124BB5C71804D2927A2 /* TOTPRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOTPRow.swift; sourceTree = "<group>"; };
@@ -319,9 +319,9 @@
 		9256A127ABA355DFA79C27A1 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				0266B3623F396B1E3CB31327 /* AccountRecoveryView.swift */,
 				D84D9E1BF81A8AA2EDA32EB2 /* AccountSettingsSection.swift */,
 				21EB49FE3F30533AA0E53E34 /* ChangePasswordSheet.swift */,
-				4E6BA5597EB2C45152950A52 /* RevealSecretKeySheet.swift */,
 				02BCDCC2578427557E469CB9 /* SecuritySettingsSection.swift */,
 				3132037A71B54B1FD77E824D /* SettingsView.swift */,
 				1A7334A11C8D1FB4F0FFC50C /* SyncSettingsSection.swift */,
@@ -498,6 +498,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2B01889DEEA3A887A0C2BC27 /* AccountRecoveryView.swift in Sources */,
 				09F2B3B4FC8A6A2E39BB7AB3 /* AccountSettingsSection.swift in Sources */,
 				49A3B8173CBB6C31BA1EFC66 /* AddFieldMenu.swift in Sources */,
 				9938AAF2500A4C55A596C530 /* AppModel.swift in Sources */,
@@ -543,7 +544,6 @@
 				4774072CD8ECDBD0AF2E0149 /* PlatformModifiers.swift in Sources */,
 				65E013B680257E1C8F58B5BE /* PrivacyCover.swift in Sources */,
 				ABF0A892166A68C3DB3AE689 /* QuickUnlock.swift in Sources */,
-				9EF820F3252F5BFA60589DA5 /* RevealSecretKeySheet.swift in Sources */,
 				D5582498620593D938759DB8 /* RootView.swift in Sources */,
 				77BBAA56E7F04214AD7DB616 /* SecretFieldEditor.swift in Sources */,
 				9979EF3BA34AB46CF3544723 /* SecretKeyCard.swift in Sources */,

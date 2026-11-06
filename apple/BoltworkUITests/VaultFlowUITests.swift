@@ -10,33 +10,7 @@ final class VaultFlowUITests: XCTestCase {
     }
 
     func testCreateAddLockUnlock() throws {
-        let app = XCUIApplication()
-        let dir = NSTemporaryDirectory() + "boltwork-uitest-\(UUID().uuidString)"
-        app.launchArguments += ["-vaultDirectory", dir, "-autolockMinutes", "-1"]
-        app.launch()
-
-        // Create a vault.
-        app.buttons["Create a New Vault"].tap()
-        let fields = app.secureTextFields
-        fields["Account password"].tap()
-        fields["Account password"].typeText(password)
-        fields["Confirm password"].tap()
-        fields["Confirm password"].typeText(password)
-        app.buttons["Create Vault"].tap()
-
-        // Save the Secret Key.
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Secret Key: S R 1'")).firstMatch.waitForExistence(timeout: 15))
-        let saved = app.switches["I saved my Secret Key"]
-        #if os(iOS)
-        // Tap the switch itself; the row's center is its label.
-        saved.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-        #else
-        saved.click()
-        #endif
-        attach(app, "secret-key")
-        let done = app.buttons["Done"]
-        XCTAssertTrue(done.wait(for: \.isEnabled, toEqual: true, timeout: 5))
-        done.tap()
+        let app = launchWithNewVault()
 
         // Add a login.
         openItemsList(app)
@@ -72,6 +46,73 @@ final class VaultFlowUITests: XCTestCase {
         openItemsList(app)
         XCTAssertTrue(app.staticTexts["Example Bank"].firstMatch.waitForExistence(timeout: 15))
         attach(app, "unlocked")
+    }
+
+    #if os(iOS)
+    func testSecretKeyAndEmergencyKitNeedPassword() throws {
+        let app = launchWithNewVault()
+        // Settings is on the sidebar.
+        let back = app.navigationBars.buttons["BackButton"]
+        if back.waitForExistence(timeout: 5) { back.tap() }
+        app.buttons["Settings"].firstMatch.tap()
+        app.buttons["Secret Key and Emergency Kit"].tap()
+
+        // Nothing shows until the password is right.
+        let field = app.secureTextFields["Account password"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Create Emergency Kit…"].exists)
+        field.tap()
+        field.typeText("wrong password")
+        app.buttons["Continue"].tap()
+        XCTAssertTrue(app.staticTexts["That password isn’t right."].waitForExistence(timeout: 15))
+        field.tap()
+        field.typeText(password)
+        app.buttons["Continue"].tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Secret Key: S R 1'")).firstMatch.waitForExistence(timeout: 15))
+        attach(app, "secret-key-revealed")
+
+        // The kit takes a confirmed extra step.
+        XCTAssertFalse(app.buttons["Save or Print Emergency Kit"].exists)
+        app.buttons["Create Emergency Kit…"].tap()
+        app.buttons["Create Emergency Kit"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Save or Print Emergency Kit"].waitForExistence(timeout: 10))
+        attach(app, "emergency-kit")
+
+        // Leaving forgets it: coming back asks for the password again.
+        app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["Secret Key and Emergency Kit"].tap()
+        XCTAssertTrue(app.secureTextFields["Account password"].waitForExistence(timeout: 5))
+    }
+    #endif
+
+    /// Creates a vault in a fresh folder and saves its Secret Key.
+    private func launchWithNewVault() -> XCUIApplication {
+        let app = XCUIApplication()
+        let dir = NSTemporaryDirectory() + "boltwork-uitest-\(UUID().uuidString)"
+        app.launchArguments += ["-vaultDirectory", dir, "-autolockMinutes", "-1"]
+        app.launch()
+
+        app.buttons["Create a New Vault"].tap()
+        let fields = app.secureTextFields
+        fields["Account password"].tap()
+        fields["Account password"].typeText(password)
+        fields["Confirm password"].tap()
+        fields["Confirm password"].typeText(password)
+        app.buttons["Create Vault"].tap()
+
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Secret Key: S R 1'")).firstMatch.waitForExistence(timeout: 15))
+        let saved = app.switches["I saved my Secret Key"]
+        #if os(iOS)
+        // Tap the switch itself; the row's center is its label.
+        saved.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        #else
+        saved.click()
+        #endif
+        attach(app, "secret-key")
+        let done = app.buttons["Done"]
+        XCTAssertTrue(done.wait(for: \.isEnabled, toEqual: true, timeout: 5))
+        done.tap()
+        return app
     }
 
     /// On iPhone the split view starts at the sidebar; open All Items.
