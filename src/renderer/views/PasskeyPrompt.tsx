@@ -7,7 +7,7 @@ import { Ico } from '../components/icons';
 import { Button, IconButton } from '../components/ui';
 
 /**
- * Strongroom's own passkey prompt (its own small window), shown when a site in the browser, or Windows' passkey
+ * Boltwork's own passkey prompt (its own small window), shown when a site in the browser, or Windows' passkey
  * window, asks to save or use a passkey. For a new passkey it says exactly where it will go: onto one of the
  * site's existing logins, or a new login, and lets the user change that.
  */
@@ -140,7 +140,7 @@ function Head({ title, onClose }: { title: string; onClose: () => void }) {
   return (
     <div className="pk-head">
       <BrandMark size={20} />
-      <span>Strongroom · {title}</span>
+      <span>Boltwork · {title}</span>
       <span className="pk-spacer" />
       <IconButton title="Cancel" onClick={onClose}><Ico icon={X} /></IconButton>
     </div>

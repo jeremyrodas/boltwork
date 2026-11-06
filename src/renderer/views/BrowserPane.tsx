@@ -22,7 +22,7 @@ export function BrowserPane() {
   return (<>
     <div className="settings-section">
       <h3>Browser extension</h3>
-      <Toggle label="Connect to the Strongroom browser extension" hint="Lets the extension fill logins on matching websites and offer to save new ones. It only gets a password when you pick a login."
+      <Toggle label="Connect to the Boltwork browser extension" hint="Lets the extension fill logins on matching websites and offer to save new ones. It only gets a password when you pick a login."
         checked={settings.browserIntegration} onChange={v => updateSettings({ browserIntegration: v })} />
       {status && settings.browserIntegration && (
         <div className={`agent-status ${status.running ? 'ok' : 'bad'}`}>
@@ -39,10 +39,10 @@ export function BrowserPane() {
         <li>Turn on <b>Developer mode</b> (top right).</li>
         <li>Click <b>Load unpacked</b> and choose the extension folder: <Button small onClick={() => run(api.browserShowExtensionFolder())}>Show folder</Button>
           {status && <div className="code-row"><code>{status.extensionFolder}</code><Button small onClick={() => run(api.copy(status.extensionFolder, false), 'Path copied')}>Copy</Button></div>}</li>
-        <li>If the browser was already open before Strongroom first ran, restart it so it finds Strongroom.</li>
-        <li>Click the Strongroom icon in the toolbar and choose <b>Connect to Strongroom</b>, then approve here.</li>
+        <li>If the browser was already open before Boltwork first ran, restart it so it finds Boltwork.</li>
+        <li>Click the Boltwork icon in the toolbar and choose <b>Connect to Boltwork</b>, then approve here.</li>
       </ol>
-      <p className="hint">The extension ID should be <code>{status?.extensionId}</code>. Strongroom only talks to that ID.</p>
+      <p className="hint">The extension ID should be <code>{status?.extensionId}</code>. Boltwork only talks to that ID.</p>
     </div>
     <div className="settings-section">
       <h3>Connected browsers ({status?.pairings.length ?? 0})</h3>
@@ -58,7 +58,7 @@ export function BrowserPane() {
       <h3>Using it</h3>
       <p className="muted">Click a username or password field and pick a login from the menu, or press <b>Ctrl+Shift+L</b> to fill the best match.
         After you sign in with a new password, the extension offers to save or update it. Use the toolbar icon to search all your logins.
-        Sites that use passkeys get Strongroom’s passkeys too.</p>
+        Sites that use passkeys get Boltwork’s passkeys too.</p>
     </div>
     <WindowsPasskeys />
   </>);
@@ -66,7 +66,7 @@ export function BrowserPane() {
 
 type ProviderStatus = Awaited<ReturnType<typeof api.passkeyProviderStatus>>;
 
-/** Strongroom in Windows' own passkey dialog, for apps and browsers without the extension. */
+/** Boltwork in Windows' own passkey dialog, for apps and browsers without the extension. */
 function WindowsPasskeys() {
   const { run, app } = useApp();
   const [st, setSt] = useState<ProviderStatus | null>(null);
@@ -78,26 +78,26 @@ function WindowsPasskeys() {
     return () => { live = false; clearInterval(t); };
   }, []);
   if (app?.platform !== 'win32' || !st) return null;
-  const register = async () => { const s = await run(api.passkeyProviderRegister(), 'Strongroom added to Windows'); if (s) setSt(s); };
+  const register = async () => { const s = await run(api.passkeyProviderRegister(), 'Boltwork added to Windows'); if (s) setSt(s); };
   return (
     <div className="settings-section">
       <h3>Windows passkeys</h3>
-      <p className="muted">Lets Windows’ own passkey dialog offer Strongroom, in any browser or app, not just Chrome with the extension. Needs Windows 11 with the November 2025 update or later.</p>
+      <p className="muted">Lets Windows’ own passkey dialog offer Boltwork, in any browser or app, not just Chrome with the extension. Needs Windows 11 with the November 2025 update or later.</p>
       {!st.installed ? (
-        <p className="hint">The Strongroom passkey provider isn’t installed on this computer. It’s a separate small package; see <code>native/passkey-provider</code> in the Strongroom source for how to install it.</p>
+        <p className="hint">The Boltwork passkey provider isn’t installed on this computer. It’s a separate small package; see <code>native/passkey-provider</code> in the Boltwork source for how to install it.</p>
       ) : st.state === 'enabled' ? (<>
-        <div className="agent-status ok">● Strongroom is a passkey provider in Windows</div>
+        <div className="agent-status ok">● Boltwork is a passkey provider in Windows</div>
         <div className="row gap">
           <Button onClick={() => run(api.openWindowsPasskeySettings())}>Open Windows passkey settings</Button>
           <Button onClick={async () => { const s = await run(api.passkeyProviderUnregister(), 'Removed from Windows'); if (s) setSt(s); }}>Remove from Windows</Button>
         </div>
       </>) : st.state === 'disabled' ? (<>
         <div className="agent-status bad">● Added, but turned off in Windows</div>
-        <p className="muted">In Windows Settings, open <b>Accounts → Passkeys → Advanced options</b> and turn on <b>Strongroom</b>.</p>
+        <p className="muted">In Windows Settings, open <b>Accounts → Passkeys → Advanced options</b> and turn on <b>Boltwork</b>.</p>
         <Button kind="primary" onClick={() => run(api.openWindowsPasskeySettings())}>Open Windows passkey settings</Button>
       </>) : (<>
-        <p className="muted">The provider is installed. Add Strongroom to Windows, then turn it on in Windows Settings.</p>
-        <Button kind="primary" onClick={register}>Add Strongroom to Windows</Button>
+        <p className="muted">The provider is installed. Add Boltwork to Windows, then turn it on in Windows Settings.</p>
+        <Button kind="primary" onClick={register}>Add Boltwork to Windows</Button>
       </>)}
       {st.error && <p className="hint">{st.error}</p>}
     </div>

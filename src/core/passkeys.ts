@@ -1,5 +1,5 @@
 /**
- * Passkeys: Strongroom acts as a WebAuthn authenticator. The browser extension hands us a site's
+ * Passkeys: Boltwork acts as a WebAuthn authenticator. The browser extension hands us a site's
  * request together with the page origin Chrome reported (never one the page claims), and we answer
  * the way a platform authenticator would. The private key lives in the vault, so it syncs.
  *
@@ -24,8 +24,8 @@ export interface Passkey {
   lastUsedAt?: number;
 }
 
-/** Identifies Strongroom passkeys to relying parties that show which manager holds them. */
-export const STRONGROOM_AAGUID = Buffer.from('5d7a6c1e9b3f4c2aa8e15c0d3b7f9e21', 'hex');
+/** Identifies Boltwork passkeys to relying parties that show which manager holds them. */
+export const BOLTWORK_AAGUID = Buffer.from('5d7a6c1e9b3f4c2aa8e15c0d3b7f9e21', 'hex');
 
 export const b64u = (b: Uint8Array) => Buffer.from(b).toString('base64url');
 export const unb64u = (s: string) => Buffer.from(s, 'base64url');
@@ -140,7 +140,7 @@ export function newCredential(rpId: string, rpName: string | undefined, user: { 
   const idLen = Buffer.alloc(2); idLen.writeUInt16BE(credId.length);
   const authData = Buffer.concat([
     sha256(rpId), Buffer.from([FLAG_UP | FLAG_UV | FLAG_BE | FLAG_BS | FLAG_AT]), Buffer.alloc(4),
-    STRONGROOM_AAGUID, idLen, credId, cose,
+    BOLTWORK_AAGUID, idLen, credId, cose,
   ]);
   const passkey: Passkey = {
     credentialId: b64u(credId), rpId, rpName: rpName ? String(rpName).slice(0, 200) : undefined,
@@ -163,7 +163,7 @@ export function signAssertion(passkey: Passkey, rpId: string, clientDataHash: Ui
 /** Makes a new passkey. The caller asks the user first and saves `passkey` on an item. */
 export function createPasskey(req: CreateRequest, o: Origin, now = Date.now()): { passkey: Passkey; response: CreateResponse } {
   const rpId = checkRpId(o, req.rp?.id);
-  if (!req.pubKeyCredParams?.some(p => p.type === 'public-key' && p.alg === -7)) throw new PasskeyError('NotSupportedError', 'This site doesn’t accept the passkey type Strongroom makes.');
+  if (!req.pubKeyCredParams?.some(p => p.type === 'public-key' && p.alg === -7)) throw new PasskeyError('NotSupportedError', 'This site doesn’t accept the passkey type Boltwork makes.');
   const challenge = validChallenge(req.challenge);
   const { passkey, authData, publicKeySpki } = newCredential(rpId, req.rp?.name, { id: unb64u(String(req.user?.id ?? '')), name: req.user?.name, displayName: req.user?.displayName }, now);
   const attestationObject = cbor(new Map<string, Cbor>([['fmt', 'none'], ['attStmt', new Map()], ['authData', authData]]));

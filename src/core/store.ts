@@ -22,6 +22,7 @@ import type { Passkey } from './passkeys';
 import { domainOf as domainOfUrl } from './search';
 import type { Attachment, Collection, Item, ItemContent, Vault, VaultData } from './types';
 
+// Internal format labels keep the app's earlier name (Strongroom): changing them would make existing data unreadable.
 const FORMAT = 'strongroom-vault';
 const VERSION = 2;
 const AAD_KEY = 'strongroom:master-key:v1';
@@ -30,7 +31,7 @@ const AAD_LOCAL = 'strongroom:local-data:v2';
 const aadAttachment = (id: string) => `strongroom:attachment:v1:${id}`;
 
 /**
- * An all-zero key. Strongroom 0.1.x and 0.2.0 wiped the master key after a quick unlock (PIN or Windows Hello)
+ * An all-zero key. Boltwork 0.1.x and 0.2.0 wiped the master key after a quick unlock (PIN or Windows Hello)
  * while the open vault still used that same buffer, so anything saved afterwards on that device was sealed
  * with zeros. On unlock, data on this device's own disk that only opens with this key is re-sealed with the
  * real key. Data from a sync server never gets this fallback.
@@ -304,8 +305,8 @@ export class VaultStore {
 
   private static readFile(dir: string): VaultFile {
     const file = JSON.parse(fs.readFileSync(path.join(dir, 'vault.json'), 'utf8')) as VaultFile;
-    if (file.format !== FORMAT) throw new Error('This is not a Strongroom vault.');
-    if (file.version > VERSION) throw new Error('This vault was made by a newer version of Strongroom.');
+    if (file.format !== FORMAT) throw new Error('This is not a Boltwork vault.');
+    if (file.version > VERSION) throw new Error('This vault was made by a newer version of Boltwork.');
     return file;
   }
 
@@ -739,7 +740,7 @@ function importSignature(c: ItemContent): string {
     [...c.fields, ...c.sections.flatMap(s => s.fields)].filter(f => f.value).map(f => [f.label, f.value]).sort(), c.notes]);
 }
 
-/** A new login for a passkey made on a site Strongroom has no login for yet. */
+/** A new login for a passkey made on a site Boltwork has no login for yet. */
 /** A login a new passkey could be saved on (see VaultStore.passkeyTargets). */
 export interface PasskeyTarget { itemId: string; title: string; userName: string; sameAccount: boolean; passkeys: number }
 

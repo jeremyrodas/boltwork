@@ -1,5 +1,5 @@
 /**
- * The Strongroom mark: a vault door in brass on graphite (or another metal, see schemes.ts). A brass rim set with dark bolts, and a
+ * The Boltwork mark: a vault door in brass on graphite (or another metal, see schemes.ts). A brass rim set with dark bolts, and a
  * three-spoke handwheel on a hub. Drawn here as straight-alpha RGBA at any size, so the app window,
  * tray and browser extension need no image files. At 24px and below the bolts and spoke caps are
  * dropped and the rim and spokes thicken, so the mark stays legible in the tray and toolbar.

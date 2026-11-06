@@ -1,6 +1,6 @@
 /**
  * Native messaging host. Chrome starts this (via the launcher the app registers) and talks to it with
- * 4-byte length-prefixed JSON on stdin/stdout. We relay each message to the running Strongroom app over
+ * 4-byte length-prefixed JSON on stdin/stdout. We relay each message to the running Boltwork app over
  * its local pipe, tagged with the extension origin Chrome passed us, and relay replies back.
  */
 import net from 'node:net';
@@ -8,8 +8,8 @@ import os from 'node:os';
 import path from 'node:path';
 
 const origin = process.argv.find(a => a.startsWith('chrome-extension://')) ?? '';
-const sockPath = process.env.STRONGROOM_BROWSER_SOCK
-  || (process.platform === 'win32' ? '\\\\.\\pipe\\strongroom-browser' : path.join(os.homedir(), '.strongroom', 'browser.sock'));
+const sockPath = process.env.BOLTWORK_BROWSER_SOCK
+  || (process.platform === 'win32' ? '\\\\.\\pipe\\boltwork-browser' : path.join(os.homedir(), '.boltwork', 'browser.sock'));
 
 function send(obj: unknown) {
   let json = Buffer.from(JSON.stringify(obj), 'utf8');

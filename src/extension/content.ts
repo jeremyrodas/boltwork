@@ -8,10 +8,10 @@ import type { BridgeMatch } from '../core/browserBridge';
 import { captureLogin, captureUsernameStep, kindOf, loginFields, setValue, type FieldKind } from './forms';
 import type { Creds, ExtMessage, PublicPendingSave, TabMessage } from './messages';
 
-declare global { interface Window { __strongroomLoaded?: boolean } }
+declare global { interface Window { __boltworkLoaded?: boolean } }
 
-if (!window.__strongroomLoaded) {
-  window.__strongroomLoaded = true;
+if (!window.__boltworkLoaded) {
+  window.__boltworkLoaded = true;
   init();
 }
 
@@ -43,7 +43,7 @@ const CSS = `
 `;
 
 function shadowHost(): { host: HTMLElement; root: ShadowRoot } {
-  const host = document.createElement('strongroom-ui');
+  const host = document.createElement('boltwork-ui');
   host.style.cssText = 'position: absolute; z-index: 2147483647; top: 0; left: 0;';
   const root = host.attachShadow({ mode: 'closed' });
   const style = document.createElement('style');
@@ -95,8 +95,8 @@ function placeMenu() {
 async function openMenu(field: HTMLInputElement, kind: FieldKind) {
   if (Date.now() < suppressUntil) return;
   const res = await getMatches();
-  // A site waiting for an autofill passkey sign-in (see webauthn-relay.ts) also gets Strongroom's passkeys here.
-  const relay = window === window.top && kind !== 'otp' && kind !== 'password' ? window.__strongroomPasskeys : undefined;
+  // A site waiting for an autofill passkey sign-in (see webauthn-relay.ts) also gets Boltwork's passkeys here.
+  const relay = window === window.top && kind !== 'otp' && kind !== 'password' ? window.__boltworkPasskeys : undefined;
   const passkeys = relay?.pending() ? await relay.list() : [];
   if (document.activeElement !== field || !res || res.error) return;
   let items = res.items ?? [];
@@ -108,12 +108,12 @@ async function openMenu(field: HTMLInputElement, kind: FieldKind) {
   const { host, root } = shadowHost();
   const box = el('div', 'box');
   const head = el('div', 'head');
-  head.append(el('span', 'logo'), el('span', '', 'Strongroom'));
+  head.append(el('span', 'logo'), el('span', '', 'Boltwork'));
   box.append(head);
   const pick = (handler: () => void) => (e: Event) => { if (!e.isTrusted) return; e.preventDefault(); handler(); };
   if (res.locked) {
     const b = el('button', 'row');
-    b.append(el('span', 't', '🔒 Unlock Strongroom'), el('span', 's', 'Then click this field again'));
+    b.append(el('span', 't', '🔒 Unlock Boltwork'), el('span', 's', 'Then click this field again'));
     b.addEventListener('mousedown', pick(() => { closeMenu(); void send({ type: 'open' }); }));
     box.append(b);
   }
@@ -146,7 +146,7 @@ function init() {
     const t = e.composedPath()[0];
     const kind = kindOf(t);
     if (kind && t instanceof HTMLInputElement) void openMenu(t, kind);
-    else if (!(t instanceof HTMLElement && t.tagName === 'STRONGROOM-UI')) closeMenu();
+    else if (!(t instanceof HTMLElement && t.tagName === 'BOLTWORK-UI')) closeMenu();
   }, true);
   document.addEventListener('focusout', e => {
     if (menu && e.target === menu.field) setTimeout(() => { if (menu && document.activeElement !== menu.field) closeMenu(); }, 150);
@@ -218,7 +218,7 @@ function showSaveBar(p: PublicPendingSave) {
   const box = el('div', 'box');
   box.style.width = '320px';
   const head = el('div', 'head');
-  head.append(el('span', 'logo'), el('span', '', 'Strongroom'));
+  head.append(el('span', 'logo'), el('span', '', 'Boltwork'));
   const body = el('div', 'bar');
   body.append(
     el('p', 't', p.status === 'update' ? `Update the password for “${p.title}”?` : `Save this login for ${p.host}?`),
@@ -229,10 +229,10 @@ function showSaveBar(p: PublicPendingSave) {
     if (!e.isTrusted) return;
     const r = await send<{ error?: string; locked?: boolean }>({ type: 'saveDecision', key: p.key, action });
     if (action === 'save' && r && !r.error && !r.locked) {
-      body.replaceChildren(el('p', 't', p.status === 'update' ? '✓ Password updated' : '✓ Saved to Strongroom'));
+      body.replaceChildren(el('p', 't', p.status === 'update' ? '✓ Password updated' : '✓ Saved to Boltwork'));
       setTimeout(() => host.remove(), 1800);
     } else if (action === 'save') {
-      body.replaceChildren(el('p', 't', r?.locked ? 'Unlock Strongroom, then try again.' : 'Couldn’t save. Is Strongroom running?'));
+      body.replaceChildren(el('p', 't', r?.locked ? 'Unlock Boltwork, then try again.' : 'Couldn’t save. Is Boltwork running?'));
       setTimeout(() => host.remove(), 3000);
     } else host.remove();
   };

@@ -1,5 +1,5 @@
 /**
- * Strongroom's icon set: Lucide line icons at one stroke and size, so every icon in the app is drawn
+ * Boltwork's icon set: Lucide line icons at one stroke and size, so every icon in the app is drawn
  * the same way. Vault icons come from this set too; custom item icons (images) are content and stay as the user set them.
  */
 import {
@@ -77,7 +77,7 @@ export function VaultIcon({ icon, size = 16 }: { icon: string | undefined; size?
   return <Ico icon={VAULT_ICONS[vaultIconName(icon)].icon} size={size} />;
 }
 
-/** Renders a Lucide icon with Strongroom's defaults; decorative unless given a title. */
+/** Renders a Lucide icon with Boltwork's defaults; decorative unless given a title. */
 export function Ico({ icon: I, size = 16, title, ...rest }: { icon: LucideIcon; size?: number; title?: string } & Omit<LucideProps, 'ref'>) {
   return <I size={size} strokeWidth={STROKE} aria-hidden={title ? undefined : true} aria-label={title} focusable={false} {...rest} />;
 }

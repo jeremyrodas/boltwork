@@ -77,7 +77,7 @@ export function Sidebar() {
   return (
     <nav className="sidebar">
       <div className="side-top">
-        <div className="brand small"><BrandMark size={26} />Strongroom</div>
+        <div className="brand small"><BrandMark size={26} />Boltwork</div>
         <select className="collection-select" value={settings.activeCollection} onChange={e => updateSettings({ activeCollection: e.target.value })} title="Collection">
           <option value="">All vaults</option>
           {data.collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}

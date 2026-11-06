@@ -1,8 +1,8 @@
 /**
- * Strongroom as a Windows passkey provider (Windows 11 24H2/25H2 with the November 2025 update or later).
+ * Boltwork as a Windows passkey provider (Windows 11 24H2/25H2 with the November 2025 update or later).
  *
- * A small packaged helper (native/passkey-provider) is what Windows talks to: it registers Strongroom with
- * Windows, and when you pick Strongroom in Windows' passkey dialog, Windows calls it with a CTAP2 request.
+ * A small packaged helper (native/passkey-provider) is what Windows talks to: it registers Boltwork with
+ * Windows, and when you pick Boltwork in Windows' passkey dialog, Windows calls it with a CTAP2 request.
  * The helper checks the request was signed by Windows and relays it here over a local pipe; we ask you,
  * answer with the passkeys in your vault, and keep Windows' list of your passkeys (no keys, just names)
  * up to date so they show up in its picker.
@@ -22,18 +22,18 @@ export interface ProviderDeps {
   approve: (p: PasskeyPrompt) => Promise<PasskeyDecision>;
   waitForUnlock: () => Promise<boolean>;
   /**
-   * Windows' passkey window sits on top of everything while it waits for us, so Strongroom's lock screen and
+   * Windows' passkey window sits on top of everything while it waits for us, so Boltwork's lock screen and
    * prompts must be raised above it (and given the keyboard) for the length of a request, then let go.
    */
   keepOnTop?: (on: boolean) => void;
   onChanged: () => void;
-  /** How the helper can start Strongroom when Windows needs it and it isn't running. */
+  /** How the helper can start Boltwork when Windows needs it and it isn't running. */
   launch: { command: string; args: string[]; cwd: string };
   userData: string;
 }
 
-export const PROVIDER_PIPE = process.env.STRONGROOM_PASSKEY_SOCK || '\\\\.\\pipe\\strongroom-passkeys';
-const ALIAS = 'strongroom-passkeys.exe';
+export const PROVIDER_PIPE = process.env.BOLTWORK_PASSKEY_SOCK || '\\\\.\\pipe\\boltwork-passkeys';
+const ALIAS = 'boltwork-passkeys.exe';
 
 let deps: ProviderDeps | null = null;
 let server: net.Server | null = null;
@@ -43,15 +43,16 @@ let lastError = '';
 export function providerExe(): string | null {
   if (process.platform !== 'win32' || !process.env.LOCALAPPDATA) return null;
   const p = path.join(process.env.LOCALAPPDATA, 'Microsoft', 'WindowsApps', ALIAS);
-  return fs.existsSync(p) ? p : null;
+  // An execution alias is a special link: stat() on it fails with EACCES (so existsSync says no), lstat() works.
+  try { fs.lstatSync(p); return p; } catch { return null; }
 }
 
 export function startPasskeyProvider(d: ProviderDeps): void {
   if (process.platform !== 'win32' || server) return;
   deps = d;
-  // Tell the helper how to start us (it reads this when Windows calls it while Strongroom is closed).
+  // Tell the helper how to start us (it reads this when Windows calls it while Boltwork is closed).
   try {
-    const dir = path.join(process.env.LOCALAPPDATA ?? d.userData, 'Strongroom');
+    const dir = path.join(process.env.LOCALAPPDATA ?? d.userData, 'Boltwork');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'passkey-provider.json'), JSON.stringify(d.launch, null, 2));
   } catch { /* the helper just can't start us; it reports that to Windows */ }
@@ -72,7 +73,7 @@ export function startPasskeyProvider(d: ProviderDeps): void {
     });
     conn.on('error', () => conn.destroy());
   });
-  srv.on('error', e => { lastError = (e as NodeJS.ErrnoException).code === 'EADDRINUSE' ? 'Another copy of Strongroom is the Windows passkey provider.' : e.message; server = null; });
+  srv.on('error', e => { lastError = (e as NodeJS.ErrnoException).code === 'EADDRINUSE' ? 'Another copy of Boltwork is the Windows passkey provider.' : e.message; server = null; });
   srv.listen(PROVIDER_PIPE, () => { server = srv; lastError = ''; });
 }
 
@@ -139,7 +140,7 @@ async function operate(deps: ProviderDeps, msg: { op: 'make' | 'get'; request?: 
 
 function runHelper(cmd: string, input?: unknown): Promise<Record<string, unknown>> {
   const exe = providerExe();
-  if (!exe) return Promise.reject(new Error('The Strongroom passkey provider isn’t installed.'));
+  if (!exe) return Promise.reject(new Error('The Boltwork passkey provider isn’t installed.'));
   return new Promise((resolve, reject) => {
     const child = spawn(exe, [cmd], { windowsHide: true });
     let out = '';
@@ -162,7 +163,7 @@ export async function providerStatus(): Promise<ProviderStatus> {
   } catch (e) { return { installed: true, serving: !!server, error: (e as Error).message }; }
 }
 
-/** Adds (or refreshes) Strongroom in Windows' list of passkey providers, then syncs the passkey list. */
+/** Adds (or refreshes) Boltwork in Windows' list of passkey providers, then syncs the passkey list. */
 export async function registerProvider(scheme: keyof typeof SCHEMES = 'brass'): Promise<ProviderStatus> {
   const r = await runHelper('register', { info: authenticatorInfo().toString('base64'), logo: Buffer.from(markSvg(scheme)).toString('base64') });
   if (typeof r.hr === 'string' && r.hr.startsWith('0x8')) throw new Error(`Windows refused the registration (${r.hr}).`);
@@ -212,7 +213,7 @@ export function markSvg(scheme: keyof typeof SCHEMES): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 72 72"><rect x="2.75" y="2.75" width="66.5" height="66.5" rx="15.25" fill="${m.body}" stroke="${m.edge}" stroke-width="1.5"/><circle cx="36" cy="36" r="23.75" fill="none" stroke="${m.metal}" stroke-width="6.5"/>${bolts}${spokes}<circle cx="36" cy="36" r="5" fill="${m.metal}"/><circle cx="36" cy="36" r="1.8" fill="${m.body}"/></svg>`;
 }
 
-/** Opens Windows' passkey settings, where the user turns Strongroom on. */
+/** Opens Windows' passkey settings, where the user turns Boltwork on. */
 export function openWindowsPasskeySettings() {
   execFile('explorer.exe', ['ms-settings:savedpasskeys'], () => undefined);
 }

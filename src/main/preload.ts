@@ -14,4 +14,4 @@ const bridge: Bridge = {
   },
 };
 
-contextBridge.exposeInMainWorld('strongroom', bridge);
+contextBridge.exposeInMainWorld('boltwork', bridge);

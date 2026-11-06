@@ -189,7 +189,7 @@ export function ItemDetail({ id }: { id: string }) {
               if (await askConfirm('Export the private key?', 'The exported file isn’t encrypted. Anyone who gets a copy can sign in with this key.', 'Export key')) void run(api.sshExport(item.id, 'private'));
             } },
           ] : []),
-          { label: 'Copy item link', onClick: () => run(api.copy(`strongroom://item/${item.id}`, false), 'Link copied (opens this item in Strongroom)') },
+          { label: 'Copy item link', onClick: () => run(api.copy(`boltwork://item/${item.id}`, false), 'Link copied (opens this item in Boltwork)') },
           { separator: true },
           ...ignorable.map(x => {
             const ignored = item.watchtowerIgnore.includes(x.check);

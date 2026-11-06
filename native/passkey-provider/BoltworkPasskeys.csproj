@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
-    Strongroom's Windows passkey provider: a small packaged COM server that Windows' WebAuthn platform
-    calls when you pick Strongroom in its passkey dialog. It relays each request to the Strongroom app.
+    Boltwork's Windows passkey provider: a small packaged COM server that Windows' WebAuthn platform
+    calls when you pick Boltwork in its passkey dialog. It relays each request to the Boltwork app.
     Build: dotnet publish -c Release (see scripts/build-passkey-provider.mjs).
   -->
   <PropertyGroup>
@@ -10,8 +10,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <AssemblyName>StrongroomPasskeys</AssemblyName>
-    <RootNamespace>Strongroom.Passkeys</RootNamespace>
+    <AssemblyName>BoltworkPasskeys</AssemblyName>
+    <RootNamespace>Boltwork.Passkeys</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>

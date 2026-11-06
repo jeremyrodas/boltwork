@@ -25,6 +25,7 @@ export interface SealedRecord {
   data?: Sealed;
 }
 
+// Internal format labels keep the app's earlier name (Strongroom): changing them would make existing data unreadable.
 export const recordAad = (kind: RecordKind, id: string) => `strongroom:record:v2:${kind}:${id}`;
 
 const hash = (s: string) => createHash('sha256').update(s).digest('base64');

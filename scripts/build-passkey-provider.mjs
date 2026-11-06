@@ -15,14 +15,15 @@ const root = path.resolve(import.meta.dirname, '..');
 const out = path.join(root, 'build', 'passkey-provider');
 const pkg = path.join(out, 'package');
 const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version.split('-')[0];
-const CLSID = '43df1c13-2d67-44cb-836b-ed22142063fc';
+const CLSID = '43ea18ea-3788-4d1a-8c6a-eee1f6502424';
+// The signing certificate's subject. It keeps the app's earlier name: a new certificate would have to be trusted again.
 const PUBLISHER = 'CN=Strongroom';
 
 rmSync(pkg, { recursive: true, force: true });
 mkdirSync(path.join(pkg, 'Assets'), { recursive: true });
 
 // 1. The helper itself: a self-contained, trimmed single file.
-execFileSync('dotnet', ['publish', path.join(root, 'native', 'passkey-provider', 'StrongroomPasskeys.csproj'), '-c', 'Release', '-o', pkg, '--nologo', '-v', 'q'], { stdio: 'inherit' });
+execFileSync('dotnet', ['publish', path.join(root, 'native', 'passkey-provider', 'BoltworkPasskeys.csproj'), '-c', 'Release', '-o', pkg, '--nologo', '-v', 'q'], { stdio: 'inherit' });
 for (const f of readdirSync(pkg)) if (f.endsWith('.pdb')) rmSync(path.join(pkg, f));
 
 // 2. Logos, drawn from the same vault-door mark as the app icon.
@@ -42,10 +43,10 @@ writeFileSync(path.join(pkg, 'AppxManifest.xml'), `<?xml version="1.0" encoding=
   xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap uap5 com rescap">
-  <Identity Name="Strongroom.PasskeyProvider" Publisher="${PUBLISHER}" Version="${version}.0" ProcessorArchitecture="x64" />
+  <Identity Name="Boltwork.PasskeyProvider" Publisher="${PUBLISHER}" Version="${version}.0" ProcessorArchitecture="x64" />
   <Properties>
-    <DisplayName>Strongroom passkeys</DisplayName>
-    <PublisherDisplayName>Strongroom</PublisherDisplayName>
+    <DisplayName>Boltwork passkeys</DisplayName>
+    <PublisherDisplayName>Boltwork</PublisherDisplayName>
     <Logo>Assets\\StoreLogo.png</Logo>
   </Properties>
   <Dependencies>
@@ -55,20 +56,20 @@ writeFileSync(path.join(pkg, 'AppxManifest.xml'), `<?xml version="1.0" encoding=
     <Resource Language="en-us" />
   </Resources>
   <Applications>
-    <Application Id="StrongroomPasskeys" Executable="StrongroomPasskeys.exe" EntryPoint="Windows.FullTrustApplication">
-      <uap:VisualElements DisplayName="Strongroom passkeys" Description="Lets Windows use passkeys stored in Strongroom."
+    <Application Id="BoltworkPasskeys" Executable="BoltworkPasskeys.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Boltwork passkeys" Description="Lets Windows use passkeys stored in Boltwork."
         BackgroundColor="transparent" Square150x150Logo="Assets\\Square150x150Logo.png" Square44x44Logo="Assets\\Square44x44Logo.png" AppListEntry="none" />
       <Extensions>
         <com:Extension Category="windows.comServer">
           <com:ComServer>
-            <com:ExeServer Executable="StrongroomPasskeys.exe" Arguments="-PluginActivated" DisplayName="Strongroom">
-              <com:Class Id="${CLSID}" DisplayName="Strongroom" />
+            <com:ExeServer Executable="BoltworkPasskeys.exe" Arguments="-PluginActivated" DisplayName="Boltwork">
+              <com:Class Id="${CLSID}" DisplayName="Boltwork" />
             </com:ExeServer>
           </com:ComServer>
         </com:Extension>
-        <uap5:Extension Category="windows.appExecutionAlias" Executable="StrongroomPasskeys.exe" EntryPoint="Windows.FullTrustApplication">
+        <uap5:Extension Category="windows.appExecutionAlias" Executable="BoltworkPasskeys.exe" EntryPoint="Windows.FullTrustApplication">
           <uap5:AppExecutionAlias>
-            <uap5:ExecutionAlias Alias="strongroom-passkeys.exe" />
+            <uap5:ExecutionAlias Alias="boltwork-passkeys.exe" />
           </uap5:AppExecutionAlias>
         </uap5:Extension>
       </Extensions>
@@ -85,15 +86,21 @@ console.log(`Package layout: ${pkg}`);
 if (process.argv.includes('--msix')) {
   const tools = findSdkTools();
   if (!tools) { console.error('makeappx/signtool not found: install the Windows SDK, or the Microsoft.Windows.SDK.BuildTools NuGet package.'); process.exit(1); }
-  const msix = path.join(out, `Strongroom-Passkeys-${version}.msix`);
+  const msix = path.join(out, `Boltwork-Passkeys-${version}.msix`);
   execFileSync(tools.makeappx, ['pack', '/o', '/d', pkg, '/p', msix], { stdio: 'inherit' });
   // The signing certificate lives outside the repo so a clean build can't lose it; updates must use the same one.
-  const pfx = process.env.STRONGROOM_PFX ?? path.join(process.env.APPDATA ?? '', 'Strongroom', 'signing', 'strongroom-dev.pfx');
+  // Kept in the app's data folder (Strongroom, the earlier name, on older setups). Same certificate for every update.
+  const pfx = process.env.BOLTWORK_PFX ?? signingFile('strongroom-dev.pfx');
   if (!existsSync(pfx)) throw new Error(`Signing certificate missing: ${pfx} (see native/passkey-provider/README.md).`);
-  execFileSync(tools.signtool, ['sign', '/fd', 'SHA256', '/f', pfx, '/p', process.env.STRONGROOM_PFX_PASSWORD ?? 'strongroom', msix], { stdio: 'inherit' });
+  execFileSync(tools.signtool, ['sign', '/fd', 'SHA256', '/f', pfx, '/p', process.env.BOLTWORK_PFX_PASSWORD ?? 'strongroom', msix], { stdio: 'inherit' });
   mkdirSync(path.join(root, 'release'), { recursive: true });
   copyFileSync(msix, path.join(root, 'release', path.basename(msix)));
   console.log(`Signed package: ${msix}`);
+}
+
+function signingFile(name) {
+  const dirs = ['Boltwork', 'Strongroom'].map(d => path.join(process.env.APPDATA ?? '', d, 'signing', name));
+  return dirs.find(existsSync) ?? dirs[0];
 }
 
 function findSdkTools() {

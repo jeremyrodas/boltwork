@@ -1,13 +1,13 @@
-// Strongroom's Windows passkey provider.
+// Boltwork's Windows passkey provider.
 //
-// Windows starts this (packaged) program as a COM server when you pick Strongroom in its passkey dialog,
+// Windows starts this (packaged) program as a COM server when you pick Boltwork in its passkey dialog,
 // and calls IPluginAuthenticator with CTAP2 requests. Each request is checked against Windows' signing
-// key, so other programs can't call us pretending to be Windows, and then relayed to the Strongroom app
+// key, so other programs can't call us pretending to be Windows, and then relayed to the Boltwork app
 // over a local pipe. The app asks you, does the cryptography with the passkeys in your vault, and replies.
 //
-// The same program has a few commands the Strongroom app runs through its execution alias
-// (strongroom-passkeys.exe), because Windows only accepts them from the packaged app:
-//   register     add Strongroom as a passkey provider     (stdin: {"info": base64 getInfo, "logo": base64 svg})
+// The same program has a few commands the Boltwork app runs through its execution alias
+// (boltwork-passkeys.exe), because Windows only accepts them from the packaged app:
+//   register     add Boltwork as a passkey provider     (stdin: {"info": base64 getInfo, "logo": base64 svg})
 //   unregister   remove it
 //   status       {"state": "enabled" | "disabled" | "not-registered"}
 //   sync         replace the passkey list Windows shows   (stdin: [{credentialId, rpId, rpName, userId, userName, userDisplayName}])
@@ -20,12 +20,12 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace Strongroom.Passkeys;
+namespace Boltwork.Passkeys;
 
 static unsafe class Program
 {
-    public static readonly Guid Clsid = new("43df1c13-2d67-44cb-836b-ed22142063fc");
-    public const string PipeName = "strongroom-passkeys";
+    public static readonly Guid Clsid = new("43ea18ea-3788-4d1a-8c6a-eee1f6502424");
+    public const string PipeName = "boltwork-passkeys";
     static readonly StrategyBasedComWrappers ComWrappers = new();
     static readonly ManualResetEventSlim Done = new();
     public static long LastActivity = Environment.TickCount64;
@@ -88,9 +88,9 @@ static unsafe class Program
         byte[] info = Convert.FromBase64String((string)input["info"]!);
         string logo = (string?)input["logo"] ?? "";
         // Windows wants an RP ID for the provider itself (used if it ever signs in to its own service).
-        string rpId = (string?)input["rpId"] ?? "strongroom.app";
+        string rpId = (string?)input["rpId"] ?? "boltwork.app";
         var clsid = Clsid;
-        fixed (char* name = "Strongroom")
+        fixed (char* name = "Boltwork")
         fixed (char* pRpId = rpId)
         fixed (char* svg = logo)
         fixed (byte* pInfo = info)
@@ -183,7 +183,7 @@ static unsafe class Program
         finally { Native.WebAuthNPluginFreePublicKeyResponse(pbKey); }
     }
 
-    // ---------- talking to the Strongroom app ----------
+    // ---------- talking to the Boltwork app ----------
 
     /// <summary>Sends one request to the app and waits for its reply, starting the app if it isn't running.</summary>
     public static JsonNode? Ask(JsonObject msg, int timeoutMs)
@@ -222,20 +222,20 @@ static unsafe class Program
         return null;
     }
 
-    /// <summary>Starts Strongroom using the launch details it saved the last time it ran.</summary>
+    /// <summary>Starts Boltwork using the launch details it saved the last time it ran.</summary>
     static bool LaunchApp()
     {
         try
         {
-            var file = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Strongroom", "passkey-provider.json");
+            var file = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Boltwork", "passkey-provider.json");
             var j = JsonNode.Parse(File.ReadAllText(file))!;
             var psi = new ProcessStartInfo((string)j["command"]!) { UseShellExecute = false, WorkingDirectory = (string?)j["cwd"] ?? "" };
             foreach (var a in j["args"]?.AsArray() ?? []) psi.ArgumentList.Add((string)a!);
             Process.Start(psi);
-            Log("started Strongroom");
+            Log("started Boltwork");
             return true;
         }
-        catch (Exception e) { Log($"couldn't start Strongroom: {e.Message}"); return false; }
+        catch (Exception e) { Log($"couldn't start Boltwork: {e.Message}"); return false; }
     }
 
     // ---------- helpers ----------
@@ -249,7 +249,7 @@ static unsafe class Program
     {
         try
         {
-            var dir = Path.Combine(Path.GetTempPath(), "strongroom-passkeys");
+            var dir = Path.Combine(Path.GetTempPath(), "boltwork-passkeys");
             Directory.CreateDirectory(dir);
             File.AppendAllText(Path.Combine(dir, "provider.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{Environment.ProcessId}] {s}\n");
         }

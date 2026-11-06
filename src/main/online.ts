@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { OnlineChecks } from '../core/watchtower';
 
-const UA = { 'User-Agent': 'Strongroom-Password-Manager' };
+const UA = { 'User-Agent': 'Boltwork-Password-Manager' };
 const DAY = 86_400_000;
 
 async function cachedJson<T>(cacheDir: string, name: string, url: string): Promise<T> {

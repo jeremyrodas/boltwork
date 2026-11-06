@@ -48,7 +48,7 @@ function frame(m: object): Buffer {
 /** Runs the native host like Chrome does and collects one reply per message. */
 function talk(origin: string, sock: string, msgs: object[]): Promise<Record<string, unknown>[]> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [path.resolve('dist/nmhost.js'), origin], { env: { ...process.env, STRONGROOM_BROWSER_SOCK: sock } });
+    const child = spawn(process.execPath, [path.resolve('dist/nmhost.js'), origin], { env: { ...process.env, BOLTWORK_BROWSER_SOCK: sock } });
     let out = Buffer.alloc(0);
     const replies: Record<string, unknown>[] = [];
     const timer = setTimeout(() => { child.kill(); reject(new Error('timeout')); }, 10_000);
@@ -125,8 +125,8 @@ test('bridge: declined pairing gives no token', async () => {
 
 test('native host relays Chrome-framed messages to the app pipe, and only for our extension', async () => {
   const { store, dir } = await setup();
-  const sock = process.platform === 'win32' ? `\\\\.\\pipe\\strongroom-test-${process.pid}` : path.join(dir, 'b.sock');
-  process.env.STRONGROOM_BROWSER_SOCK = sock;
+  const sock = process.platform === 'win32' ? `\\\\.\\pipe\\boltwork-test-${process.pid}` : path.join(dir, 'b.sock');
+  process.env.BOLTWORK_BROWSER_SOCK = sock;
   let approvals = 0;
   await startBrowserHost({
     store: () => store, pairingsFile: path.join(dir, 'pairings.json'), version: 'test',
@@ -192,7 +192,7 @@ test('passkeys through the bridge: create and sign in with approval, verified li
   decision = { action: 'cancel' };
   assert.equal((await bridge.handle({ token, type: 'passkeyGet', url: 'https://example.com', request: { challenge: ch() } }, ORIGIN) as { error: { name: string } }).error.name, 'NotAllowedError');
 
-  // A site Strongroom has no passkey for goes to the browser, with no prompt.
+  // A site Boltwork has no passkey for goes to the browser, with no prompt.
   const n = prompts.length;
   assert.deepEqual(await bridge.handle({ token, type: 'passkeyGet', url: 'https://other.com', request: { challenge: ch() } }, ORIGIN), { fallback: true });
   assert.equal(prompts.length, n);

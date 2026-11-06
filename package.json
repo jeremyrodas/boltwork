@@ -1,8 +1,8 @@
 {
-  "name": "strongroom",
-  "version": "0.3.0",
+  "name": "boltwork",
+  "version": "0.4.0",
   "private": true,
-  "description": "Strongroom: a local-first, end-to-end encrypted password manager",
+  "description": "Boltwork: a local-first, end-to-end encrypted password manager",
   "main": "dist/main.js",
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -43,11 +43,11 @@
     "electron@45.2.3": true,
     "esbuild@0.28.2": true
   },
-  "productName": "Strongroom",
-  "author": "Strongroom contributors",
+  "productName": "Boltwork",
+  "author": "Boltwork contributors",
   "build": {
-    "appId": "app.strongroom.desktop",
-    "productName": "Strongroom",
+    "appId": "app.boltwork.desktop",
+    "productName": "Boltwork",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -72,10 +72,10 @@
     "nsis": {
       "oneClick": true,
       "perMachine": false,
-      "shortcutName": "Strongroom",
+      "shortcutName": "Boltwork",
       "deleteAppDataOnUninstall": false,
-      "artifactName": "Strongroom-Setup-${version}.exe",
-      "uninstallDisplayName": "Strongroom"
+      "artifactName": "Boltwork-Setup-${version}.exe",
+      "uninstallDisplayName": "Boltwork"
     }
   }
 }

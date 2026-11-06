@@ -1,13 +1,13 @@
 /// <reference types="chrome" />
 /**
- * Service worker: owns the native messaging connection to Strongroom and decides what each page may get.
+ * Service worker: owns the native messaging connection to Boltwork and decides what each page may get.
  * Content scripts only learn logins that match their own frame's URL (Chrome tells us the sender's URL,
  * so a page cannot lie about it). The popup may fill any login the user picks by hand.
  */
 import type { BridgeMatch } from '../core/browserBridge';
 import type { ExtMessage, PendingSave, PopupState } from './messages';
 
-const HOST = 'com.strongroom.browser';
+const HOST = 'com.boltwork.browser';
 let port: chrome.runtime.Port | null = null;
 let nextId = 1;
 const pending = new Map<number, (body: Record<string, unknown>) => void>();

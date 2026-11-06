@@ -3,7 +3,7 @@
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 
-namespace Strongroom.Passkeys;
+namespace Boltwork.Passkeys;
 
 [StructLayout(LayoutKind.Sequential)]
 unsafe struct PluginOperationRequest

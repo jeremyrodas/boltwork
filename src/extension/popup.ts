@@ -28,19 +28,19 @@ async function render() {
   app.replaceChildren(h('p', { className: 'muted center' }, 'Connecting…'));
   const s = await send<PopupState>({ type: 'popupState' });
   if (s.state === 'no-host') {
-    screen('Strongroom isn’t set up for this browser',
-      'Open Strongroom once (Settings → Browser Extension) so it can register with your browser, then restart the browser.',
+    screen('Boltwork isn’t set up for this browser',
+      'Open Boltwork once (Settings → Browser Extension) so it can register with your browser, then restart the browser.',
       h('button', { className: 'btn', onclick: render }, 'Try again'));
     return;
   }
   if (s.state === 'not-running') {
-    screen('Strongroom isn’t running', 'Start the Strongroom app, then try again.', h('button', { className: 'btn primary', onclick: render }, 'Try again'));
+    screen('Boltwork isn’t running', 'Start the Boltwork app, then try again.', h('button', { className: 'btn primary', onclick: render }, 'Try again'));
     return;
   }
   if (s.state === 'unpaired') { renderPair(); return; }
   if (s.state === 'locked') {
-    screen('Strongroom is locked', 'Unlock it to fill and save logins.',
-      h('button', { className: 'btn primary', onclick: async () => { await send({ type: 'open' }); window.close(); } }, 'Unlock Strongroom'));
+    screen('Boltwork is locked', 'Unlock it to fill and save logins.',
+      h('button', { className: 'btn primary', onclick: async () => { await send({ type: 'open' }); window.close(); } }, 'Unlock Boltwork'));
     return;
   }
   if (s.state === 'error') { screen('Something went wrong', s.detail ?? '', h('button', { className: 'btn', onclick: render }, 'Try again')); return; }
@@ -49,18 +49,18 @@ async function render() {
 
 function renderPair() {
   const code = Array.from(crypto.getRandomValues(new Uint8Array(3)), b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-  const btn = h('button', { className: 'btn primary' }, 'Connect to Strongroom');
+  const btn = h('button', { className: 'btn primary' }, 'Connect to Boltwork');
   const status = h('p', { className: 'muted' });
   btn.addEventListener('click', async () => {
     btn.setAttribute('disabled', '');
-    status.replaceChildren('Strongroom is asking you to confirm. Check that it shows ', h('b', { className: 'code' }, `${code.slice(0, 3)}-${code.slice(3)}`), '.');
+    status.replaceChildren('Boltwork is asking you to confirm. Check that it shows ', h('b', { className: 'code' }, `${code.slice(0, 3)}-${code.slice(3)}`), '.');
     const brand = (navigator as Navigator & { userAgentData?: { brands: { brand: string }[] } }).userAgentData?.brands
       .map(b => b.brand).find(b => !/Not.A.Brand|Chromium/i.test(b)) ?? 'Browser';
     const r = await send<{ ok: boolean; error?: string }>({ type: 'pair', code: `${code.slice(0, 3)}-${code.slice(3)}`, name: brand });
     if (r.ok) await render();
-    else { btn.removeAttribute('disabled'); status.textContent = r.error === 'denied' ? 'Connection was declined in Strongroom.' : `Couldn’t connect (${r.error ?? 'no answer'}).`; }
+    else { btn.removeAttribute('disabled'); status.textContent = r.error === 'denied' ? 'Connection was declined in Boltwork.' : `Couldn’t connect (${r.error ?? 'no answer'}).`; }
   });
-  screen('Connect this browser', 'Strongroom will ask you to approve this browser once. After that it can fill and save your logins.', btn, status);
+  screen('Connect this browser', 'Boltwork will ask you to approve this browser once. After that it can fill and save your logins.', btn, status);
 }
 
 async function renderMain() {
@@ -70,7 +70,7 @@ async function renderMain() {
   const list = h('div', { className: 'list' });
   const toast = h('div', { className: 'toast' });
   const header = h('div', { className: 'top' }, h('div', { className: 'logo' }), search,
-    h('button', { className: 'icon', title: 'Open Strongroom', onclick: async () => { await send({ type: 'open' }); window.close(); } }, '↗'));
+    h('button', { className: 'icon', title: 'Open Boltwork', onclick: async () => { await send({ type: 'open' }); window.close(); } }, '↗'));
   app.replaceChildren(header, list, toast);
 
   const flash = (t: string) => { toast.textContent = t; toast.classList.add('on'); setTimeout(() => toast.classList.remove('on'), 1500); };

@@ -31,14 +31,15 @@ import { generateSshKey, importSshKey } from '../core/ssh';
 import { repairSshItems } from '../core/sshRepair';
 import { QuickUnlock, QuickUnlockError } from '../core/quickUnlock';
 import { helloAvailable, helloDelete, helloSign } from './hello';
+import { moveFromStrongroom } from './rename';
 
 // ---------- single instance & CLI ----------
 
-// Separate profiles (e.g. for testing): STRONGROOM_PROFILE=C:\path\to\dir
-if (process.env.STRONGROOM_PROFILE) app.setPath('userData', process.env.STRONGROOM_PROFILE);
+// Separate profiles (e.g. for testing): BOLTWORK_PROFILE=C:\path\to\dir
+if (process.env.BOLTWORK_PROFILE) app.setPath('userData', process.env.BOLTWORK_PROFILE);
 
-// Matches the installer's appId, so Windows groups the taskbar button and notifications under Strongroom.
-if (process.platform === 'win32') app.setAppUserModelId('app.strongroom.desktop');
+// Matches the installer's appId, so Windows groups the taskbar button and notifications under Boltwork.
+if (process.platform === 'win32') app.setAppUserModelId('app.boltwork.desktop');
 
 const argv = process.argv.slice(1);
 if (!app.requestSingleInstanceLock({ argv })) {
@@ -47,6 +48,7 @@ if (!app.requestSingleInstanceLock({ argv })) {
 }
 
 const userData = app.getPath('userData');
+if (!process.env.BOLTWORK_PROFILE) moveFromStrongroom(userData);
 const vaultDir = path.join(userData, 'vault');
 const settingsFile = path.join(userData, 'settings.json');
 const deviceFile = path.join(userData, 'device.json');
@@ -163,7 +165,7 @@ function checkInWorker(s: VaultStore, onProgress: (done: number, total: number, 
       cleanup();
       if (m.type === 'done') resolve(m.report); else reject(new Error(m.message));
     };
-    const onExit = () => { cleanup(); reject(new Error('Strongroom locked.')); };
+    const onExit = () => { cleanup(); reject(new Error('Boltwork locked.')); };
     const cleanup = () => { w.off('message', onMessage); w.off('exit', onExit); };
     w.on('message', onMessage);
     w.on('exit', onExit);
@@ -213,7 +215,7 @@ function forWindows(data: VaultData): VaultData {
 }
 
 function requireStore(): VaultStore {
-  if (!store) throw new Error('Strongroom is locked.');
+  if (!store) throw new Error('Boltwork is locked.');
   return store;
 }
 
@@ -261,7 +263,7 @@ function copy(text: string, secret: boolean) {
     if ((await clipboard.readText()) === text) {
       clipboard.clear();
       if (settings.notifyClipboardCleared && Notification.isSupported()) {
-        new Notification({ title: 'Strongroom', body: 'Copied item cleared from the clipboard.', silent: true }).show();
+        new Notification({ title: 'Boltwork', body: 'Copied item cleared from the clipboard.', silent: true }).show();
       }
     }
     lastCopied = null;
@@ -308,7 +310,7 @@ function hardenWindow(win: BrowserWindow) {
 
 function createMainWindow(show = true) {
   mainWin = new BrowserWindow({
-    width: 1180, height: 760, minWidth: 820, minHeight: 520, show: false, title: 'Strongroom',
+    width: 1180, height: 760, minWidth: 820, minHeight: 520, show: false, title: 'Boltwork',
     icon: makeIcon(256, false, settings.colorScheme), backgroundColor: '#111318', autoHideMenuBar: true,
     webPreferences: { preload, contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
   });
@@ -341,7 +343,7 @@ function toggleMain() {
 function createQuickAccess() {
   quickWin = new BrowserWindow({
     width: 680, height: 460, show: false, frame: false, resizable: false, alwaysOnTop: true, skipTaskbar: true,
-    transparent: false, backgroundColor: '#16181d', title: 'Strongroom Quick Access',
+    transparent: false, backgroundColor: '#16181d', title: 'Boltwork Quick Access',
     webPreferences: { preload, contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
   });
   hardenWindow(quickWin);
@@ -381,9 +383,9 @@ function showLargeType(text: string) {
 function updateTray() {
   if (!tray) return;
   tray.setImage(makeIcon(16, !store, settings.colorScheme));
-  tray.setToolTip(store ? 'Strongroom (unlocked)' : 'Strongroom (locked)');
+  tray.setToolTip(store ? 'Boltwork (unlocked)' : 'Boltwork (locked)');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Open Strongroom', click: () => showMain() },
+    { label: 'Open Boltwork', click: () => showMain() },
     { label: 'Quick Access', accelerator: settings.quickAccessShortcut, click: toggleQuickAccess },
     { label: 'New Item', enabled: !!store, click: () => showMain('/new') },
     { label: 'Password Generator', enabled: !!store, click: () => showMain('/generator') },
@@ -391,7 +393,7 @@ function updateTray() {
     store ? { label: 'Lock', accelerator: settings.lockShortcut, click: lock } : { label: 'Unlock…', click: () => showMain() },
     { label: 'Settings', click: () => showMain('/settings') },
     { type: 'separator' },
-    { label: 'Quit Strongroom', click: () => { quitting = true; app.quit(); } },
+    { label: 'Quit Boltwork', click: () => { quitting = true; app.quit(); } },
   ]));
 }
 
@@ -417,7 +419,7 @@ function buildMenu() {
     ] },
     { label: 'Help', submenu: [
       { label: 'Keyboard Shortcuts', click: () => showMain('/settings/shortcuts') },
-      { label: 'About Strongroom', click: () => showMain('/settings/about') },
+      { label: 'About Boltwork', click: () => showMain('/settings/about') },
     ] },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
@@ -499,18 +501,18 @@ function emergencyKitHtml(secretKey: string): string {
   .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#84621c;font-weight:700}
   .key{font-family:Consolas,monospace;font-size:24px;letter-spacing:.06em;margin-top:6px}
   .blank{border-bottom:1px solid #999;height:34px}.small{font-size:13px;color:#444;line-height:1.5}</style></head><body>
-  <h1>Strongroom Emergency Kit</h1><div class="sub">Created ${esc(new Date().toLocaleString())} on ${esc(os.hostname())}</div>
+  <h1>Boltwork Emergency Kit</h1><div class="sub">Created ${esc(new Date().toLocaleString())} on ${esc(os.hostname())}</div>
   <div class="box"><div class="label">Secret Key</div><div class="key">${esc(secretKey)}</div></div>
   <div class="box"><div class="label">Account password</div><div class="blank"></div>
   <div class="small">Write your account password here by hand, or keep it somewhere else safe.</div></div>
-  <div class="small"><p>You need <b>both</b> your account password and your Secret Key to unlock Strongroom on a new device or after reinstalling.
-  Nobody, including the makers of Strongroom, can recover them for you.</p><p>Print this page and store it somewhere safe, like a fireproof box. Do not keep it on this computer.</p>
+  <div class="small"><p>You need <b>both</b> your account password and your Secret Key to unlock Boltwork on a new device or after reinstalling.
+  Nobody, including the makers of Boltwork, can recover them for you.</p><p>Print this page and store it somewhere safe, like a fireproof box. Do not keep it on this computer.</p>
   <p>Your vault file is stored at: <code>${esc(vaultDir)}</code>. Back up that folder to keep a copy of your data.</p></div></body></html>`;
 }
 
 async function saveEmergencyKit(): Promise<string | null> {
   const sk = currentSecretKey();
-  const { filePath, canceled } = await dialog.showSaveDialog(mainWin!, { title: 'Save Emergency Kit', defaultPath: 'Strongroom Emergency Kit.pdf', filters: [{ name: 'PDF', extensions: ['pdf'] }] });
+  const { filePath, canceled } = await dialog.showSaveDialog(mainWin!, { title: 'Save Emergency Kit', defaultPath: 'Boltwork Emergency Kit.pdf', filters: [{ name: 'PDF', extensions: ['pdf'] }] });
   if (canceled || !filePath) return null;
   const w = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } });
   try {
@@ -546,7 +548,7 @@ function quickStatus() {
 // ---------- passkey prompts (browser extension and Windows provider) ----------
 
 /**
- * Asks the user to approve making or using a passkey, in Strongroom's own prompt window (styled like the app,
+ * Asks the user to approve making or using a passkey, in Boltwork's own prompt window (styled like the app,
  * on top of the browser or Windows' passkey window). One prompt at a time; closing it cancels.
  */
 let passkeyWin: BrowserWindow | null = null;
@@ -572,7 +574,7 @@ function approvePasskey(p: PasskeyPrompt): Promise<PasskeyDecision> {
     passkeyWin = new BrowserWindow({
       width: PROMPT_WIDTH, height: 320, x: Math.round(x + (width - PROMPT_WIDTH) / 2), y: Math.round(y + height * 0.24),
       show: false, frame: false, resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
-      alwaysOnTop: true, skipTaskbar: false, title: p.kind === 'create' ? 'Strongroom: save passkey' : 'Strongroom: sign in with passkey',
+      alwaysOnTop: true, skipTaskbar: false, title: p.kind === 'create' ? 'Boltwork: save passkey' : 'Boltwork: sign in with passkey',
       backgroundColor: '#111318', icon: makeIcon(256, false, settings.colorScheme),
       webPreferences: { preload, contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
     });
@@ -598,7 +600,7 @@ function showPasskeyWin() {
 }
 
 /**
- * While Windows' passkey window waits on Strongroom it stays on top of everything, so the lock screen and the
+ * While Windows' passkey window waits on Boltwork it stays on top of everything, so the lock screen and the
  * approval prompt are raised above it and given the keyboard; afterwards the window goes back to how it was.
  */
 let onTopDepth = 0;
@@ -805,7 +807,7 @@ const handlers: Handlers = {
     const { vaults, items } = requireStore().snapshot();
     const ext = format === 'csv' ? 'csv' : 'json';
     const { filePath, canceled } = await dialog.showSaveDialog(mainWin!, {
-      title: 'Export', defaultPath: `Strongroom Export ${new Date().toISOString().slice(0, 10)}.${ext}`, filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
+      title: 'Export', defaultPath: `Boltwork Export ${new Date().toISOString().slice(0, 10)}.${ext}`, filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
     });
     if (canceled || !filePath) return null;
     if (format === 'csv') fs.writeFileSync(filePath, exportCsv(vaults, items));
@@ -863,7 +865,7 @@ const handlers: Handlers = {
     const item = requireStore().getItem(itemId);
     const f = (id: string) => item.fields.find(x => x.id === id)?.value ?? '';
     if (item.category !== 'sshKey' || !f('privateKey')) throw new Error('This item has no SSH key.');
-    const base = item.title.replace(/[^\w.-]+/g, '_').toLowerCase() || 'id_strongroom';
+    const base = item.title.replace(/[^\w.-]+/g, '_').toLowerCase() || 'id_boltwork';
     const { filePath, canceled } = await dialog.showSaveDialog(mainWin!, {
       title: which === 'private' ? 'Export private key' : 'Save public key',
       defaultPath: which === 'private' ? base : `${base}.pub`,
@@ -966,13 +968,15 @@ ipcMain.handle('api', async (e, method: keyof Api, args: unknown[]) => {
 
 // ---------- app lifecycle ----------
 
+const isAppLink = (a: string) => /^(boltwork|strongroom):\/\//i.test(a);
+
 function handleArgs(args: string[]) {
-  const url = args.find(a => a.startsWith('strongroom://'));
+  const url = args.find(isAppLink);
   if (args.includes('--lock')) { lock(); return; }
   if (args.includes('--toggle')) { toggleMain(); return; }
   if (args.includes('--quick-access')) { toggleQuickAccess(); return; }
   if (url) {
-    const m = url.match(/^strongroom:\/\/(item|open)\/([0-9a-f]+)/i);
+    const m = url.match(/^(?:boltwork|strongroom):\/\/(item|open)\/([0-9a-f]+)/i);
     showMain(m ? `/item/${m[2]}` : undefined);
     return;
   }
@@ -985,9 +989,11 @@ app.on('second-instance', (_e, _argv, _cwd, extra) => {
 
 app.whenReady().then(async () => {
   await ready();
-  if (!app.isDefaultProtocolClient('strongroom')) {
-    if (app.isPackaged) app.setAsDefaultProtocolClient('strongroom');
-    else app.setAsDefaultProtocolClient('strongroom', process.execPath, [path.resolve(process.argv[1] ?? '.')]);
+  // boltwork:// links, and strongroom:// ones copied before the rename.
+  for (const scheme of ['boltwork', 'strongroom']) {
+    if (app.isDefaultProtocolClient(scheme)) continue;
+    if (app.isPackaged) app.setAsDefaultProtocolClient(scheme);
+    else app.setAsDefaultProtocolClient(scheme, process.execPath, [path.resolve(process.argv[1] ?? '.')]);
   }
   buildMenu();
   tray = new Tray(makeIcon(16, true, settings.colorScheme));
@@ -1005,7 +1011,7 @@ app.whenReady().then(async () => {
   });
   if (settings.sshAgentEnabled) void setSshAgentEnabled(true);
   if (settings.browserIntegration) void setBrowserIntegration(true);
-  // Windows passkey provider: always listening, so Windows can reach Strongroom once the user turns it on.
+  // Windows passkey provider: always listening, so Windows can reach Boltwork once the user turns it on.
   startPasskeyProvider({
     store: () => store, approve: approvePasskey, waitForUnlock, keepOnTop, onChanged: () => changed(), userData,
     launch: app.isPackaged
@@ -1014,7 +1020,7 @@ app.whenReady().then(async () => {
   });
   powerMonitor.on('suspend', () => { if (settings.lockOnSleep) lock(); });
   powerMonitor.on('lock-screen', () => { if (settings.lockOnScreenLock) lock(); });
-  const url = argv.find(a => a.startsWith('strongroom://'));
+  const url = argv.find(isAppLink);
   if (url) handleArgs([url]);
 });
 
@@ -1030,7 +1036,7 @@ const extensionFolder = () => path.join(unpackedRoot, 'dist-extension');
 
 async function setBrowserIntegration(on: boolean) {
   if (!on) { stopBrowserHost(); return; }
-  if (!process.env.STRONGROOM_NO_BROWSER_REGISTER) {
+  if (!process.env.BOLTWORK_NO_BROWSER_REGISTER) {
     await registerNativeHost(path.join(userData, 'native-messaging'), path.join(unpackedRoot, 'dist', 'nmhost.js'));
   }
   await startBrowserHost({
@@ -1046,9 +1052,9 @@ async function setBrowserIntegration(on: boolean) {
       app.focus({ steal: true });
       const opts = {
         type: 'question' as const,
-        title: 'Strongroom: connect browser',
-        message: `Connect ${name} to Strongroom?`,
-        detail: `The Strongroom extension in ${name} is asking to fill and save logins.
+        title: 'Boltwork: connect browser',
+        message: `Connect ${name} to Boltwork?`,
+        detail: `The Boltwork extension in ${name} is asking to fill and save logins.
 
 Only connect if the extension shows this code:
 

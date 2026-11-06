@@ -5,7 +5,7 @@
  */
 import { spawn } from 'node:child_process';
 
-const CREDENTIAL = 'Strongroom';
+const CREDENTIAL = 'Boltwork';
 
 const SCRIPT = String.raw`
 $ErrorActionPreference = 'Stop'
@@ -61,9 +61,9 @@ function run(req: Record<string, unknown>, timeoutMs: number): Promise<Record<st
 
 const MESSAGES: Record<string, string> = {
   UserCanceled: 'Windows Hello was cancelled.',
-  NotFound: 'The Windows Hello key for Strongroom is missing. Enter your account password, then turn Windows Hello on again.',
+  NotFound: 'The Windows Hello key for Boltwork is missing. Enter your account password, then turn Windows Hello on again.',
   UserPrefersPassword: 'Windows Hello was cancelled.',
-  CredentialAlreadyExists: 'A Windows Hello key for Strongroom already exists.',
+  CredentialAlreadyExists: 'A Windows Hello key for Boltwork already exists.',
   SecurityDeviceLocked: 'Windows Hello is locked after too many attempts. Use your account password.',
   NotSupported: 'Windows Hello isn’t set up on this computer.',
 };
@@ -72,7 +72,7 @@ export async function helloAvailable(): Promise<boolean> {
   try { return !!(await run({ cmd: 'available' }, 20_000)).available; } catch { return false; }
 }
 
-/** Signs `challenge` with the Strongroom Hello key, showing the Windows Hello prompt. */
+/** Signs `challenge` with the Boltwork Hello key, showing the Windows Hello prompt. */
 export async function helloSign(challenge: Uint8Array, create: boolean): Promise<Uint8Array> {
   const r = await run({ cmd: 'sign', create, challenge: Buffer.from(challenge).toString('base64') }, 120_000);
   if (!r.ok) throw new Error(MESSAGES[String(r.status)] ?? `Windows Hello failed (${r.status}${r.detail ? `: ${r.detail}` : ''}).`);

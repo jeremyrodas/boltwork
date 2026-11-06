@@ -8,7 +8,7 @@ import path from 'node:path';
 import { generateSshKey, importSshKey, sshPublicBlob, sshSign, sshString, SshReader, SSH_AGENT_RSA_SHA2_256 } from '../src/core/ssh';
 import { startAgent, type AgentKey } from '../src/core/sshAgent';
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'strongroom-ssh-'));
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'boltwork-ssh-'));
 const WIN_OPENSSH = 'C:\\Windows\\System32\\OpenSSH';
 const sshKeygen = process.platform === 'win32' && fs.existsSync(`${WIN_OPENSSH}\\ssh-keygen.exe`) ? `${WIN_OPENSSH}\\ssh-keygen.exe` : 'ssh-keygen';
 const sshAdd = process.platform === 'win32' && fs.existsSync(`${WIN_OPENSSH}\\ssh-add.exe`) ? `${WIN_OPENSSH}\\ssh-add.exe` : 'ssh-add';
@@ -83,7 +83,7 @@ test('SSH agent lists keys and signs for real OpenSSH clients; denial is respect
   const rsa = generateSshKey('rsa2048', 'agent-rsa');
   const keys: AgentKey[] = [ed, rsa].map((k, i) => ({ id: String(i), blob: sshPublicBlob(k.privateKey), comment: k.publicKey.split(' ')[2] }));
   let allow = true;
-  const sock = process.platform === 'win32' ? `\\\\.\\pipe\\strongroom-test-${randomBytes(4).toString('hex')}` : path.join(dir, 'agent.sock');
+  const sock = process.platform === 'win32' ? `\\\\.\\pipe\\boltwork-test-${randomBytes(4).toString('hex')}` : path.join(dir, 'agent.sock');
   const server = await startAgent(sock, {
     listKeys: async () => keys,
     sign: async (key, data, flags) => (allow ? sshSign([ed, rsa][Number(key.id)].privateKey, data, flags) : null),
@@ -102,7 +102,7 @@ test('SSH agent lists keys and signs for real OpenSSH clients; denial is respect
       const pubFile = path.join(dir, `k${k.keyType[0]}.pub`);
       const msgFile = path.join(dir, 'msg.txt');
       fs.writeFileSync(pubFile, `${k.publicKey}\n`);
-      fs.writeFileSync(msgFile, 'hello from strongroom');
+      fs.writeFileSync(msgFile, 'hello from boltwork');
       await run(sshKeygen, ['-Y', 'sign', '-f', pubFile, '-n', 'file', msgFile]);
       const out = await run(sshKeygen, ['-Y', 'check-novalidate', '-n', 'file', '-f', pubFile, '-s', `${msgFile}.sig`], fs.readFileSync(msgFile));
       assert.match(out, /Good "file" signature/);

@@ -1,4 +1,4 @@
-/** Runs the SSH agent inside Strongroom: serves SSH Key items from the vault and asks before each use. */
+/** Runs the SSH agent inside Boltwork: serves SSH Key items from the vault and asks before each use. */
 import { app, dialog, Notification } from 'electron';
 import type net from 'node:net';
 import type { SshAgentStatus } from '../core/api';
@@ -28,7 +28,7 @@ async function waitForUnlock(timeoutMs = 60_000): Promise<VaultStore | null> {
   const s = host.store();
   if (s) return s;
   host.requestUnlock();
-  if (Notification.isSupported()) new Notification({ title: 'Strongroom', body: 'An SSH client wants to use a key. Unlock Strongroom to continue.' }).show();
+  if (Notification.isSupported()) new Notification({ title: 'Boltwork', body: 'An SSH client wants to use a key. Unlock Boltwork to continue.' }).show();
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     await new Promise(r => setTimeout(r, 300));
@@ -59,10 +59,10 @@ async function approve(key: AgentKey, title: string, fingerprint: string): Promi
   app.focus({ steal: true });
   const { response } = await dialog.showMessageBox({
     type: 'question',
-    title: 'Strongroom: SSH key request',
+    title: 'Boltwork: SSH key request',
     message: `Allow an SSH client to use “${title}”?`,
     detail: `${fingerprint}\n\nA program on this computer (such as ssh or git) is asking to sign in with this key. Only allow it if you just ran that command.`,
-    buttons: ['Allow', 'Allow until Strongroom locks', 'Deny'],
+    buttons: ['Allow', 'Allow until Boltwork locks', 'Deny'],
     defaultId: 0,
     cancelId: 2,
     noLink: true,

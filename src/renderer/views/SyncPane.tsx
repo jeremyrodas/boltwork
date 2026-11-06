@@ -12,7 +12,7 @@ const ago = (t?: number) => {
   return s < 10 ? 'just now' : s < 90 ? `${s} seconds ago` : s < 5400 ? `${Math.round(s / 60)} minutes ago` : new Date(t).toLocaleString();
 };
 
-/** Settings → Sync: connect this vault to a self-hosted Strongroom server. */
+/** Settings → Sync: connect this vault to a self-hosted Boltwork server. */
 export function SyncPane() {
   const { run } = useApp();
   const [status, setStatus] = useState<SyncStatus | null>(null);
@@ -32,7 +32,7 @@ export function SyncPane() {
     <div className="settings-section">
       <h3>Sync</h3>
       {!status.configured ? (<>
-        <p className="muted">Keep this vault in step across your computers through a Strongroom server you run yourself (for example in Docker).
+        <p className="muted">Keep this vault in step across your computers through a Boltwork server you run yourself (for example in Docker).
           The server only ever stores encrypted data: it never sees your password, your Secret Key or anything in your vault.</p>
         <Button kind="primary" onClick={() => setSetup(true)}>Set up sync…</Button>
       </>) : (<>
@@ -55,11 +55,11 @@ export function SyncPane() {
     </div>
     <div className="settings-section">
       <h3>Add another computer</h3>
-      <p className="muted">Install Strongroom there and choose <b>Sign in to your server</b> on the welcome screen. You’ll need the server address, your email, your account password and your Secret Key (it’s in your Emergency Kit).</p>
+      <p className="muted">Install Boltwork there and choose <b>Sign in to your server</b> on the welcome screen. You’ll need the server address, your email, your account password and your Secret Key (it’s in your Emergency Kit).</p>
     </div>
     <div className="settings-section">
       <h3>Run your own server</h3>
-      <p className="muted">The server is in the <code>server/</code> folder of the Strongroom source. With Docker, run <code>docker compose up -d</code> there, then put it behind HTTPS (Caddy, Traefik or nginx). Only the first account can sign up unless you set <code>SIGNUPS=open</code>.</p>
+      <p className="muted">The server is in the <code>server/</code> folder of the Boltwork source. With Docker, run <code>docker compose up -d</code> there, then put it behind HTTPS (Caddy, Traefik or nginx). Only the first account can sign up unless you set <code>SIGNUPS=open</code>.</p>
     </div>
     <p className="hint">File attachments sync too, still encrypted. Each file can be up to 100 MB.</p>
     {setup && <SetupModal onClose={() => setSetup(false)} onDone={s => { setStatus(s); setSetup(false); }} />}

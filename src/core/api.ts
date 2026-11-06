@@ -61,7 +61,7 @@ export interface ImportPreview {
   needsPassword: boolean;
   source?: string;
   count?: number;
-  /** Items not already in Strongroom; only these are imported. */
+  /** Items not already in Boltwork; only these are imported. */
   newCount?: number;
   skipped?: number;
   vaultNames?: string[];
@@ -73,7 +73,7 @@ export interface Api {
   getState(): AppState;
   createVault(password: string): { secretKey: string };
   unlock(password: string, secretKey?: string): void;
-  /** Unlocks with Windows Hello, or with the Strongroom PIN when `pin` is given. */
+  /** Unlocks with Windows Hello, or with the Boltwork PIN when `pin` is given. */
   unlockQuick(pin?: string): void;
   quickUnlockStatus(): QuickUnlockStatus;
   /** Turns on quick unlock; needs the account password. */
@@ -179,7 +179,7 @@ export interface ApiEvents {
   quickAccessShown: null;
 }
 
-/** Shape of `window.strongroom` (exposed by the preload script). */
+/** Shape of `window.boltwork` (exposed by the preload script). */
 export interface Bridge {
   call<M extends ApiMethod>(method: M, ...args: Parameters<Api[M]>): Promise<Awaited<ReturnType<Api[M]>>>;
   on<E extends keyof ApiEvents>(event: E, cb: (payload: ApiEvents[E]) => void): () => void;

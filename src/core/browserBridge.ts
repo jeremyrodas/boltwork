@@ -1,6 +1,6 @@
 /**
  * The browser extension's view of the vault. Requests arrive from the native messaging host as JSON;
- * every request except pairing must carry a token the user approved in Strongroom.
+ * every request except pairing must carry a token the user approved in Boltwork.
  *
  * The extension never receives a password unless it asks to fill a specific item on a page whose
  * domain matches that item (or the user picked the item by hand in the extension's popup).
@@ -33,7 +33,7 @@ export type BridgeRequest =
   | { type: 'passkeyGet'; url: string; request: GetRequest; conditional?: boolean; credentialId?: string }
   | { type: 'passkeyList'; url: string; rpId?: string };
 
-/** What the user decided in Strongroom's passkey prompt. */
+/** What the user decided in Boltwork's passkey prompt. */
 export type PasskeyDecision = { action: 'ok'; index: number; target?: string } | { action: 'fallback' } | { action: 'cancel' };
 
 export interface PasskeyPrompt {
@@ -41,7 +41,7 @@ export interface PasskeyPrompt {
   site: string;
   /** create: the account name; get: one entry per passkey to choose from. */
   accounts: string[];
-  /** Offer "Use another device" (the browser's own WebAuthn). Not when Windows already chose Strongroom. */
+  /** Offer "Use another device" (the browser's own WebAuthn). Not when Windows already chose Boltwork. */
   allowFallback?: boolean;
   /** create: logins on this site the passkey could go on, and which one is picked to start with ('new': a new login). */
   targets?: PasskeyTarget[];
@@ -240,7 +240,7 @@ export class BrowserBridge {
       const site = req.rp?.name ? `${req.rp.name} (${rpId})` : rpId;
       const mine = store.passkeyIds();
       if (req.excludeCredentials?.some(c => mine.has(c.id))) {
-        throw new PasskeyError('InvalidStateError', 'Strongroom already has a passkey for this account.');
+        throw new PasskeyError('InvalidStateError', 'Boltwork already has a passkey for this account.');
       }
       const decision = await this.deps.approvePasskey(createPrompt(store, site, rpId, req.user?.name ?? '', req.user?.displayName || req.user?.name || 'this account'));
       if (decision.action === 'fallback') return { fallback: true };

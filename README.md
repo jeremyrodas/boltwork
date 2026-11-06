@@ -1,13 +1,15 @@
-# Strongroom
+# Boltwork
 
 A local-first, end-to-end encrypted password manager for the desktop.
 
-Strongroom keeps your logins, passkeys, SSH keys, cards, notes and files in a vault on your own computer. The vault is sealed with your account password plus a random **Secret Key**, so a stolen copy is useless without both. If you want your vault on more than one computer, you sync it through a small server that you run yourself. That server only ever sees encrypted records.
+*Formerly called Strongroom. Updating from Strongroom copies your data over on first launch; see [Renamed from Strongroom](#renamed-from-strongroom).*
+
+Boltwork keeps your logins, passkeys, SSH keys, cards, notes and files in a vault on your own computer. The vault is sealed with your account password plus a random **Secret Key**, so a stolen copy is useless without both. If you want your vault on more than one computer, you sync it through a small server that you run yourself. That server only ever sees encrypted records.
 
 Built with Electron, React and TypeScript. Encryption uses libsodium (XChaCha20-Poly1305) and Argon2id.
 
 - **Your data stays yours.** No cloud account, no telemetry. Online checks are off until you turn them on.
-- **Passkeys everywhere.** Strongroom's browser extension uses passkeys in Chrome, Edge and Brave, and Strongroom can register as a Windows passkey provider so any app can use them.
+- **Passkeys everywhere.** Boltwork's browser extension uses passkeys in Chrome, Edge and Brave, and Boltwork can register as a Windows passkey provider so any app can use them.
 - **Built for daily use.** Fill and save logins from the browser, a Quick Access hotkey with auto-type, an SSH agent for `ssh` and `git`, and unlock with Windows Hello or a PIN.
 
 ## Features
@@ -21,7 +23,7 @@ Built with Electron, React and TypeScript. Encryption uses libsodium (XChaCha20-
 
 **Passkeys**
 - Create and sign in with passkeys from the browser extension (Chrome, Edge, Brave), including passkey suggestions in the sign-in field
-- **Windows passkey provider** (Windows 11 24H2/25H2): pick Strongroom in Windows' own passkey window, in any browser or app
+- **Windows passkey provider** (Windows 11 24H2/25H2): pick Boltwork in Windows' own passkey window, in any browser or app
 - Each new passkey can go onto an existing login for the site or a new login, and the prompt shows which
 - Passkeys sync with the rest of the vault
 
@@ -47,9 +49,9 @@ Built with Electron, React and TypeScript. Encryption uses libsodium (XChaCha20-
 
 **Desktop**
 - Quick Access window on a global hotkey, with auto-type into the previous app (Windows)
-- Quick unlock with Windows Hello or a Strongroom PIN
+- Quick unlock with Windows Hello or a Boltwork PIN
 - Auto-lock on idle, sleep or screen lock, clipboard auto-clear, hiding from screen capture, blur when unfocused
-- Tray icon, `strongroom://` links, start at login, Large Type
+- Tray icon, `boltwork://` links, start at login, Large Type
 - Light and dark themes, plus five color schemes (Brass, Copper, Verdigris, Blued steel, Silver) with matching app icons
 
 **Import and export**
@@ -60,20 +62,20 @@ Built with Electron, React and TypeScript. Encryption uses libsodium (XChaCha20-
 
 ### Install (Windows)
 
-1. Run `Strongroom-Setup-<version>.exe`, from the releases or built yourself (see [Build from source](#build-from-source)).
+1. Run `Boltwork-Setup-<version>.exe`, from the releases or built yourself (see [Build from source](#build-from-source)).
 2. Create your vault. Save the **Emergency Kit**: you need your password *and* Secret Key to open your vault on a new computer.
 
 ### Browser extension
 
-In Strongroom, open **Settings → Browser Extension** and turn it on. Then:
+In Boltwork, open **Settings → Browser Extension** and turn it on. Then:
 
 1. Open `chrome://extensions` (Edge: `edge://extensions`, Brave: `brave://extensions`) and turn on **Developer mode**.
-2. Click **Load unpacked** and choose the extension folder. **Show folder** in Strongroom opens it for you.
-3. Click the Strongroom toolbar button and approve the matching code in the app.
+2. Click **Load unpacked** and choose the extension folder. **Show folder** in Boltwork opens it for you.
+3. Click the Boltwork toolbar button and approve the matching code in the app.
 
 ### Windows passkey provider (optional)
 
-This is a small packaged helper (`Strongroom-Passkeys-<version>.msix`) that lets Windows hand passkey requests to Strongroom. It's signed with a self-signed certificate, so the certificate must be trusted once before installing. See [native/passkey-provider/README.md](native/passkey-provider/README.md) for the steps.
+This is a small packaged helper (`Boltwork-Passkeys-<version>.msix`) that lets Windows hand passkey requests to Boltwork. It's signed with a self-signed certificate, so the certificate must be trusted once before installing. See [native/passkey-provider/README.md](native/passkey-provider/README.md) for the steps.
 
 ### Sync server (optional)
 
@@ -82,7 +84,7 @@ cd server
 docker compose up -d
 ```
 
-Then in Strongroom open **Settings → Sync → Set up sync…** and enter the server's address. See [server/README.md](server/README.md) for settings, https, backups and the API.
+Then in Boltwork open **Settings → Sync → Set up sync…** and enter the server's address. See [server/README.md](server/README.md) for settings, https, backups and the API.
 
 ## Build from source
 
@@ -103,7 +105,7 @@ node scripts/build.mjs
 node scripts/build-passkey-provider.mjs --msix
 ```
 
-Use a throwaway profile while developing: `STRONGROOM_PROFILE=C:\temp\sr-test npm start`. To run the SSH agent next to another agent, point `STRONGROOM_AGENT_SOCK` at a different pipe.
+Use a throwaway profile while developing: `BOLTWORK_PROFILE=C:\temp\sr-test npm start`. To run the SSH agent next to another agent, point `BOLTWORK_AGENT_SOCK` at a different pipe.
 
 To have `npm run dist` copy each release somewhere, create `release.local.json` (not committed), for example `{ "copyTo": "D:\\" }`.
 
@@ -125,7 +127,7 @@ To have `npm run dist` copy each release somewhere, create `release.local.json` 
 
 Read [SECURITY.md](SECURITY.md) for the full design and how to report a problem.
 
-Your vault lives in `%APPDATA%\Strongroom\vault\`.
+Your vault lives in `%APPDATA%\Boltwork\vault\`.
 
 ## Project layout
 
@@ -147,6 +149,16 @@ Your vault lives in `%APPDATA%\Strongroom\vault\`.
 - Firefox and Safari extensions, store listings, and filling identities and cards
 - Signing for public releases (a trusted code-signing certificate or the Microsoft Store), so no certificate step is needed
 - macOS and Linux builds
+
+## Renamed from Strongroom
+
+Boltwork was called Strongroom until version 0.4.0. Boltwork's name matches its logo: boltwork is the set of bolts a vault door's wheel throws.
+
+- **Your data:** on first launch Boltwork copies `%APPDATA%\Strongroom` to `%APPDATA%\Boltwork`. The old folder stays as a backup, with a note in it; delete it once Boltwork opens your vault.
+- **The old app** installs separately (it had a different app ID). Uninstall Strongroom from Windows Settings → Apps.
+- **Browser extension:** reload it from the extension page and approve the browser again if asked.
+- **Windows passkeys:** remove the old Strongroom passkeys package, install the Boltwork one, and turn Boltwork on in Windows Settings → Accounts → Passkeys → Advanced options. Your passkeys are in the vault, so none are lost.
+- **Unchanged on purpose:** the internal format labels (such as `strongroom:record:v2`), so existing vaults, backups and synced copies open as before; the sync server's protocol name and data, so an existing server keeps working; and the signing certificate's name (`CN=Strongroom`), so it doesn't need trusting again. `strongroom://` item links still open.
 
 ## License
 

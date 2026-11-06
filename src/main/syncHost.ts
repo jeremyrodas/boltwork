@@ -131,7 +131,7 @@ function watchForChanges() {
 export async function checkServer(url: string) {
   const serverUrl = normalizeServerUrl(url);
   const h = await new SyncClient(serverUrl).health();
-  if (h.name !== 'strongroom-server') throw new Error('That address isn’t a Strongroom sync server.');
+  if (h.name !== 'strongroom-server') throw new Error('That address isn’t a Boltwork sync server.');
   return { serverUrl, signups: h.signups };
 }
 

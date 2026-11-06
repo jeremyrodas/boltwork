@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { verifyAuthenticationResponse, verifyRegistrationResponse } from '@simplewebauthn/server';
 import { authenticatorInfo, cborDecode, getAssertionResponse, makeCredentialResponse, parseGetAssertion, parseMakeCredential } from '../src/core/ctap';
-import { cbor, STRONGROOM_AAGUID, type Cbor } from '../src/core/passkeys';
+import { cbor, BOLTWORK_AAGUID, type Cbor } from '../src/core/passkeys';
 
 const b64u = (b: Uint8Array) => Buffer.from(b).toString('base64url');
 const sha256 = (b: Buffer) => createHash('sha256').update(b).digest();
@@ -83,8 +83,8 @@ test('Windows provider: exclude lists, unsupported algorithms and bad input', ()
 });
 
 test('Windows provider: authenticatorGetInfo matches the shape Microsoft’s sample registers', () => {
-  // The sample's bytes without its extensions entry (key 2), with Strongroom's AAGUID.
-  const expected = 'a5' + '0182684649444f5f325f30684649444f5f325f31' + '0350' + STRONGROOM_AAGUID.toString('hex')
+  // The sample's bytes without its extensions entry (key 2), with Boltwork's AAGUID.
+  const expected = 'a5' + '0182684649444f5f325f30684649444f5f325f31' + '0350' + BOLTWORK_AAGUID.toString('hex')
     + '04a362726bf5627570f5627576f5098168696e7465726e616c0a81a263616c672664747970656a7075626c69632d6b6579';
   assert.equal(authenticatorInfo().toString('hex'), expected);
 });
@@ -93,7 +93,7 @@ test('Windows provider pipe: what the helper sends gets approved, answered and s
   const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path'); const net = await import('node:net');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sr-prov-'));
   process.env.LOCALAPPDATA = tmp; // where it writes its launch details
-  process.env.STRONGROOM_PASSKEY_SOCK = process.platform === 'win32' ? ['', '', '.', 'pipe', `strongroom-passkeys-test-${process.pid}`].join(String.fromCharCode(92)) : path.join(tmp, 'p.sock');
+  process.env.BOLTWORK_PASSKEY_SOCK = process.platform === 'win32' ? ['', '', '.', 'pipe', `boltwork-passkeys-test-${process.pid}`].join(String.fromCharCode(92)) : path.join(tmp, 'p.sock');
   const { ready, generateSecretKey, KDF_FAST_FOR_TESTS } = await import('../src/core/crypto');
   const { VaultStore } = await import('../src/core/store');
   const prov = await import('../src/main/passkeyProvider');
@@ -107,10 +107,10 @@ test('Windows provider pipe: what the helper sends gets approved, answered and s
   });
   await new Promise(r => setTimeout(r, 200));
   try {
-  assert.ok(fs.existsSync(path.join(tmp, 'Strongroom', 'passkey-provider.json')), 'launch details saved for the helper');
+  assert.ok(fs.existsSync(path.join(tmp, 'Boltwork', 'passkey-provider.json')), 'launch details saved for the helper');
 
   const ask = (msg: object) => new Promise<Record<string, string | boolean>>((resolve, reject) => {
-    const c = net.connect(process.env.STRONGROOM_PASSKEY_SOCK!);
+    const c = net.connect(process.env.BOLTWORK_PASSKEY_SOCK!);
     let out = '';
     c.on('data', d => { out += d; }); c.on('end', () => resolve(JSON.parse(out))); c.on('error', reject);
     c.write(`${JSON.stringify(msg)}\n`);
@@ -121,7 +121,7 @@ test('Windows provider pipe: what the helper sends gets approved, answered and s
   const cd = clientData('webauthn.create', challenge, 'https://example.com');
   const made = await ask({ op: 'make', request: makeReq(cd.hash, false).toString('base64') });
   assert.ok(made.response, JSON.stringify(made));
-  assert.equal(prompts.at(-1)!.allowFallback, false, 'no "Use another device": Windows already chose Strongroom');
+  assert.equal(prompts.at(-1)!.allowFallback, false, 'no "Use another device": Windows already chose Boltwork');
   const saved = store.passkeysFor('example.com');
   assert.equal(saved.length, 1);
 

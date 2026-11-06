@@ -1,5 +1,5 @@
 /**
- * Connects Strongroom to the browser extension.
+ * Connects Boltwork to the browser extension.
  *
  * Chrome starts our native messaging host (dist/nmhost.js) when the extension connects. The host relays
  * newline-delimited JSON over a local pipe to the server here. We also register the host with
@@ -13,11 +13,12 @@ import path from 'node:path';
 import { BrowserBridge, type BridgeDeps } from '../core/browserBridge';
 import { EXTENSION_ID } from '../core/extensionId';
 
-export const HOST_NAME = 'com.strongroom.browser';
+export const HOST_NAME = 'com.boltwork.browser';
+const OLD_HOST_NAME = 'com.strongroom.browser';
 
 export function bridgeSocketPath(): string {
-  if (process.env.STRONGROOM_BROWSER_SOCK) return process.env.STRONGROOM_BROWSER_SOCK;
-  return process.platform === 'win32' ? '\\\\.\\pipe\\strongroom-browser' : path.join(os.homedir(), '.strongroom', 'browser.sock');
+  if (process.env.BOLTWORK_BROWSER_SOCK) return process.env.BOLTWORK_BROWSER_SOCK;
+  return process.platform === 'win32' ? '\\\\.\\pipe\\boltwork-browser' : path.join(os.homedir(), '.boltwork', 'browser.sock');
 }
 
 let server: net.Server | null = null;
@@ -64,7 +65,7 @@ export async function startBrowserHost(deps: BridgeDeps): Promise<void> {
     if (process.platform !== 'win32') fs.chmodSync(sock, 0o600);
     status = { ...status, running: true, error: undefined };
   }, (e: NodeJS.ErrnoException) => {
-    status = { ...status, running: false, error: e.code === 'EADDRINUSE' ? 'Another copy of Strongroom is already connected to the browser.' : e.message };
+    status = { ...status, running: false, error: e.code === 'EADDRINUSE' ? 'Another copy of Boltwork is already connected to the browser.' : e.message };
   });
 }
 
@@ -104,15 +105,15 @@ export async function registerNativeHost(dir: string, hostScript: string): Promi
   const exe = process.execPath;
   let launcher: string;
   if (process.platform === 'win32') {
-    launcher = path.join(dir, 'strongroom-host.bat');
+    launcher = path.join(dir, 'boltwork-host.bat');
     fs.writeFileSync(launcher, `@echo off\r\nset ELECTRON_RUN_AS_NODE=1\r\n"${exe}" "${hostScript}" %*\r\n`);
   } else {
-    launcher = path.join(dir, 'strongroom-host.sh');
+    launcher = path.join(dir, 'boltwork-host.sh');
     fs.writeFileSync(launcher, `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec "${exe}" "${hostScript}" "$@"\n`, { mode: 0o755 });
   }
   const manifest = {
     name: HOST_NAME,
-    description: 'Strongroom browser extension connector',
+    description: 'Boltwork browser extension connector',
     path: launcher,
     type: 'stdio',
     allowed_origins: [`chrome-extension://${EXTENSION_ID}/`],
@@ -123,6 +124,8 @@ export async function registerNativeHost(dir: string, hostScript: string): Promi
   const registered: string[] = [];
   if (process.platform === 'win32') {
     for (const [browser, key] of Object.entries(WIN_REG_KEYS)) {
+      // The connector's name from before the rename (Strongroom): its manifest no longer exists.
+      await new Promise<void>(resolve => execFile('reg', ['delete', `${key}\\${OLD_HOST_NAME}`, '/f'], { windowsHide: true }, () => resolve()));
       const ok = await new Promise<boolean>(resolve =>
         execFile('reg', ['add', `${key}\\${HOST_NAME}`, '/ve', '/t', 'REG_SZ', '/d', manifestFile, '/f'], { windowsHide: true }, err => resolve(!err)));
       if (ok) registered.push(browser);
@@ -133,6 +136,7 @@ export async function registerNativeHost(dir: string, hostScript: string): Promi
         const d = path.join(os.homedir(), rel);
         fs.mkdirSync(d, { recursive: true });
         fs.writeFileSync(path.join(d, `${HOST_NAME}.json`), JSON.stringify(manifest, null, 2));
+        fs.rmSync(path.join(d, `${OLD_HOST_NAME}.json`), { force: true });
         registered.push(browser);
       } catch { /* browser not installed */ }
     }

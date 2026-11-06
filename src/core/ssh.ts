@@ -103,7 +103,7 @@ function decodeOpenSsh(pem: string): { parts: Parts; comment: string } {
   const cipher = r.text();
   r.text(); r.string(); // kdf name, kdf options
   if (cipher !== 'none') {
-    throw new Error('This key is protected with a passphrase. Remove it first with: ssh-keygen -p -f <keyfile> (leave the new passphrase empty), then import it. Strongroom keeps it encrypted in your vault.');
+    throw new Error('This key is protected with a passphrase. Remove it first with: ssh-keygen -p -f <keyfile> (leave the new passphrase empty), then import it. Boltwork keeps it encrypted in your vault.');
   }
   if (r.u32() !== 1) throw new Error('Files with more than one key are not supported.');
   r.string(); // public blob

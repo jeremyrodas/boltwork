@@ -18,7 +18,7 @@ import type { ItemContent } from '../src/core/types';
 
 before(async () => { await ready(); });
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'strongroom-test-'));
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'boltwork-test-'));
 
 function login(title: string, username: string, password: string, url: string): ItemContent {
   const c = blankContent('login');

@@ -1,6 +1,6 @@
-# Strongroom sync server
+# Boltwork sync server
 
-A small self-hosted server that keeps your Strongroom vault in step across computers.
+A small self-hosted server that keeps your Boltwork vault in step across computers.
 It stores only end-to-end encrypted records and attachment files: it never sees your password, your Secret Key, your master key or anything in your vault.
 One Node.js process with a SQLite file and no other dependencies. Licensed AGPL-3.0-or-later.
 
@@ -25,7 +25,7 @@ vault.example.com {
 }
 ```
 
-In Strongroom, open **Settings → Sync → Set up sync…** and enter `https://vault.example.com`.
+In Boltwork, open **Settings → Sync → Set up sync…** and enter `https://vault.example.com`.
 
 ## Run it without Docker
 
@@ -52,7 +52,7 @@ Attachments upload as single requests of up to about 140 MB (a 100 MB file once 
 
 ## Backups
 
-Back up `DATA_DIR` (the volume). The database holds only encrypted data, but you still need your password and Secret Key to restore it into Strongroom,
+Back up `DATA_DIR` (the volume). The database holds only encrypted data, but you still need your password and Secret Key to restore it into Boltwork,
 and every computer also keeps a full local copy of the vault.
 
 ## API

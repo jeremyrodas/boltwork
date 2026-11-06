@@ -9,5 +9,5 @@ export const IMPORT_SOURCES = [
   { id: 'dashlane', name: 'Dashlane', hint: 'Export credentials as CSV.' },
   { id: 'keepass', name: 'KeePass / KeePassXC', hint: 'Database > Export to CSV.' },
   { id: 'other', name: 'Other (CSV)', hint: 'Any CSV with name, url, username, password columns.' },
-  { id: 'strongroom', name: 'Strongroom backup', hint: 'A .json export from Strongroom, encrypted or not.' },
+  { id: 'strongroom', name: 'Boltwork backup', hint: 'A .json export from Boltwork (or Strongroom, its earlier name), encrypted or not.' },
 ];

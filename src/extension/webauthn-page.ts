@@ -1,17 +1,17 @@
 /**
  * Runs in the page's own JavaScript world (manifest "world": "MAIN") before the page's scripts, and
- * wraps navigator.credentials.create/get so sites can make and use passkeys kept in Strongroom.
+ * wraps navigator.credentials.create/get so sites can make and use passkeys kept in Boltwork.
  *
  * It holds no secrets and makes no decisions: requests go through the extension (which takes the page
- * origin from Chrome, not from here) to the Strongroom app, which asks the user. If Strongroom can't or
+ * origin from Chrome, not from here) to the Boltwork app, which asks the user. If Boltwork can't or
  * shouldn't handle a request (not running, no passkey for this site, the user picks "Use another device",
  * or the site wants a hardware security key), the browser's own WebAuthn handles it, unchanged.
  */
 (() => {
   const creds = navigator.credentials as CredentialsContainer | undefined;
   const PKC = (window as unknown as { PublicKeyCredential?: typeof PublicKeyCredential }).PublicKeyCredential;
-  if (!creds || !PKC || (window as unknown as { __strongroomWebAuthn?: boolean }).__strongroomWebAuthn) return;
-  (window as unknown as { __strongroomWebAuthn?: boolean }).__strongroomWebAuthn = true;
+  if (!creds || !PKC || (window as unknown as { __boltworkWebAuthn?: boolean }).__boltworkWebAuthn) return;
+  (window as unknown as { __boltworkWebAuthn?: boolean }).__boltworkWebAuthn = true;
 
   const nativeCreate = creds.create.bind(creds);
   const nativeGet = creds.get.bind(creds);
@@ -34,10 +34,10 @@
   const waiting = new Map<string, (r: Reply) => void>();
   const acked = new Set<string>();
   window.addEventListener('message', e => {
-    const d = e.data as { __strongroomPk?: string; id?: string; result?: Reply } | null;
+    const d = e.data as { __boltworkPk?: string; id?: string; result?: Reply } | null;
     if (e.source !== window || !d || !d.id) return;
-    if (d.__strongroomPk === 'ack') { acked.add(d.id); return; }
-    if (d.__strongroomPk !== 'res') return;
+    if (d.__boltworkPk === 'ack') { acked.add(d.id); return; }
+    if (d.__boltworkPk !== 'res') return;
     const w = waiting.get(d.id);
     if (w) { waiting.delete(d.id); acked.delete(d.id); w(d.result ?? { fallback: true }); }
   });
@@ -51,10 +51,10 @@
       waiting.set(id, r => { if (t) clearTimeout(t); clearTimeout(noRelay); resolve(r); });
       signal?.addEventListener('abort', () => {
         if (!waiting.delete(id)) return;
-        post({ __strongroomPk: 'cancel', id }, '*');
+        post({ __boltworkPk: 'cancel', id }, '*');
         resolve({ aborted: true });
       }, { once: true });
-      post({ __strongroomPk: 'req', id, kind, payload }, '*');
+      post({ __boltworkPk: 'req', id, kind, payload }, '*');
     });
   }
 
@@ -92,7 +92,7 @@
   const fail = (e: { name: string; message: string }) => new DOMException(e.message, e.name);
 
   // Chrome allows one WebAuthn request at a time. The browser-side half of an autofill request we started on
-  // the page's behalf is cancelled before handing any other request to the browser (Strongroom's half stays).
+  // the page's behalf is cancelled before handing any other request to the browser (Boltwork's half stays).
   let liveConditional: AbortController | null = null;
   async function toBrowser<T>(run: () => Promise<T>): Promise<T> {
     if (liveConditional) { liveConditional.abort(); liveConditional = null; await new Promise(r => setTimeout(r, 0)); }
@@ -131,7 +131,7 @@
     } catch { return toBrowser(() => nativeGet(options)); }
 
     if ((options as { mediation?: string }).mediation === 'conditional') {
-      // Autofill sign-in: offer Strongroom's passkeys in its field menu, alongside the browser's own list.
+      // Autofill sign-in: offer Boltwork's passkeys in its field menu, alongside the browser's own list.
       // Whichever the user picks first wins; the other is cancelled.
       liveConditional?.abort();
       const stopNative = new AbortController();
@@ -146,7 +146,7 @@
         if ('n' in first) {
           if ('c' in first.n) { ours.abort(); return first.n.c; }
           if (options!.signal?.aborted) { ours.abort(); throw first.n.e; }
-          // The browser's side gave up (e.g. no other passkeys); keep waiting for Strongroom's.
+          // The browser's side gave up (e.g. no other passkeys); keep waiting for Boltwork's.
           const m = await mine;
           if (m.response) return credential(m.response, 'get');
           if (m.aborted) throw new DOMException('The operation was aborted.', 'AbortError');
@@ -170,7 +170,7 @@
     return toBrowser(() => nativeGet(options));
   };
 
-  // Sites hide their passkey buttons unless a platform authenticator is available; Strongroom is one.
+  // Sites hide their passkey buttons unless a platform authenticator is available; Boltwork is one.
   const statics = PKC as unknown as Record<string, unknown>;
   const yes = async () => true;
   statics.isUserVerifyingPlatformAuthenticatorAvailable = yes;

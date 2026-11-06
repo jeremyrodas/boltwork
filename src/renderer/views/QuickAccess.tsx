@@ -55,7 +55,7 @@ export function QuickAccess() {
     }}>
       <div className="qa-search">
         <BrandMark size={24} />
-        <input ref={input} autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Search Strongroom" spellCheck={false} />
+        <input ref={input} autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Search Boltwork" spellCheck={false} />
       </div>
       <div className="qa-results">
         {results.length === 0 && <div className="muted qa-empty">No matching items</div>}

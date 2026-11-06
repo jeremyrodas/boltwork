@@ -105,7 +105,7 @@ function SecurityPane() {
       <Toggle label="Notify when the clipboard is cleared" checked={settings.notifyClipboardCleared} onChange={v => updateSettings({ notifyClipboardCleared: v })} />
     </Section>
     <Section title="Screen">
-      <Toggle label="Hide Strongroom from screenshots and screen sharing" checked={settings.screenCaptureProtection} onChange={v => updateSettings({ screenCaptureProtection: v })} />
+      <Toggle label="Hide Boltwork from screenshots and screen sharing" checked={settings.screenCaptureProtection} onChange={v => updateSettings({ screenCaptureProtection: v })} />
       <Toggle label="Blur the window when it is not in focus" hint="Keeps passwords from being read over your shoulder." checked={settings.blurWhenUnfocused} onChange={v => updateSettings({ blurWhenUnfocused: v })} />
     </Section>
     <Section title="Account">
@@ -217,7 +217,7 @@ function ImportPane() {
   const choose = async () => { const p = await run(api.importChoose()); if (p) { setPreview(p); setTarget(p.vaultNames?.length ? 'byName' : data.vaults[0].id); } };
   return (<>
     <Section title="Import passwords">
-      <p className="muted">Strongroom figures out the format from the file. Delete the exported file after importing; it isn’t encrypted.</p>
+      <p className="muted">Boltwork figures out the format from the file. Delete the exported file after importing; it isn’t encrypted.</p>
       <div className="import-sources">{IMPORT_SOURCES.map(s => <div key={s.id} className="import-source"><b>{s.name}</b><span className="muted small">{s.hint}</span></div>)}</div>
       <Button kind="primary" onClick={choose}>Choose file…</Button>
     </Section>
@@ -230,7 +230,7 @@ function ImportPane() {
         </>) : (<>
           <p>Found <b>{preview.count}</b> item{preview.count === 1 ? '' : 's'} from <b>{preview.source}</b>{preview.skipped ? `, skipped ${preview.skipped} it couldn’t read` : ''}.</p>
           {preview.newCount !== undefined && preview.newCount < (preview.count ?? 0) && (
-            <p><b>{preview.newCount}</b> {preview.newCount === 1 ? 'is' : 'are'} new. The other {(preview.count ?? 0) - preview.newCount} {(preview.count ?? 0) - preview.newCount === 1 ? 'is' : 'are'} already in Strongroom and will be skipped, so nothing is duplicated.</p>)}
+            <p><b>{preview.newCount}</b> {preview.newCount === 1 ? 'is' : 'are'} new. The other {(preview.count ?? 0) - preview.newCount} {(preview.count ?? 0) - preview.newCount === 1 ? 'is' : 'are'} already in Boltwork and will be skipped, so nothing is duplicated.</p>)}
           <label className="toggle-row"><span className="toggle-label">Import into</span>
             <select value={target} onChange={e => setTarget(e.target.value)}>
               {preview.vaultNames?.length ? <option value="byName">Matching vaults ({preview.vaultNames.join(', ')})</option> : null}
@@ -240,7 +240,7 @@ function ImportPane() {
           <div className="row gap"><Button onClick={() => setPreview(null)}>Cancel</Button>
             <Button kind="primary" disabled={!(preview.newCount ?? preview.count)} onClick={async () => {
               const n = await run(api.importCommit(target));
-              if (n !== undefined) { setPreview(null); navigate('/'); setFilter({ kind: 'all' }); void run(Promise.resolve(), n === 0 ? 'Nothing new to import: everything in this file is already in Strongroom' : `Imported ${n} new item${n === 1 ? '' : 's'}${n < (preview.count ?? 0) ? ` (${(preview.count ?? 0) - n} already in Strongroom)` : ''}`); }
+              if (n !== undefined) { setPreview(null); navigate('/'); setFilter({ kind: 'all' }); void run(Promise.resolve(), n === 0 ? 'Nothing new to import: everything in this file is already in Boltwork' : `Imported ${n} new item${n === 1 ? '' : 's'}${n < (preview.count ?? 0) ? ` (${(preview.count ?? 0) - n} already in Boltwork)` : ''}`); }
             }}>{preview.newCount === 0 ? 'Nothing new to import' : `Import ${preview.newCount ?? preview.count} item${(preview.newCount ?? preview.count) === 1 ? '' : 's'}`}</Button></div>
         </>)}
       </Section>
@@ -254,8 +254,8 @@ function ExportPane() {
   return (<>
     <Section title="Export your data">
       <div className="presets">
-        <button className="preset" onClick={() => setFormat('encrypted')}><b>Encrypted backup (.json)</b><span className="muted small">Everything, protected with a password you choose. Re-import it into Strongroom any time.</span></button>
-        <button className="preset" onClick={() => setFormat('json')}><b>Strongroom JSON</b><span className="muted small">All items and fields, not encrypted.</span></button>
+        <button className="preset" onClick={() => setFormat('encrypted')}><b>Encrypted backup (.json)</b><span className="muted small">Everything, protected with a password you choose. Re-import it into Boltwork any time.</span></button>
+        <button className="preset" onClick={() => setFormat('json')}><b>Boltwork JSON</b><span className="muted small">All items and fields, not encrypted.</span></button>
         <button className="preset" onClick={() => setFormat('csv')}><b>CSV</b><span className="muted small">Title, website, username, password, one-time password, notes. Works with most other apps. Not encrypted.</span></button>
       </div>
       <p className="hint">Attachments are not included in exports. Back up the vault folder to keep them.</p>
@@ -304,9 +304,9 @@ export function SettingsView({ pane = 'general' }: { pane?: string }) {
       <div className="settings-body">
         {pane === 'general' && (<>
           <Section title="Startup">
-            <Toggle label="Start Strongroom when you sign in" checked={settings.startAtLogin} onChange={v => updateSettings({ startAtLogin: v })} hint="Only works in the installed app." />
+            <Toggle label="Start Boltwork when you sign in" checked={settings.startAtLogin} onChange={v => updateSettings({ startAtLogin: v })} hint="Only works in the installed app." />
             <Toggle label="Start minimized to the system tray" checked={settings.startMinimized} onChange={v => updateSettings({ startMinimized: v })} />
-            <Toggle label="Keep Strongroom in the system tray when the window is closed" checked={settings.keepInTray} onChange={v => updateSettings({ keepInTray: v })} />
+            <Toggle label="Keep Boltwork in the system tray when the window is closed" checked={settings.keepInTray} onChange={v => updateSettings({ keepInTray: v })} />
           </Section>
           <Section title="Items">
             <Toggle label="Suggest usernames when creating logins" checked={settings.suggestUsername} onChange={v => updateSettings({ suggestUsername: v })} />
@@ -358,8 +358,8 @@ export function SettingsView({ pane = 'general' }: { pane?: string }) {
           <Section title="Quick Access">
             <p className="muted">Quick Access is a search box that opens over any app. Find an item, then press Enter to type your username and password into the app you were using.</p>
             <ShortcutInput label="Open Quick Access" value={settings.quickAccessShortcut} onChange={v => updateSettings({ quickAccessShortcut: v })} />
-            <ShortcutInput label="Show or hide Strongroom" value={settings.showShortcut} onChange={v => updateSettings({ showShortcut: v })} />
-            <ShortcutInput label="Lock Strongroom" value={settings.lockShortcut} onChange={v => updateSettings({ lockShortcut: v })} />
+            <ShortcutInput label="Show or hide Boltwork" value={settings.showShortcut} onChange={v => updateSettings({ showShortcut: v })} />
+            <ShortcutInput label="Lock Boltwork" value={settings.lockShortcut} onChange={v => updateSettings({ lockShortcut: v })} />
           </Section>
           <Section title="Auto-Type">
             <Toggle label="Allow Auto-Type" hint={app?.platform === 'win32' ? 'Types the username, Tab, the password and Enter into the window you were using.' : 'Available on Windows. On this system, Enter copies the password instead.'}
@@ -376,7 +376,7 @@ export function SettingsView({ pane = 'general' }: { pane?: string }) {
           <Section title="Keyboard shortcuts">
             <table className="shortcuts"><tbody>
               {[
-                [settings.quickAccessShortcut, 'Open Quick Access (from anywhere)'], [settings.showShortcut, 'Show or hide Strongroom (from anywhere)'], [settings.lockShortcut, 'Lock (from anywhere)'],
+                [settings.quickAccessShortcut, 'Open Quick Access (from anywhere)'], [settings.showShortcut, 'Show or hide Boltwork (from anywhere)'], [settings.lockShortcut, 'Lock (from anywhere)'],
                 ['Ctrl+F', 'Search'], ['Ctrl+N', 'New item'], ['Ctrl+G', 'Password generator'], ['Ctrl+S', 'Save item while editing'], ['Esc', 'Cancel editing / close'],
                 ['↑ ↓', 'Move through items'], ['Ctrl+Shift+C', 'Copy password of selected item'], ['Ctrl+Alt+C', 'Copy username of selected item'], ['Ctrl+Alt+O', 'Copy one-time code of selected item'], ['Ctrl+E', 'Edit selected item'],
                 ['Quick Access: Enter', 'Auto-Type (Windows) or copy password'], ['Quick Access: Ctrl+C', 'Copy password'], ['Quick Access: Ctrl+Shift+C', 'Copy username'],
@@ -386,7 +386,7 @@ export function SettingsView({ pane = 'general' }: { pane?: string }) {
           </Section>
         )}
         {pane === 'about' && (
-          <Section title="Strongroom">
+          <Section title="Boltwork">
             <p>Version {app?.version}</p>
             <p className="muted">A local-first password manager. Your vault is encrypted with XChaCha20-Poly1305 using a key derived from your account password (Argon2id) and your 128-bit Secret Key. Your data never leaves this device unless you turn on optional online checks or export it.</p>
             <p className="muted small">Word list for memorable passwords: EFF Large Wordlist (CC BY 3.0). Password strength: zxcvbn-ts. Breach data: Have I Been Pwned. 2FA data: 2fa.directory.</p>

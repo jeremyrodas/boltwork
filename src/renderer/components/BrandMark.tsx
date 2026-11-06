@@ -1,5 +1,5 @@
 /**
- * The Strongroom mark as SVG: a vault door. Same geometry as src/core/iconBitmap.ts (a 72-unit square),
+ * The Boltwork mark as SVG: a vault door. Same geometry as src/core/iconBitmap.ts (a 72-unit square),
  * so the in-app logo matches the window, tray and extension icons. Its colors come from the current color
  * scheme (--mark-* variables, set with the theme), or from `scheme` when previewing one.
  * With `turning`, the handwheel spins a third of a turn: the lock screen uses it while the vault opens.

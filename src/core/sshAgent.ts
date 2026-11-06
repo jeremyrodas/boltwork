@@ -23,8 +23,8 @@ export interface AgentBackend {
 }
 
 export function defaultAgentPath(): string {
-  if (process.env.STRONGROOM_AGENT_SOCK) return process.env.STRONGROOM_AGENT_SOCK;
-  return process.platform === 'win32' ? '\\\\.\\pipe\\openssh-ssh-agent' : path.join(os.homedir(), '.strongroom', 'agent.sock');
+  if (process.env.BOLTWORK_AGENT_SOCK) return process.env.BOLTWORK_AGENT_SOCK;
+  return process.platform === 'win32' ? '\\\\.\\pipe\\openssh-ssh-agent' : path.join(os.homedir(), '.boltwork', 'agent.sock');
 }
 
 const frame = (type: number, body: Buffer = Buffer.alloc(0)) => {

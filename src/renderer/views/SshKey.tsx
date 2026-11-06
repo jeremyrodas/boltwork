@@ -94,7 +94,7 @@ export function SshAgentPane() {
   return (<>
     <div className="settings-section">
       <h3>SSH agent</h3>
-      <Toggle label="Use the Strongroom SSH agent" hint="Lets ssh, git and other tools sign in with SSH keys stored in Strongroom. Private keys never leave the app, and you approve each use."
+      <Toggle label="Use the Boltwork SSH agent" hint="Lets ssh, git and other tools sign in with SSH keys stored in Boltwork. Private keys never leave the app, and you approve each use."
         checked={settings.sshAgentEnabled} onChange={v => updateSettings({ sshAgentEnabled: v })} />
       {status && settings.sshAgentEnabled && (
         <div className={`agent-status ${status.running ? 'ok' : 'bad'}`}>
@@ -129,11 +129,11 @@ export function SshAgentPane() {
           <Button small onClick={() => run(api.copy('git config --global core.sshCommand C:/Windows/System32/OpenSSH/ssh.exe', false), 'Command copied')}>Copy</Button></div>
       </>) : (<>
         <p className="muted">Add this to <code>~/.ssh/config</code>:</p>
-        <div className="code-row"><code>{`Host *\n  IdentityAgent "${status?.socket ?? '~/.strongroom/agent.sock'}"`}</code>
+        <div className="code-row"><code>{`Host *\n  IdentityAgent "${status?.socket ?? '~/.boltwork/agent.sock'}"`}</code>
           <Button small onClick={() => run(api.copy(`Host *\n  IdentityAgent "${status?.socket}"\n`, false), 'Copied')}>Copy</Button></div>
       </>)}
       <p className="muted">Add a server’s key: open the SSH Key item, copy its public key, and add it to <code>~/.ssh/authorized_keys</code> on the server (or paste it into GitHub → Settings → SSH keys).</p>
-      <p className="muted">Test it with <code>ssh -T git@github.com</code>. Strongroom will ask you to approve.</p>
+      <p className="muted">Test it with <code>ssh -T git@github.com</code>. Boltwork will ask you to approve.</p>
     </div>
   </>);
 }

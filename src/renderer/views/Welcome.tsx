@@ -5,7 +5,7 @@ import { Button, PasswordInput, StrengthMeter, useStrength } from '../components
 import { useApp } from '../state';
 
 function Brand() {
-  return <div className="brand"><BrandMark size={28} />Strongroom</div>;
+  return <div className="brand"><BrandMark size={28} />Boltwork</div>;
 }
 
 export function Setup({ onDone }: { onDone: () => void }) {
@@ -31,10 +31,10 @@ export function Setup({ onDone }: { onDone: () => void }) {
       <div className="welcome-card">
         <Brand />
         {step === 'intro' && (<>
-          <h1>Your passwords, locked in a strongroom.</h1>
+          <h1>Your passwords, behind the bolts.</h1>
           <p className="muted">Everything is encrypted on this device with your account password and a Secret Key that only you have. Nothing is sent anywhere unless you turn on optional online checks.</p>
           <Button kind="primary" onClick={() => setStep('password')}>Create my vault</Button>
-          <p className="muted small">Already use Strongroom with a sync server? <button className="link" onClick={() => setStep('signin')}>Sign in to your server</button></p>
+          <p className="muted small">Already use Boltwork with a sync server? <button className="link" onClick={() => setStep('signin')}>Sign in to your server</button></p>
         </>)}
         {step === 'signin' && <SyncSignIn onBack={() => setStep('intro')} onDone={onDone} />}
         {step === 'password' && (<>
@@ -85,7 +85,7 @@ export function Unlock({ compact }: { compact?: boolean }) {
 function LockHeading({ compact, busy }: { compact?: boolean; busy: boolean }) {
   return (<>
     <BrandMark size={64} turning={busy} className="dial" />
-    <h1>{compact ? 'Unlock Strongroom' : 'Strongroom is locked'}</h1>
+    <h1>{compact ? 'Unlock Boltwork' : 'Boltwork is locked'}</h1>
     <p className="muted lock-sub">Your vault is encrypted on this device. It opens only with your password.</p>
   </>);
 }
@@ -105,7 +105,7 @@ function QuickUnlockForm({ compact, method, onUsePassword }: { compact?: boolean
         <LockHeading compact={compact} busy={busy} />
         {method === 'pin' ? (<>
           <label className="lbl" htmlFor="unlock-pin">PIN</label>
-          <PasswordInput id="unlock-pin" value={pin} onChange={setPin} autoFocus onEnter={go} placeholder="Enter your Strongroom PIN" invalid={!!error} />
+          <PasswordInput id="unlock-pin" value={pin} onChange={setPin} autoFocus onEnter={go} placeholder="Enter your Boltwork PIN" invalid={!!error} />
           {error && <p className="error-text" role="alert">{error}</p>}
           <Button kind="primary" disabled={!pin || busy} onClick={go}>{busy ? 'Unlocking…' : 'Unlock'}</Button>
         </>) : (<>
@@ -174,7 +174,7 @@ function SyncSignIn({ onBack, onDone }: { onBack: () => void; onDone: () => void
   const ready = server && email && pw && sk.replace(/[^A-Za-z0-9]/g, '').length >= 20;
   return (<>
     <h1>Sign in to your sync server</h1>
-    <p className="muted">Use the address of your Strongroom server, your email, your account password and the Secret Key from your Emergency Kit. Your vault downloads encrypted and is unlocked only on this device.</p>
+    <p className="muted">Use the address of your Boltwork server, your email, your account password and the Secret Key from your Emergency Kit. Your vault downloads encrypted and is unlocked only on this device.</p>
     <label className="lbl">Server address</label>
     <input value={server} onChange={e => setServer(e.target.value)} placeholder="https://vault.example.com" autoFocus spellCheck={false} />
     <label className="lbl">Email</label>

@@ -4,7 +4,7 @@ import { api } from '../api';
 import { Button, Modal, PasswordInput } from '../components/ui';
 import { useApp } from '../state';
 
-/** Settings → Security → Quick unlock: Windows Hello when available, otherwise a Strongroom PIN. */
+/** Settings → Security → Quick unlock: Windows Hello when available, otherwise a Boltwork PIN. */
 export function QuickUnlockSection() {
   const { run } = useApp();
   const [status, setStatus] = useState<QuickUnlockStatus | null>(null);
@@ -29,7 +29,7 @@ export function QuickUnlockSection() {
           {status.method && <Button onClick={async () => { const s = await run(api.quickUnlockDisable(), 'Quick unlock turned off'); if (s) setStatus(s); }}>Turn off</Button>}
         </div>
         {!status.helloAvailable && (
-          <p className="hint">Windows Hello (face, fingerprint or Windows PIN) isn’t set up on this computer. Set it up in Windows Settings → Accounts → Sign-in options to use it here; until then you can use a Strongroom PIN.</p>
+          <p className="hint">Windows Hello (face, fingerprint or Windows PIN) isn’t set up on this computer. Set it up in Windows Settings → Accounts → Sign-in options to use it here; until then you can use a Boltwork PIN.</p>
         )}
         {status.method === 'pin' && (
           <p className="hint">A PIN protects against people who don’t have your Windows account. Anyone who can sign in to Windows as you could try PINs offline, so use 6 or more characters.</p>
@@ -63,7 +63,7 @@ function EnableModal({ method, onClose, onDone }: { method: 'pin' | 'hello'; onC
         <PasswordInput value={pin2} onChange={setPin2} />
         {pin2 && pin !== pin2 && <p className="warn-text">The PINs don’t match.</p>}
       </>)}
-      {method === 'hello' && <p className="muted">Windows will ask for your face, fingerprint or Windows PIN, twice: once to create Strongroom’s Hello key and once to check it.</p>}
+      {method === 'hello' && <p className="muted">Windows will ask for your face, fingerprint or Windows PIN, twice: once to create Boltwork’s Hello key and once to check it.</p>}
       <label className="lbl">Account password (to confirm it’s you)</label>
       <PasswordInput value={pw} onChange={setPw} autoFocus={method === 'hello'} onEnter={go} />
       <div className="row gap end"><Button onClick={onClose}>Cancel</Button>

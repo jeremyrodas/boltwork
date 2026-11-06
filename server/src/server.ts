@@ -1,5 +1,5 @@
 /**
- * Strongroom sync server.
+ * Boltwork sync server.
  *
  * Stores each account's records exactly as the apps seal them; it never sees a password, the Secret Key,
  * the master key or any plaintext. Apps sign in with an auth key derived one-way from the account key,

@@ -1,4 +1,4 @@
-# Strongroom sync server. Build: docker build -t strongroom-server .  (run from this folder)
+# Boltwork sync server. Build: docker build -t boltwork-server .  (run from this folder)
 FROM node:24-alpine AS build
 WORKDIR /src
 COPY package.json ./

@@ -1,7 +1,7 @@
 {
-  "name": "strongroom-server",
+  "name": "boltwork-server",
   "version": "0.1.0",
-  "description": "Self-hosted sync server for Strongroom. Stores only end-to-end encrypted records.",
+  "description": "Self-hosted sync server for Boltwork. Stores only end-to-end encrypted records.",
   "license": "AGPL-3.0-or-later",
   "private": true,
   "main": "dist/server.js",

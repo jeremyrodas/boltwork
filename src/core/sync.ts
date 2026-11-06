@@ -1,5 +1,5 @@
 /**
- * Talks to a Strongroom sync server and keeps a VaultStore in step with it.
+ * Talks to a Boltwork sync server and keeps a VaultStore in step with it.
  * Only sealed records, the wrapped master key and KDF parameters ever leave the device.
  */
 import { deriveKek, authKeyFrom, wipe, type KdfParams, type Sealed } from './crypto';

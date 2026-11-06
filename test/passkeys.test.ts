@@ -71,7 +71,7 @@ test('pages may only use passkeys for their own site', () => {
   assert.throws(() => checkOrigin('file:///C:/x.html'), PasskeyError);
 });
 
-test('requests Strongroom can’t serve are refused clearly', () => {
+test('requests Boltwork can’t serve are refused clearly', () => {
   const o = checkOrigin('https://example.com');
   assert.throws(() => createPasskey(createReq({ pubKeyCredParams: [{ type: 'public-key', alg: -257 }] }), o), (e: PasskeyError) => e.domName === 'NotSupportedError');
   assert.throws(() => createPasskey(createReq({ challenge: 'short' }), o), (e: PasskeyError) => e.domName === 'NotAllowedError');

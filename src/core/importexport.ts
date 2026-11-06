@@ -3,7 +3,7 @@
  *
  * CSV: header auto-detection covers Chrome, Edge, Brave, Opera, Vivaldi, Firefox, Safari/iCloud,
  * Bitwarden, LastPass, Dashlane, KeePassXC, RoboForm, NordPass, Dropbox Passwords, Proton Pass and generic files.
- * JSON: Bitwarden (unencrypted), Strongroom export (plain or encrypted). ZIP: 1Password .1pux.
+ * JSON: Bitwarden (unencrypted), Boltwork export (plain or encrypted). ZIP: 1Password .1pux.
  */
 import { unzipSync, strFromU8 } from 'fflate';
 import { derivePasswordKey, newKdfParams, openJson, sealJson, type KdfParams, type Sealed } from './crypto';
@@ -246,9 +246,9 @@ function onePux(zip: Uint8Array): ImportResult {
   return { source: '1Password (1PUX)', items, skipped };
 }
 
-// ---------- Strongroom export ----------
+// ---------- Boltwork export ----------
 
-export interface StrongroomExport {
+export interface BoltworkExport {
   format: 'strongroom-export';
   version: 1;
   exportedAt: number;
@@ -265,7 +265,7 @@ interface EncryptedExport {
 
 const AAD_EXPORT = 'strongroom:export:v1';
 
-export function buildExport(vaults: Vault[], items: Item[]): StrongroomExport {
+export function buildExport(vaults: Vault[], items: Item[]): BoltworkExport {
   const vaultName = new Map(vaults.map(v => [v.id, v.name]));
   return {
     format: 'strongroom-export', version: 1, exportedAt: Date.now(),
@@ -277,7 +277,7 @@ export function buildExport(vaults: Vault[], items: Item[]): StrongroomExport {
   };
 }
 
-export async function encryptExport(exp: StrongroomExport, password: string): Promise<EncryptedExport> {
+export async function encryptExport(exp: BoltworkExport, password: string): Promise<EncryptedExport> {
   const kdf = newKdfParams();
   return { format: 'strongroom-export-encrypted', version: 1, kdf, data: sealJson(await derivePasswordKey(password, kdf), exp, AAD_EXPORT) };
 }
@@ -301,7 +301,7 @@ export class NeedsPasswordError extends Error {
   constructor() { super('This export is encrypted. Enter its password.'); }
 }
 
-/** Detects the file type and imports it. `password` is only needed for encrypted Strongroom exports. */
+/** Detects the file type and imports it. `password` is only needed for encrypted Boltwork exports. */
 export async function importFile(fileName: string, bytes: Uint8Array, password?: string): Promise<ImportResult> {
   const lower = fileName.toLowerCase();
   if (lower.endsWith('.1pux') || (bytes[0] === 0x50 && bytes[1] === 0x4b)) return onePux(bytes);
@@ -311,12 +311,12 @@ export async function importFile(fileName: string, bytes: Uint8Array, password?:
     if (json.format === 'strongroom-export-encrypted') {
       if (!password) throw new NeedsPasswordError();
       const key = await derivePasswordKey(password, json.kdf);
-      let inner: StrongroomExport;
-      try { inner = openJson<StrongroomExport>(key, json.data, AAD_EXPORT); }
+      let inner: BoltworkExport;
+      try { inner = openJson<BoltworkExport>(key, json.data, AAD_EXPORT); }
       catch { throw new Error('Incorrect export password.'); }
-      return { source: 'Strongroom (encrypted)', items: inner.items, skipped: 0 };
+      return { source: 'Boltwork (encrypted)', items: inner.items, skipped: 0 };
     }
-    if (json.format === 'strongroom-export') return { source: 'Strongroom', items: json.items, skipped: 0 };
+    if (json.format === 'strongroom-export') return { source: 'Boltwork', items: json.items, skipped: 0 };
     if (Array.isArray(json.items)) return bitwarden(json);
     throw new Error('Unrecognized JSON export.');
   }

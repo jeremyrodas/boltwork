@@ -4,7 +4,7 @@
  * data and checked the site's origin against the RP ID, so a request carries only the client data hash.
  * We decode just what we use and answer with the CTAP2 response map.
  */
-import { cbor, newCredential, PasskeyError, signAssertion, STRONGROOM_AAGUID, type Cbor, type Passkey } from './passkeys';
+import { cbor, newCredential, PasskeyError, signAssertion, BOLTWORK_AAGUID, type Cbor, type Passkey } from './passkeys';
 
 // ---------- CBOR decoding (definite lengths; what CTAP2 uses) ----------
 
@@ -105,7 +105,7 @@ export function parseGetAssertion(raw: Uint8Array): CtapGetAssertion {
 
 /** Makes the passkey and the authenticatorMakeCredential response (packed "none" attestation). */
 export function makeCredentialResponse(req: CtapMakeCredential, now = Date.now()): { passkey: Passkey; response: Buffer } {
-  if (!req.algorithms.includes(-7)) throw new PasskeyError('NotSupportedError', 'This site doesn’t accept the passkey type Strongroom makes.');
+  if (!req.algorithms.includes(-7)) throw new PasskeyError('NotSupportedError', 'This site doesn’t accept the passkey type Boltwork makes.');
   const { passkey, authData } = newCredential(req.rpId, req.rpName, req.user, now);
   const response = cbor(new Map<number, Cbor>([[1, 'none'], [2, authData], [3, new Map()]]));
   return { passkey, response: wrap(response, req.framed) };
@@ -125,11 +125,11 @@ export function getAssertionResponse(req: CtapGetAssertion, passkey: Passkey): B
   return wrap(response, req.framed);
 }
 
-/** authenticatorGetInfo, which Windows keeps to know what Strongroom supports. */
+/** authenticatorGetInfo, which Windows keeps to know what Boltwork supports. */
 export function authenticatorInfo(): Buffer {
   return cbor(new Map<number, Cbor>([
     [1, ['FIDO_2_0', 'FIDO_2_1']],
-    [3, STRONGROOM_AAGUID],
+    [3, BOLTWORK_AAGUID],
     [4, new Map<string, Cbor>([['rk', true], ['up', true], ['uv', true]])],
     [9, ['internal']],
     [10, [new Map<string, Cbor>([['alg', -7], ['type', 'public-key']])]],

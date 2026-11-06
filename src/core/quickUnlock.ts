@@ -8,7 +8,7 @@
  *   Windows Hello: quick key = BLAKE2b(key = device secret, Hello signature of a random challenge).
  *                  Hello keys live in the TPM and sign only after face, fingerprint or Windows PIN;
  *                  RSA PKCS#1 v1.5 signatures are deterministic, so the same challenge gives the same key.
- *   Strongroom PIN: quick key = BLAKE2b(key = device secret, Argon2id(PIN)). Five wrong PINs turn quick unlock off.
+ *   Boltwork PIN: quick key = BLAKE2b(key = device secret, Argon2id(PIN)). Five wrong PINs turn quick unlock off.
  *
  * Either way the full password is required again after 14 days, and the master key never changes,
  * so changing the account password doesn't break quick unlock.

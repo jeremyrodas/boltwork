@@ -1,4 +1,4 @@
-# Strongroom security design
+# Boltwork security design
 
 This describes what protects your data and what each part of the system can see. Please report problems privately to the maintainers before publishing them.
 
@@ -15,9 +15,9 @@ Optional, per device, and only turned on after entering the account password. It
 sealed with a quick key that always mixes in a random device secret protected by the OS for this Windows user (DPAPI), so the copy is useless elsewhere.
 
 - **Windows Hello**: quick key = BLAKE2b(key = device secret, Hello signature over a random challenge). The Hello key is created by Windows'
-  KeyCredentialManager, kept in the TPM/Hello container, and only signs after face, fingerprint or Windows PIN. Strongroom checks the signature is
+  KeyCredentialManager, kept in the TPM/Hello container, and only signs after face, fingerprint or Windows PIN. Boltwork checks the signature is
   repeatable before relying on it.
-- **Strongroom PIN**: quick key = BLAKE2b(key = device secret, Argon2id(PIN; 64 MiB, 3 passes)). Five wrong PINs in a row delete the stored copy.
+- **Boltwork PIN**: quick key = BLAKE2b(key = device secret, Argon2id(PIN; 64 MiB, 3 passes)). Five wrong PINs in a row delete the stored copy.
   Someone already signed in to Windows as you can read the device secret and try PINs offline, so a PIN only protects against people without
   your Windows account; use 6 or more characters.
 - Both stop working 14 days after the last password unlock, and are separate from the Secret Key, which is still needed on any new computer.
@@ -41,7 +41,7 @@ The server stores, per account: an email, a SHA-256 of the **auth key**, the KDF
 
 ### What a malicious or compromised server can do
 
-- Refuse service, delete records, or serve an **older version** of a record it saw before (rollback). Strongroom keeps a full local copy and item history, which limits the damage, but it can't currently detect rollback of a single record.
+- Refuse service, delete records, or serve an **older version** of a record it saw before (rollback). Boltwork keeps a full local copy and item history, which limits the damage, but it can't currently detect rollback of a single record.
 - See metadata: how many records you have, their sizes, kinds (vault, collection or item), ids and when they change, plus your email and IP address.
 
 It **can't** read or undetectably alter any record's contents, swap records between ids, or learn your password, Secret Key or master key.
