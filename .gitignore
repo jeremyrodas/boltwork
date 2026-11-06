@@ -14,3 +14,4 @@ native/passkey-provider/obj/
 apple/tools/.build/
 apple/BoltworkKit/.build/
 apple/BoltworkKit/.swiftpm/
+apple/build/

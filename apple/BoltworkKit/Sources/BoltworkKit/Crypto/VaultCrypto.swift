@@ -48,7 +48,7 @@ public enum VaultCrypto {
 
     /// A random 24-character hex id, like the desktop app's `randomId()`.
     public static func randomId() -> String {
-        randomBytes(12).map { String(format: "%02x", $0) }.joined()
+        randomBytes(12).hexString
     }
 
     public static func seal(_ plaintext: [UInt8], key: [UInt8], aad: String) throws -> Sealed {
@@ -72,5 +72,15 @@ public enum VaultCrypto {
 
     public static func wipe(_ bytes: inout [UInt8]) {
         for i in bytes.indices { bytes[i] = 0 }
+    }
+}
+
+extension [UInt8] {
+    /// Lowercase hex, two digits per byte.
+    var hexString: String {
+        map { byte in
+            let h = String(byte, radix: 16)
+            return byte < 16 ? "0" + h : h
+        }.joined()
     }
 }

@@ -379,6 +379,13 @@ public final class VaultStore {
         return doomed.count
     }
 
+    /// Have I Been Pwned results by password SHA-1, kept encrypted on this device only.
+    public var pwnedCounts: [String: Int] { pwnedCache }
+
+    public func recordPwned(sha1: String, count: Int) {
+        pwnedCache[sha1] = count
+    }
+
     public func addSearchHistory(_ query: String) throws {
         _ = try requireKey()
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -553,6 +560,12 @@ public struct Keyset: Codable, Sendable {
     public var kdf: KdfParams
     public var wrappedKey: Sealed
     public var accountId: String
+
+    public init(kdf: KdfParams, wrappedKey: Sealed, accountId: String) {
+        self.kdf = kdf
+        self.wrappedKey = wrappedKey
+        self.accountId = accountId
+    }
 }
 
 /// The result of `VaultStore.create`, handed back to the caller to open.

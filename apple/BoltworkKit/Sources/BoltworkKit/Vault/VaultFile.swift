@@ -5,6 +5,13 @@ public struct SyncState: Codable, Equatable, Sendable {
     /// Highest server revision this device has pulled.
     public var cursor: Int
     public var lastSyncAt: Int64?
+
+    public init(serverUrl: String, email: String, cursor: Int = 0, lastSyncAt: Int64? = nil) {
+        self.serverUrl = serverUrl
+        self.email = email
+        self.cursor = cursor
+        self.lastSyncAt = lastSyncAt
+    }
 }
 
 /// `vault.json`, format version 2 (see `src/core/store.ts`).

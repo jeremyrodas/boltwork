@@ -1,0 +1,891 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		00355A45A80BDD286FBEC528 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = D955C9B8587CA469790D839C /* Keychain.swift */; };
+		07B6D827E2CC91C12C08756E /* GeneratorOptions+Slider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEA77227D9B5902D6129C92 /* GeneratorOptions+Slider.swift */; };
+		08C03B35A980AD61135F4FA7 /* ItemHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 085731E759FC55AFCF164A5F /* ItemHistoryView.swift */; };
+		09F2B3B4FC8A6A2E39BB7AB3 /* AccountSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D84D9E1BF81A8AA2EDA32EB2 /* AccountSettingsSection.swift */; };
+		0AAF04A3408CC1F471CDD4E7 /* ItemMoreMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E223D2562AC4F3F2D58ADD4 /* ItemMoreMenu.swift */; };
+		0BB9B01B683826A5E4C3A532 /* NewItemMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A40114584BDDE376FD0DC22 /* NewItemMenu.swift */; };
+		0CC3840874399276C0889DA2 /* EditableURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1287747C4CFA3C296246D2EC /* EditableURL.swift */; };
+		136D275B56496755BC2BFFEF /* Clipboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A58FEFC106429A0A9288B74B /* Clipboard.swift */; };
+		16654A763C886AEEECA28411 /* BoltworkKit in Frameworks */ = {isa = PBXBuildFile; productRef = B306FAF6A5D07AD26DD23E7D /* BoltworkKit */; };
+		178FA8C08D283F23895A9486 /* SidebarRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BD6298BF2E694330B63BC5 /* SidebarRow.swift */; };
+		18E372AF3BF275B47B08B683 /* SyncStatusText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93B02C345EDC1A5E1F59A81A /* SyncStatusText.swift */; };
+		18E9FEB5E1F38F0032E834FD /* EmergencyKitPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = D756F05FBFD6F4C7A8904DEA /* EmergencyKitPage.swift */; };
+		1C7332675654D48D65C7A930 /* SecuritySettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02BCDCC2578427557E469CB9 /* SecuritySettingsSection.swift */; };
+		243201EDF93A28EB592B8D54 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84386401B4242FF9C70215D8 /* AppSettings.swift */; };
+		28D2188CE94BCC59BB99BBAE /* EmergencyKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 510D53798880146B88B760EC /* EmergencyKit.swift */; };
+		2BB5E381B5C3CB629D52BDA0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A111F84538E99BA534A8D0 /* Theme.swift */; };
+		2BF1E8BEC67A65A0A38C4CF7 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8E2FAD51BA0E1291E69DA4 /* WelcomeView.swift */; };
+		2E2A11BA9A900C5A076A5049 /* EmergencyKitButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FC9C164253A1ADE2769A0C /* EmergencyKitButton.swift */; };
+		311537169AAA5B2422A24A98 /* FieldValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD3CC5F5C845D8E81E2205D9 /* FieldValue.swift */; };
+		31EB83AC65C751561A02496C /* CreateVaultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC2A79D6B122A942974C651 /* CreateVaultView.swift */; };
+		34274A86DBFB1CE3DBBE1FDF /* GeneratorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319FACF4D90748FD08DD696C /* GeneratorView.swift */; };
+		355DCEAADAD12AE79EC3367A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 39FD1CBD71A0C9068922664F /* Assets.xcassets */; };
+		3737585848213760A3BE5993 /* VaultFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 979EC43D3A1056A7822DE4E4 /* VaultFlowUITests.swift */; };
+		3CCD584911D939A2245CEB8A /* CopyButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0E941EFBCE7F60D27D2FED /* CopyButton.swift */; };
+		3CE1926A5A9BFE1BDF5375D0 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D324AD912BDB68FFE8910EB8 /* SidebarView.swift */; };
+		3D20C6BCEDDAE02F6B08C386 /* EmergencyKitField.swift in Sources */ = {isa = PBXBuildFile; fileRef = B94375B6BE2A1F90CFFBBB27 /* EmergencyKitField.swift */; };
+		4774072CD8ECDBD0AF2E0149 /* PlatformModifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 990108B03F57241A9683A164 /* PlatformModifiers.swift */; };
+		491594D6DAFF091D6ECE61FC /* AttachmentsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667B776F248DE0D89F5BDA4C /* AttachmentsSection.swift */; };
+		49A3B8173CBB6C31BA1EFC66 /* AddFieldMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00C45C0755BF451D1274D6B /* AddFieldMenu.swift */; };
+		4B4C1B0F0B8E8DF4B3A38B9C /* TOTPRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53A9E124BB5C71804D2927A2 /* TOTPRow.swift */; };
+		4F6FF8D3FE18CB1EB632C8F0 /* TOTPFieldEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE4BF21E77591E5C0601FE8F /* TOTPFieldEditor.swift */; };
+		531C5598FE23269A0AED1DD1 /* ItemQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91E1CAAEB2AB1B271CB02221 /* ItemQuery.swift */; };
+		58E8BC260C6C333889C3E48D /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3132037A71B54B1FD77E824D /* SettingsView.swift */; };
+		5C441B711626BE3A8FF973EA /* ItemHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A131EFD52CDC78B0664852 /* ItemHeader.swift */; };
+		5E46B7A647BA00366F534144 /* WatchtowerIssueRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40783D15260FFFAB236ABAF /* WatchtowerIssueRow.swift */; };
+		628E06EF8FFC786E2A414CCA /* WatchtowerScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A4616CF1717FCC23E483862 /* WatchtowerScore.swift */; };
+		636882C5EBFD200E29BC72B4 /* NewSecretKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4021FE65B4AA3927B1C56E9A /* NewSecretKey.swift */; };
+		65E013B680257E1C8F58B5BE /* PrivacyCover.swift in Sources */ = {isa = PBXBuildFile; fileRef = A03B6DBEC901F1FC7C870677 /* PrivacyCover.swift */; };
+		671F2434C6DF5C21434A3273 /* BrowserSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4224A9AEF3D5612ECD4B3AE0 /* BrowserSheet.swift */; };
+		6840C099E21988604D872142 /* SyncSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A7334A11C8D1FB4F0FFC50C /* SyncSettingsSection.swift */; };
+		6ACD811E7C9818E710020C9F /* DeviceSecrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39BAB7721169AB3769892A01 /* DeviceSecrets.swift */; };
+		6E01FD7E90AE913B6F389675 /* UnlockedOnly.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0501F19BCD5F4EE88A7243A /* UnlockedOnly.swift */; };
+		722108ED63C6F053EE800111 /* AttachmentPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E79B1137B5FFD1933616AE4 /* AttachmentPreview.swift */; };
+		77BBAA56E7F04214AD7DB616 /* SecretFieldEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B18CA663E5C0730DE43FE5C3 /* SecretFieldEditor.swift */; };
+		790ED4908DA0DAD349608F57 /* BoltworkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D31F32EBA46CB90D4F1B2794 /* BoltworkApp.swift */; };
+		7A09F9C9E17F6BFCE1EABFB2 /* WatchtowerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD7D3E34F784172352D0376 /* WatchtowerView.swift */; };
+		7AFF9A9ABCEE171E4F78F066 /* ChangePasswordSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21EB49FE3F30533AA0E53E34 /* ChangePasswordSheet.swift */; };
+		7DEAD37B0735E5D58F95E044 /* ItemListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8754D0B7FA226A57D1F5EA6 /* ItemListView.swift */; };
+		8149C695DDBAA79C8A295395 /* LockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AD57C86098EE13C906F2F54 /* LockView.swift */; };
+		83C83F8EE807192BC4A0279C /* ItemIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB9C2F5EA0CB7C04C8F6581 /* ItemIcon.swift */; };
+		8E2FB94DE4918DF49DFE3072 /* JoinAccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C98DFD0E98E4A23EFF290AEC /* JoinAccountView.swift */; };
+		90A437152B6958618C4CBD84 /* FieldRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC2728061250D6034FA1C2B /* FieldRow.swift */; };
+		946C3302DF9E9BEC65DE5C0D /* SidebarSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB7EEBBEB23D3B8DC7B01AA3 /* SidebarSelection.swift */; };
+		9938AAF2500A4C55A596C530 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3632FF2FE1339B3B7F36B6F /* AppModel.swift */; };
+		9979EF3BA34AB46CF3544723 /* SecretKeyCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB343CF8E1CABAC11712E9C /* SecretKeyCard.swift */; };
+		9EF820F3252F5BFA60589DA5 /* RevealSecretKeySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E6BA5597EB2C45152950A52 /* RevealSecretKeySheet.swift */; };
+		9F144FA5632B09269B34B0D9 /* VaultsSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB5BAE70BBD90E8621E4A28 /* VaultsSettingsSection.swift */; };
+		A00241E5F64FDDC7F7325594 /* SecretKeySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3528C0245C780F55A24B98 /* SecretKeySheet.swift */; };
+		A41C64BA986E536BE0090A3D /* StrengthMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27C88A8EBEF917595C7DCC23 /* StrengthMeter.swift */; };
+		A53DE4DECA173DB44A26F7B4 /* ItemCategory+Display.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4332D9258778A2BCCECBF1ED /* ItemCategory+Display.swift */; };
+		A63A32671BABCF5AC02EF2BC /* ItemSort.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB5D6CD1D3776FE2451E5738 /* ItemSort.swift */; };
+		ABB79426393372EA53E2B2FA /* AttachmentRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C699D6E3F58461FBFF174C /* AttachmentRow.swift */; };
+		ABF0A892166A68C3DB3AE689 /* QuickUnlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22015B2CAD7AA57321C709DA /* QuickUnlock.swift */; };
+		B22BF655A4E9EB423D5BBD92 /* ItemActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1992EB3B855122E6404D829 /* ItemActions.swift */; };
+		C0B8933A6BEBA6C211E1B3E3 /* ItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62299A96BC841398C67D80A9 /* ItemRow.swift */; };
+		C450ADFA46B5893534D23313 /* ItemEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A21199A3F49F1C675242B5F8 /* ItemEditorView.swift */; };
+		C5B874F21D3CF9F7D1A722E0 /* SyncStatusFooter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9227A59DDC673A705AFEFC /* SyncStatusFooter.swift */; };
+		C7AD6BCA2DBDE9B69A3BCC7F /* EmptyScopeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E225AA98C7FE0208E80A5AA /* EmptyScopeView.swift */; };
+		D5582498620593D938759DB8 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F733317592E198E7C8BE00E /* RootView.swift */; };
+		DB125A1C15BD3A5B12169131 /* VaultBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21F504F311154EA8D302AB4D /* VaultBrowser.swift */; };
+		DD7FC1DDCAF8EFDD9DD979F8 /* SyncController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A17B34A2BAA1F0AEA41B06 /* SyncController.swift */; };
+		DDA77A3979AA9A6F7406BD8C /* WebsiteRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20D245A36B17CC62F65D70F8 /* WebsiteRow.swift */; };
+		E1D2153FDA9AAB6346BBCA23 /* ItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0048D17D108EAB1692288C1E /* ItemDetailView.swift */; };
+		E9AA3C85648701F3BFB716E5 /* EditableFieldRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 032F0FDC7CC234E4AE559ED1 /* EditableFieldRow.swift */; };
+		F1313DA19CFC741FC2CA0B05 /* VaultCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DA65F62921350FE328EF2BA /* VaultCommands.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		3ABFAF920B87F1164CEF4B40 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C65130A227BF6FB41353925C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A54B10B71A892E1A6FF805D1;
+			remoteInfo = Boltwork;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0048D17D108EAB1692288C1E /* ItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailView.swift; sourceTree = "<group>"; };
+		02BCDCC2578427557E469CB9 /* SecuritySettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsSection.swift; sourceTree = "<group>"; };
+		032F0FDC7CC234E4AE559ED1 /* EditableFieldRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditableFieldRow.swift; sourceTree = "<group>"; };
+		085731E759FC55AFCF164A5F /* ItemHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemHistoryView.swift; sourceTree = "<group>"; };
+		0A4616CF1717FCC23E483862 /* WatchtowerScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchtowerScore.swift; sourceTree = "<group>"; };
+		1287747C4CFA3C296246D2EC /* EditableURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditableURL.swift; sourceTree = "<group>"; };
+		15FAD20A52D04A5F2DB8FBF7 /* BoltworkKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = BoltworkKit; path = BoltworkKit; sourceTree = SOURCE_ROOT; };
+		1A7334A11C8D1FB4F0FFC50C /* SyncSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSettingsSection.swift; sourceTree = "<group>"; };
+		1BB5BAE70BBD90E8621E4A28 /* VaultsSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultsSettingsSection.swift; sourceTree = "<group>"; };
+		1FFC5BEF936B652C7C01313A /* BoltworkUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BoltworkUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		20D245A36B17CC62F65D70F8 /* WebsiteRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsiteRow.swift; sourceTree = "<group>"; };
+		21EB49FE3F30533AA0E53E34 /* ChangePasswordSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangePasswordSheet.swift; sourceTree = "<group>"; };
+		21F504F311154EA8D302AB4D /* VaultBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultBrowser.swift; sourceTree = "<group>"; };
+		22015B2CAD7AA57321C709DA /* QuickUnlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickUnlock.swift; sourceTree = "<group>"; };
+		23D73A96F01FCF809DAC1B61 /* Boltwork.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Boltwork.entitlements; sourceTree = "<group>"; };
+		27C88A8EBEF917595C7DCC23 /* StrengthMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthMeter.swift; sourceTree = "<group>"; };
+		2BC2A79D6B122A942974C651 /* CreateVaultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateVaultView.swift; sourceTree = "<group>"; };
+		3132037A71B54B1FD77E824D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		319FACF4D90748FD08DD696C /* GeneratorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratorView.swift; sourceTree = "<group>"; };
+		345DD698B020E3F8BB183FCA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		35A131EFD52CDC78B0664852 /* ItemHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemHeader.swift; sourceTree = "<group>"; };
+		38A111F84538E99BA534A8D0 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		39BAB7721169AB3769892A01 /* DeviceSecrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSecrets.swift; sourceTree = "<group>"; };
+		39FD1CBD71A0C9068922664F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		4021FE65B4AA3927B1C56E9A /* NewSecretKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewSecretKey.swift; sourceTree = "<group>"; };
+		4224A9AEF3D5612ECD4B3AE0 /* BrowserSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserSheet.swift; sourceTree = "<group>"; };
+		4332D9258778A2BCCECBF1ED /* ItemCategory+Display.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ItemCategory+Display.swift"; sourceTree = "<group>"; };
+		4AD57C86098EE13C906F2F54 /* LockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockView.swift; sourceTree = "<group>"; };
+		4DA65F62921350FE328EF2BA /* VaultCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultCommands.swift; sourceTree = "<group>"; };
+		4E6BA5597EB2C45152950A52 /* RevealSecretKeySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealSecretKeySheet.swift; sourceTree = "<group>"; };
+		4F3528C0245C780F55A24B98 /* SecretKeySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretKeySheet.swift; sourceTree = "<group>"; };
+		510D53798880146B88B760EC /* EmergencyKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyKit.swift; sourceTree = "<group>"; };
+		53A9E124BB5C71804D2927A2 /* TOTPRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOTPRow.swift; sourceTree = "<group>"; };
+		5E223D2562AC4F3F2D58ADD4 /* ItemMoreMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemMoreMenu.swift; sourceTree = "<group>"; };
+		5E225AA98C7FE0208E80A5AA /* EmptyScopeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyScopeView.swift; sourceTree = "<group>"; };
+		5E79B1137B5FFD1933616AE4 /* AttachmentPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentPreview.swift; sourceTree = "<group>"; };
+		5E9227A59DDC673A705AFEFC /* SyncStatusFooter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusFooter.swift; sourceTree = "<group>"; };
+		62299A96BC841398C67D80A9 /* ItemRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemRow.swift; sourceTree = "<group>"; };
+		667B776F248DE0D89F5BDA4C /* AttachmentsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentsSection.swift; sourceTree = "<group>"; };
+		6DB9C2F5EA0CB7C04C8F6581 /* ItemIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemIcon.swift; sourceTree = "<group>"; };
+		70A17B34A2BAA1F0AEA41B06 /* SyncController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncController.swift; sourceTree = "<group>"; };
+		70FC9C164253A1ADE2769A0C /* EmergencyKitButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyKitButton.swift; sourceTree = "<group>"; };
+		81BD6298BF2E694330B63BC5 /* SidebarRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarRow.swift; sourceTree = "<group>"; };
+		84386401B4242FF9C70215D8 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		8BB343CF8E1CABAC11712E9C /* SecretKeyCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretKeyCard.swift; sourceTree = "<group>"; };
+		8F733317592E198E7C8BE00E /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		91E1CAAEB2AB1B271CB02221 /* ItemQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemQuery.swift; sourceTree = "<group>"; };
+		93B02C345EDC1A5E1F59A81A /* SyncStatusText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusText.swift; sourceTree = "<group>"; };
+		979EC43D3A1056A7822DE4E4 /* VaultFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultFlowUITests.swift; sourceTree = "<group>"; };
+		990108B03F57241A9683A164 /* PlatformModifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformModifiers.swift; sourceTree = "<group>"; };
+		9A40114584BDDE376FD0DC22 /* NewItemMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewItemMenu.swift; sourceTree = "<group>"; };
+		A03B6DBEC901F1FC7C870677 /* PrivacyCover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyCover.swift; sourceTree = "<group>"; };
+		A21199A3F49F1C675242B5F8 /* ItemEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemEditorView.swift; sourceTree = "<group>"; };
+		A58FEFC106429A0A9288B74B /* Clipboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Clipboard.swift; sourceTree = "<group>"; };
+		A8754D0B7FA226A57D1F5EA6 /* ItemListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemListView.swift; sourceTree = "<group>"; };
+		AB5D6CD1D3776FE2451E5738 /* ItemSort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemSort.swift; sourceTree = "<group>"; };
+		B0501F19BCD5F4EE88A7243A /* UnlockedOnly.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockedOnly.swift; sourceTree = "<group>"; };
+		B18CA663E5C0730DE43FE5C3 /* SecretFieldEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretFieldEditor.swift; sourceTree = "<group>"; };
+		B94375B6BE2A1F90CFFBBB27 /* EmergencyKitField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyKitField.swift; sourceTree = "<group>"; };
+		BA0E941EFBCE7F60D27D2FED /* CopyButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopyButton.swift; sourceTree = "<group>"; };
+		BD3CC5F5C845D8E81E2205D9 /* FieldValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldValue.swift; sourceTree = "<group>"; };
+		BE4BF21E77591E5C0601FE8F /* TOTPFieldEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOTPFieldEditor.swift; sourceTree = "<group>"; };
+		C98DFD0E98E4A23EFF290AEC /* JoinAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinAccountView.swift; sourceTree = "<group>"; };
+		C9B4A83B964B7A03BB192045 /* Boltwork.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Boltwork.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CB7EEBBEB23D3B8DC7B01AA3 /* SidebarSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSelection.swift; sourceTree = "<group>"; };
+		CE8E2FAD51BA0E1291E69DA4 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		D00C45C0755BF451D1274D6B /* AddFieldMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFieldMenu.swift; sourceTree = "<group>"; };
+		D1992EB3B855122E6404D829 /* ItemActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemActions.swift; sourceTree = "<group>"; };
+		D31F32EBA46CB90D4F1B2794 /* BoltworkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoltworkApp.swift; sourceTree = "<group>"; };
+		D324AD912BDB68FFE8910EB8 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		D756F05FBFD6F4C7A8904DEA /* EmergencyKitPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyKitPage.swift; sourceTree = "<group>"; };
+		D84D9E1BF81A8AA2EDA32EB2 /* AccountSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSettingsSection.swift; sourceTree = "<group>"; };
+		D955C9B8587CA469790D839C /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
+		DFC2728061250D6034FA1C2B /* FieldRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldRow.swift; sourceTree = "<group>"; };
+		E3632FF2FE1339B3B7F36B6F /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		EAD7D3E34F784172352D0376 /* WatchtowerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchtowerView.swift; sourceTree = "<group>"; };
+		F1C699D6E3F58461FBFF174C /* AttachmentRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentRow.swift; sourceTree = "<group>"; };
+		F40783D15260FFFAB236ABAF /* WatchtowerIssueRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchtowerIssueRow.swift; sourceTree = "<group>"; };
+		FEEA77227D9B5902D6129C92 /* GeneratorOptions+Slider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GeneratorOptions+Slider.swift"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6C455231C2BFA8A7F93414F1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				16654A763C886AEEECA28411 /* BoltworkKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0E9446ED950C1B186A82A8A3 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				E3632FF2FE1339B3B7F36B6F /* AppModel.swift */,
+				D31F32EBA46CB90D4F1B2794 /* BoltworkApp.swift */,
+				A03B6DBEC901F1FC7C870677 /* PrivacyCover.swift */,
+				8F733317592E198E7C8BE00E /* RootView.swift */,
+				4DA65F62921350FE328EF2BA /* VaultCommands.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		15C53B12A2F05DCAFB5780DF /* Boltwork */ = {
+			isa = PBXGroup;
+			children = (
+				0E9446ED950C1B186A82A8A3 /* App */,
+				39D37CED6BE057089629F39A /* Browse */,
+				A9EB9ED9C1932D40AB2DE323 /* Detail */,
+				24ECA5D7600A47344A10A7F4 /* Editor */,
+				2F7B015A514183EE32386601 /* Generator */,
+				B76F4ED4AD041530A7169BDD /* Lock */,
+				2C0F67AC8D1CBED1D58771A9 /* Onboarding */,
+				7628F82EEF8D1E317F38461D /* Resources */,
+				9256A127ABA355DFA79C27A1 /* Settings */,
+				F69C169245A0CDE11A49E26E /* Shared */,
+				5D09506F7C14F2E78DFD0F1F /* Sync */,
+				3DB17A4ABCB539E16F452A96 /* Watchtower */,
+			);
+			path = Boltwork;
+			sourceTree = "<group>";
+		};
+		24ECA5D7600A47344A10A7F4 /* Editor */ = {
+			isa = PBXGroup;
+			children = (
+				D00C45C0755BF451D1274D6B /* AddFieldMenu.swift */,
+				032F0FDC7CC234E4AE559ED1 /* EditableFieldRow.swift */,
+				1287747C4CFA3C296246D2EC /* EditableURL.swift */,
+				A21199A3F49F1C675242B5F8 /* ItemEditorView.swift */,
+				B18CA663E5C0730DE43FE5C3 /* SecretFieldEditor.swift */,
+				BE4BF21E77591E5C0601FE8F /* TOTPFieldEditor.swift */,
+			);
+			path = Editor;
+			sourceTree = "<group>";
+		};
+		2C0F67AC8D1CBED1D58771A9 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				2BC2A79D6B122A942974C651 /* CreateVaultView.swift */,
+				510D53798880146B88B760EC /* EmergencyKit.swift */,
+				70FC9C164253A1ADE2769A0C /* EmergencyKitButton.swift */,
+				B94375B6BE2A1F90CFFBBB27 /* EmergencyKitField.swift */,
+				D756F05FBFD6F4C7A8904DEA /* EmergencyKitPage.swift */,
+				C98DFD0E98E4A23EFF290AEC /* JoinAccountView.swift */,
+				4021FE65B4AA3927B1C56E9A /* NewSecretKey.swift */,
+				8BB343CF8E1CABAC11712E9C /* SecretKeyCard.swift */,
+				4F3528C0245C780F55A24B98 /* SecretKeySheet.swift */,
+				CE8E2FAD51BA0E1291E69DA4 /* WelcomeView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		2F7B015A514183EE32386601 /* Generator */ = {
+			isa = PBXGroup;
+			children = (
+				FEEA77227D9B5902D6129C92 /* GeneratorOptions+Slider.swift */,
+				319FACF4D90748FD08DD696C /* GeneratorView.swift */,
+				27C88A8EBEF917595C7DCC23 /* StrengthMeter.swift */,
+			);
+			path = Generator;
+			sourceTree = "<group>";
+		};
+		39D37CED6BE057089629F39A /* Browse */ = {
+			isa = PBXGroup;
+			children = (
+				4224A9AEF3D5612ECD4B3AE0 /* BrowserSheet.swift */,
+				5E225AA98C7FE0208E80A5AA /* EmptyScopeView.swift */,
+				D1992EB3B855122E6404D829 /* ItemActions.swift */,
+				6DB9C2F5EA0CB7C04C8F6581 /* ItemIcon.swift */,
+				A8754D0B7FA226A57D1F5EA6 /* ItemListView.swift */,
+				91E1CAAEB2AB1B271CB02221 /* ItemQuery.swift */,
+				62299A96BC841398C67D80A9 /* ItemRow.swift */,
+				AB5D6CD1D3776FE2451E5738 /* ItemSort.swift */,
+				9A40114584BDDE376FD0DC22 /* NewItemMenu.swift */,
+				81BD6298BF2E694330B63BC5 /* SidebarRow.swift */,
+				CB7EEBBEB23D3B8DC7B01AA3 /* SidebarSelection.swift */,
+				D324AD912BDB68FFE8910EB8 /* SidebarView.swift */,
+				5E9227A59DDC673A705AFEFC /* SyncStatusFooter.swift */,
+				21F504F311154EA8D302AB4D /* VaultBrowser.swift */,
+			);
+			path = Browse;
+			sourceTree = "<group>";
+		};
+		3DB17A4ABCB539E16F452A96 /* Watchtower */ = {
+			isa = PBXGroup;
+			children = (
+				F40783D15260FFFAB236ABAF /* WatchtowerIssueRow.swift */,
+				0A4616CF1717FCC23E483862 /* WatchtowerScore.swift */,
+				EAD7D3E34F784172352D0376 /* WatchtowerView.swift */,
+			);
+			path = Watchtower;
+			sourceTree = "<group>";
+		};
+		5D09506F7C14F2E78DFD0F1F /* Sync */ = {
+			isa = PBXGroup;
+			children = (
+				70A17B34A2BAA1F0AEA41B06 /* SyncController.swift */,
+			);
+			path = Sync;
+			sourceTree = "<group>";
+		};
+		7628F82EEF8D1E317F38461D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				39FD1CBD71A0C9068922664F /* Assets.xcassets */,
+				23D73A96F01FCF809DAC1B61 /* Boltwork.entitlements */,
+				345DD698B020E3F8BB183FCA /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		8B7E2AF6CD780415A4882C06 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				15FAD20A52D04A5F2DB8FBF7 /* BoltworkKit */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		9256A127ABA355DFA79C27A1 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				D84D9E1BF81A8AA2EDA32EB2 /* AccountSettingsSection.swift */,
+				21EB49FE3F30533AA0E53E34 /* ChangePasswordSheet.swift */,
+				4E6BA5597EB2C45152950A52 /* RevealSecretKeySheet.swift */,
+				02BCDCC2578427557E469CB9 /* SecuritySettingsSection.swift */,
+				3132037A71B54B1FD77E824D /* SettingsView.swift */,
+				1A7334A11C8D1FB4F0FFC50C /* SyncSettingsSection.swift */,
+				93B02C345EDC1A5E1F59A81A /* SyncStatusText.swift */,
+				B0501F19BCD5F4EE88A7243A /* UnlockedOnly.swift */,
+				1BB5BAE70BBD90E8621E4A28 /* VaultsSettingsSection.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		992992DB5C885BC2CB9A5E40 /* BoltworkUITests */ = {
+			isa = PBXGroup;
+			children = (
+				979EC43D3A1056A7822DE4E4 /* VaultFlowUITests.swift */,
+			);
+			path = BoltworkUITests;
+			sourceTree = "<group>";
+		};
+		A19E753A62BA9B2BD39EE64C = {
+			isa = PBXGroup;
+			children = (
+				15C53B12A2F05DCAFB5780DF /* Boltwork */,
+				992992DB5C885BC2CB9A5E40 /* BoltworkUITests */,
+				8B7E2AF6CD780415A4882C06 /* Packages */,
+				E7B752DE7CF5BAC1C50C5275 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A9EB9ED9C1932D40AB2DE323 /* Detail */ = {
+			isa = PBXGroup;
+			children = (
+				F1C699D6E3F58461FBFF174C /* AttachmentRow.swift */,
+				667B776F248DE0D89F5BDA4C /* AttachmentsSection.swift */,
+				BA0E941EFBCE7F60D27D2FED /* CopyButton.swift */,
+				DFC2728061250D6034FA1C2B /* FieldRow.swift */,
+				BD3CC5F5C845D8E81E2205D9 /* FieldValue.swift */,
+				0048D17D108EAB1692288C1E /* ItemDetailView.swift */,
+				35A131EFD52CDC78B0664852 /* ItemHeader.swift */,
+				085731E759FC55AFCF164A5F /* ItemHistoryView.swift */,
+				5E223D2562AC4F3F2D58ADD4 /* ItemMoreMenu.swift */,
+				53A9E124BB5C71804D2927A2 /* TOTPRow.swift */,
+				20D245A36B17CC62F65D70F8 /* WebsiteRow.swift */,
+			);
+			path = Detail;
+			sourceTree = "<group>";
+		};
+		B76F4ED4AD041530A7169BDD /* Lock */ = {
+			isa = PBXGroup;
+			children = (
+				4AD57C86098EE13C906F2F54 /* LockView.swift */,
+			);
+			path = Lock;
+			sourceTree = "<group>";
+		};
+		E7B752DE7CF5BAC1C50C5275 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C9B4A83B964B7A03BB192045 /* Boltwork.app */,
+				1FFC5BEF936B652C7C01313A /* BoltworkUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F69C169245A0CDE11A49E26E /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				84386401B4242FF9C70215D8 /* AppSettings.swift */,
+				5E79B1137B5FFD1933616AE4 /* AttachmentPreview.swift */,
+				A58FEFC106429A0A9288B74B /* Clipboard.swift */,
+				39BAB7721169AB3769892A01 /* DeviceSecrets.swift */,
+				4332D9258778A2BCCECBF1ED /* ItemCategory+Display.swift */,
+				D955C9B8587CA469790D839C /* Keychain.swift */,
+				990108B03F57241A9683A164 /* PlatformModifiers.swift */,
+				22015B2CAD7AA57321C709DA /* QuickUnlock.swift */,
+				38A111F84538E99BA534A8D0 /* Theme.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0EFC2DB6133865B27453F155 /* BoltworkUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C5FBB840DAE7DEC53DE90F35 /* Build configuration list for PBXNativeTarget "BoltworkUITests" */;
+			buildPhases = (
+				E39C0CC517A93246D4B74A56 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				18D3520941FCEE50342F386D /* PBXTargetDependency */,
+			);
+			name = BoltworkUITests;
+			packageProductDependencies = (
+			);
+			productName = BoltworkUITests;
+			productReference = 1FFC5BEF936B652C7C01313A /* BoltworkUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		A54B10B71A892E1A6FF805D1 /* Boltwork */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7920F1BFD2998F980CF8FBFD /* Build configuration list for PBXNativeTarget "Boltwork" */;
+			buildPhases = (
+				56102B45E92DD483DB1A3558 /* Sources */,
+				DD1E0185257DA2A1D1D37325 /* Resources */,
+				6C455231C2BFA8A7F93414F1 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Boltwork;
+			packageProductDependencies = (
+				B306FAF6A5D07AD26DD23E7D /* BoltworkKit */,
+			);
+			productName = Boltwork;
+			productReference = C9B4A83B964B7A03BB192045 /* Boltwork.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C65130A227BF6FB41353925C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					0EFC2DB6133865B27453F155 = {
+						TestTargetID = A54B10B71A892E1A6FF805D1;
+					};
+					A54B10B71A892E1A6FF805D1 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 748E2AC2F921D1B09FA49484 /* Build configuration list for PBXProject "Boltwork" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = A19E753A62BA9B2BD39EE64C;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A54454093723733D76EE3B1C /* XCLocalSwiftPackageReference "BoltworkKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = E7B752DE7CF5BAC1C50C5275 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A54B10B71A892E1A6FF805D1 /* Boltwork */,
+				0EFC2DB6133865B27453F155 /* BoltworkUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		DD1E0185257DA2A1D1D37325 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				355DCEAADAD12AE79EC3367A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		56102B45E92DD483DB1A3558 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				09F2B3B4FC8A6A2E39BB7AB3 /* AccountSettingsSection.swift in Sources */,
+				49A3B8173CBB6C31BA1EFC66 /* AddFieldMenu.swift in Sources */,
+				9938AAF2500A4C55A596C530 /* AppModel.swift in Sources */,
+				243201EDF93A28EB592B8D54 /* AppSettings.swift in Sources */,
+				722108ED63C6F053EE800111 /* AttachmentPreview.swift in Sources */,
+				ABB79426393372EA53E2B2FA /* AttachmentRow.swift in Sources */,
+				491594D6DAFF091D6ECE61FC /* AttachmentsSection.swift in Sources */,
+				790ED4908DA0DAD349608F57 /* BoltworkApp.swift in Sources */,
+				671F2434C6DF5C21434A3273 /* BrowserSheet.swift in Sources */,
+				7AFF9A9ABCEE171E4F78F066 /* ChangePasswordSheet.swift in Sources */,
+				136D275B56496755BC2BFFEF /* Clipboard.swift in Sources */,
+				3CCD584911D939A2245CEB8A /* CopyButton.swift in Sources */,
+				31EB83AC65C751561A02496C /* CreateVaultView.swift in Sources */,
+				6ACD811E7C9818E710020C9F /* DeviceSecrets.swift in Sources */,
+				E9AA3C85648701F3BFB716E5 /* EditableFieldRow.swift in Sources */,
+				0CC3840874399276C0889DA2 /* EditableURL.swift in Sources */,
+				28D2188CE94BCC59BB99BBAE /* EmergencyKit.swift in Sources */,
+				2E2A11BA9A900C5A076A5049 /* EmergencyKitButton.swift in Sources */,
+				3D20C6BCEDDAE02F6B08C386 /* EmergencyKitField.swift in Sources */,
+				18E9FEB5E1F38F0032E834FD /* EmergencyKitPage.swift in Sources */,
+				C7AD6BCA2DBDE9B69A3BCC7F /* EmptyScopeView.swift in Sources */,
+				90A437152B6958618C4CBD84 /* FieldRow.swift in Sources */,
+				311537169AAA5B2422A24A98 /* FieldValue.swift in Sources */,
+				07B6D827E2CC91C12C08756E /* GeneratorOptions+Slider.swift in Sources */,
+				34274A86DBFB1CE3DBBE1FDF /* GeneratorView.swift in Sources */,
+				B22BF655A4E9EB423D5BBD92 /* ItemActions.swift in Sources */,
+				A53DE4DECA173DB44A26F7B4 /* ItemCategory+Display.swift in Sources */,
+				E1D2153FDA9AAB6346BBCA23 /* ItemDetailView.swift in Sources */,
+				C450ADFA46B5893534D23313 /* ItemEditorView.swift in Sources */,
+				5C441B711626BE3A8FF973EA /* ItemHeader.swift in Sources */,
+				08C03B35A980AD61135F4FA7 /* ItemHistoryView.swift in Sources */,
+				83C83F8EE807192BC4A0279C /* ItemIcon.swift in Sources */,
+				7DEAD37B0735E5D58F95E044 /* ItemListView.swift in Sources */,
+				0AAF04A3408CC1F471CDD4E7 /* ItemMoreMenu.swift in Sources */,
+				531C5598FE23269A0AED1DD1 /* ItemQuery.swift in Sources */,
+				C0B8933A6BEBA6C211E1B3E3 /* ItemRow.swift in Sources */,
+				A63A32671BABCF5AC02EF2BC /* ItemSort.swift in Sources */,
+				8E2FB94DE4918DF49DFE3072 /* JoinAccountView.swift in Sources */,
+				00355A45A80BDD286FBEC528 /* Keychain.swift in Sources */,
+				8149C695DDBAA79C8A295395 /* LockView.swift in Sources */,
+				0BB9B01B683826A5E4C3A532 /* NewItemMenu.swift in Sources */,
+				636882C5EBFD200E29BC72B4 /* NewSecretKey.swift in Sources */,
+				4774072CD8ECDBD0AF2E0149 /* PlatformModifiers.swift in Sources */,
+				65E013B680257E1C8F58B5BE /* PrivacyCover.swift in Sources */,
+				ABF0A892166A68C3DB3AE689 /* QuickUnlock.swift in Sources */,
+				9EF820F3252F5BFA60589DA5 /* RevealSecretKeySheet.swift in Sources */,
+				D5582498620593D938759DB8 /* RootView.swift in Sources */,
+				77BBAA56E7F04214AD7DB616 /* SecretFieldEditor.swift in Sources */,
+				9979EF3BA34AB46CF3544723 /* SecretKeyCard.swift in Sources */,
+				A00241E5F64FDDC7F7325594 /* SecretKeySheet.swift in Sources */,
+				1C7332675654D48D65C7A930 /* SecuritySettingsSection.swift in Sources */,
+				58E8BC260C6C333889C3E48D /* SettingsView.swift in Sources */,
+				178FA8C08D283F23895A9486 /* SidebarRow.swift in Sources */,
+				946C3302DF9E9BEC65DE5C0D /* SidebarSelection.swift in Sources */,
+				3CE1926A5A9BFE1BDF5375D0 /* SidebarView.swift in Sources */,
+				A41C64BA986E536BE0090A3D /* StrengthMeter.swift in Sources */,
+				DD7FC1DDCAF8EFDD9DD979F8 /* SyncController.swift in Sources */,
+				6840C099E21988604D872142 /* SyncSettingsSection.swift in Sources */,
+				C5B874F21D3CF9F7D1A722E0 /* SyncStatusFooter.swift in Sources */,
+				18E372AF3BF275B47B08B683 /* SyncStatusText.swift in Sources */,
+				4F6FF8D3FE18CB1EB632C8F0 /* TOTPFieldEditor.swift in Sources */,
+				4B4C1B0F0B8E8DF4B3A38B9C /* TOTPRow.swift in Sources */,
+				2BB5E381B5C3CB629D52BDA0 /* Theme.swift in Sources */,
+				6E01FD7E90AE913B6F389675 /* UnlockedOnly.swift in Sources */,
+				DB125A1C15BD3A5B12169131 /* VaultBrowser.swift in Sources */,
+				F1313DA19CFC741FC2CA0B05 /* VaultCommands.swift in Sources */,
+				9F144FA5632B09269B34B0D9 /* VaultsSettingsSection.swift in Sources */,
+				5E46B7A647BA00366F534144 /* WatchtowerIssueRow.swift in Sources */,
+				628E06EF8FFC786E2A414CCA /* WatchtowerScore.swift in Sources */,
+				7A09F9C9E17F6BFCE1EABFB2 /* WatchtowerView.swift in Sources */,
+				DDA77A3979AA9A6F7406BD8C /* WebsiteRow.swift in Sources */,
+				2BF1E8BEC67A65A0A38C4CF7 /* WelcomeView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E39C0CC517A93246D4B74A56 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3737585848213760A3BE5993 /* VaultFlowUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		18D3520941FCEE50342F386D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A54B10B71A892E1A6FF805D1 /* Boltwork */;
+			targetProxy = 3ABFAF920B87F1164CEF4B40 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		05FCDB4289A2040B8E5281F0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Boltwork/Resources/Boltwork.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Boltwork/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Boltwork;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Boltwork uses Face ID to unlock your vault without your account password.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Boltwork connects to a sync server on your home network if you set one up.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.boltwork.apple;
+				PRODUCT_NAME = Boltwork;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4F665510A4D82D4E2BBB9388 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.boltwork.apple.uitests;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Boltwork;
+			};
+			name = Release;
+		};
+		7BE24CE2C3A380B035F9237D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.boltwork.apple.uitests;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Boltwork;
+			};
+			name = Debug;
+		};
+		94488FE56EDDBBC4E7482369 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 0.4.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		DBCFE776057B38BFA6F09A9E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Boltwork/Resources/Boltwork.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Boltwork/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Boltwork;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Boltwork uses Face ID to unlock your vault without your account password.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Boltwork connects to a sync server on your home network if you set one up.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.boltwork.apple;
+				PRODUCT_NAME = Boltwork;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		F111B68E25E4C18EE29423F5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 0.4.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		748E2AC2F921D1B09FA49484 /* Build configuration list for PBXProject "Boltwork" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				94488FE56EDDBBC4E7482369 /* Debug */,
+				F111B68E25E4C18EE29423F5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7920F1BFD2998F980CF8FBFD /* Build configuration list for PBXNativeTarget "Boltwork" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DBCFE776057B38BFA6F09A9E /* Debug */,
+				05FCDB4289A2040B8E5281F0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C5FBB840DAE7DEC53DE90F35 /* Build configuration list for PBXNativeTarget "BoltworkUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7BE24CE2C3A380B035F9237D /* Debug */,
+				4F665510A4D82D4E2BBB9388 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A54454093723733D76EE3B1C /* XCLocalSwiftPackageReference "BoltworkKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = BoltworkKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B306FAF6A5D07AD26DD23E7D /* BoltworkKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = BoltworkKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = C65130A227BF6FB41353925C /* Project object */;
+}

@@ -48,6 +48,7 @@ public struct SyncClient: Sendable {
             let (data, response) = try await Self.session.data(for: request)
             return (data, (response as? HTTPURLResponse)?.statusCode ?? 0)
         } catch let e as URLError {
+            if e.code == .cancelled { throw CancellationError() }
             throw unreachable(e)
         }
     }
@@ -80,7 +81,7 @@ public struct SyncClient: Sendable {
     }
 
     private static func base64URL(_ b: [UInt8]) -> String {
-        Data(b).base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+        Data(b).base64EncodedString().replacing("+", with: "-").replacing("/", with: "_").replacing("=", with: "")
     }
 
     public func health() async throws -> Health { try await call("GET", "/health") }

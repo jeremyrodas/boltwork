@@ -57,3 +57,10 @@ struct ItemToolsTests {
         #expect(report.score < 1000)
     }
 }
+
+struct StrengthSamples {
+    @Test func longMixedPasswordIsStrong() {
+        #expect(PasswordStrength("Tr0ub4dor&3-much-longer").level >= 5)
+        #expect(PasswordStrength("T").level <= 1)
+    }
+}

@@ -7,4 +7,9 @@ public struct SyncError: LocalizedError, Sendable {
     public var errorDescription: String? { message }
     /// The server rejected this device's session; the user must sign in again.
     public var isSignedOut: Bool { status == 401 }
+
+    public init(status: Int, message: String) {
+        self.status = status
+        self.message = message
+    }
 }

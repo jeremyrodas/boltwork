@@ -40,10 +40,11 @@ public enum WatchtowerCheck: String, CaseIterable, Codable, Sendable {
     }
 }
 
-public struct WatchtowerIssue: Hashable, Sendable {
+public struct WatchtowerIssue: Hashable, Identifiable, Sendable {
     public let check: WatchtowerCheck
     public let itemId: String
     public let detail: String
+    public var id: String { "\(check.rawValue):\(itemId)" }
 }
 
 public struct WatchtowerReport: Sendable {
@@ -110,7 +111,7 @@ public enum Watchtower {
     }
 
     public static func sha1Hex(_ s: String) -> String {
-        Insecure.SHA1.hash(data: Data(s.utf8)).map { String(format: "%02X", $0) }.joined()
+        Array(Insecure.SHA1.hash(data: Data(s.utf8))).hexString.uppercased()
     }
 
     /// How many breaches a password appeared in, from the first 5 characters of its SHA-1 only.
