@@ -23,6 +23,12 @@ if (window === window.top && !window.__boltworkPasskeys) {
   const send = <T>(m: ExtMessage) => new Promise<T | null>(resolve => {
     try { chrome.runtime.sendMessage(m, r => { void chrome.runtime.lastError; resolve((r ?? null) as T | null); }); } catch { resolve(null); }
   });
+  // Only a passkey, an error Boltwork chose to raise ({name, message}), or "let the browser handle it" reach the
+  // page. Anything else (the service worker failing, an unknown reply) falls back to the browser's own WebAuthn,
+  // rather than surfacing as a blank error the site can't act on.
+  const isDomError = (e: unknown) => !!e && typeof e === 'object' && typeof (e as { name?: unknown }).name === 'string';
+  const settle = (r: Record<string, unknown> | null) =>
+    r?.response ? r : r && isDomError(r.error) ? r : { fallback: true };
   const reply = (id: string, result: unknown) => window.postMessage({ __boltworkPk: 'res', id, result }, '*');
   const conditional = new Map<string, Pending>();
 
@@ -37,7 +43,10 @@ if (window === window.top && !window.__boltworkPasskeys) {
     const m: ExtMessage = d.kind === 'create'
       ? { type: 'passkeyCreate', request: d.payload as never }
       : { type: 'passkeyGet', request: d.payload as never };
-    void send<Record<string, unknown>>(m).then(r => reply(id, r && (r.response || r.error || r.fallback) ? r : { fallback: true }));
+    void send<Record<string, unknown>>(m).then(r => {
+      if (r?.error && !isDomError(r.error)) console.warn('Boltwork: passkey request failed, using the browser instead:', r.error);
+      reply(id, settle(r));
+    });
   });
 
   window.__boltworkPasskeys = {
@@ -53,7 +62,7 @@ if (window === window.top && !window.__boltworkPasskeys) {
       if (!p) return;
       conditional.delete(p.id);
       const r = await send<Record<string, unknown>>({ type: 'passkeyGet', request: p.request as never, conditional: true, credentialId });
-      reply(p.id, r && (r.response || r.error) ? r : { fallback: true });
+      reply(p.id, settle(r));
     },
   };
 }

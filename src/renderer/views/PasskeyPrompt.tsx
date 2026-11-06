@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Fingerprint, KeyRound, Plus, X } from 'lucide-react';
-import type { PasskeyPrompt } from '../../core/browserBridge';
+import type { AppPrompt } from '../../core/browserBridge';
 import { api } from '../api';
 import { BrandMark } from '../components/BrandMark';
 import { Ico } from '../components/icons';
@@ -12,7 +12,7 @@ import { Button, IconButton } from '../components/ui';
  * site's existing logins, or a new login, and lets the user change that.
  */
 export function PasskeyPromptView() {
-  const [p, setP] = useState<PasskeyPrompt | null | undefined>(undefined);
+  const [p, setP] = useState<AppPrompt | null | undefined>(undefined);
   const [target, setTarget] = useState('new');
   const [account, setAccount] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -21,7 +21,7 @@ export function PasskeyPromptView() {
   useEffect(() => {
     void api.getPasskeyPrompt().then(x => {
       setP(x);
-      if (x?.suggested) setTarget(x.suggested);
+      if (x?.kind === 'create' && x.suggested) setTarget(x.suggested);
     });
   }, []);
 
@@ -42,7 +42,8 @@ export function PasskeyPromptView() {
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.preventDefault(); cancel(); }
-      else if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); if (!busy) confirm(); }
+      // Connecting a browser takes a click on Connect, never a stray Enter.
+      else if (e.key === 'Enter' && p?.kind !== 'pair' && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); if (!busy) confirm(); }
     };
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
@@ -54,6 +55,54 @@ export function PasskeyPromptView() {
       <div ref={root} className="pk-prompt">
         <Head title="Passkey request" onClose={() => window.close()} />
         <p className="muted pk-pad">This request is no longer waiting.</p>
+      </div>
+    );
+  }
+
+  if (p.kind === 'pair') {
+    return (
+      <div ref={root} className="pk-prompt" role="dialog" aria-labelledby="pk-title" aria-describedby="pk-site">
+        <Head title="Connect browser" onClose={cancel} />
+        <div className="pk-body">
+          <h1 id="pk-title">Connect {p.browser} to Boltwork?</h1>
+          <p id="pk-site" className="pk-site">The Boltwork extension in {p.browser} is asking to fill and save logins.</p>
+          <div className="pk-code-box">
+            <span className="pk-code-label">Only connect if the extension shows this code</span>
+            <span className="pk-code" aria-label={`Code ${p.code.split('').join(' ')}`}>{p.code}</span>
+          </div>
+          <p className="pk-outcome">If you didn’t just ask to connect from the extension, or the codes differ, cancel.</p>
+        </div>
+        <div className="pk-foot">
+          <span className="pk-spacer" />
+          <Button autoFocus disabled={busy} onClick={cancel}>Cancel</Button>
+          <Button kind="primary" disabled={busy} onClick={() => answer({ action: 'ok', index: 0 })}>Connect</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (p.kind === 'ssh') {
+    return (
+      <div ref={root} className="pk-prompt" role="dialog" aria-labelledby="pk-title" aria-describedby="pk-site">
+        <Head title="SSH key request" onClose={cancel} />
+        <div className="pk-body">
+          <h1 id="pk-title">Allow an SSH client to use this key?</h1>
+          <p id="pk-site" className="pk-site">A program on this computer, such as ssh or git, is asking to sign in with it.</p>
+          <div className="pk-account pk-key">
+            <Ico icon={KeyRound} size={16} />
+            <span className="pk-choice-text">
+              <b>{p.title || 'Untitled key'}</b>
+              <span className="muted mono">{[p.keyType, p.fingerprint].filter(Boolean).join(' · ') || 'No fingerprint'}</span>
+            </span>
+          </div>
+          <p className="pk-outcome">Only allow it if you just ran that command. Boltwork signs for it; the private key never leaves the vault.</p>
+        </div>
+        <div className="pk-foot">
+          <Button kind="ghost" disabled={busy} onClick={() => answer({ action: 'ok', index: 1 })}>Allow until Boltwork locks</Button>
+          <span className="pk-spacer" />
+          <Button disabled={busy} onClick={cancel}>Deny</Button>
+          <Button kind="primary" autoFocus disabled={busy} onClick={() => answer({ action: 'ok', index: 0 })}>Allow</Button>
+        </div>
       </div>
     );
   }

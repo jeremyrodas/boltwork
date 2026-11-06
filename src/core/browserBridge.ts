@@ -48,6 +48,27 @@ export interface PasskeyPrompt {
   suggested?: string;
 }
 
+/** A browser extension asking to connect: approved only if the code matches the one the extension shows. */
+export interface PairPrompt {
+  kind: 'pair';
+  browser: string;
+  code: string;
+}
+
+/**
+ * A program (ssh, git…) asking the SSH agent to sign with a key. Answered with `ok` index 0 (allow once) or
+ * 1 (allow until Boltwork locks), or cancel (deny).
+ */
+export interface SshPrompt {
+  kind: 'ssh';
+  title: string;
+  fingerprint: string;
+  keyType: string;
+}
+
+/** Anything Boltwork's small prompt window can ask. */
+export type AppPrompt = PasskeyPrompt | PairPrompt | SshPrompt;
+
 /** Fills in where a new passkey could go, so the prompt can say whether it joins a login or makes a new one. */
 export function createPrompt(store: VaultStore, site: string, rpId: string, userName: string, account: string, allowFallback?: boolean): PasskeyPrompt {
   const { targets, suggested } = store.passkeyTargets(rpId, userName);

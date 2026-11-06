@@ -21,7 +21,7 @@ import { Worker } from 'node:worker_threads';
 import { makeIcon } from './icon';
 import { initSshAgent, setSshAgentEnabled, sshAgentLocked, sshAgentStatus } from './sshAgentHost';
 import { browserHostStatus, getBridge, registerNativeHost, startBrowserHost, stopBrowserHost } from './browserHost';
-import type { PasskeyDecision, PasskeyPrompt } from '../core/browserBridge';
+import type { AppPrompt, PasskeyDecision, PasskeyPrompt } from '../core/browserBridge';
 import { openWindowsPasskeySettings, providerStatus, registerProvider, scheduleCredentialSync, startPasskeyProvider, unregisterProvider } from './passkeyProvider';
 import {
   checkServer, disconnectSync, initSync, pushNewKeys, reconnect, scheduleSync, setupSync, signInNewDevice, startSyncLoop,
@@ -548,15 +548,27 @@ function quickStatus() {
 // ---------- passkey prompts (browser extension and Windows provider) ----------
 
 /**
- * Asks the user to approve making or using a passkey, in Boltwork's own prompt window (styled like the app,
- * on top of the browser or Windows' passkey window). One prompt at a time; closing it cancels.
+ * Asks the user something in Boltwork's own prompt window (styled like the app, on top of the browser or
+ * Windows' passkey window): making or using a passkey, or connecting a browser. One prompt at a time;
+ * closing it cancels.
  */
 let passkeyWin: BrowserWindow | null = null;
-let passkeyAsk: { prompt: PasskeyPrompt; answer: (d: PasskeyDecision) => void } | null = null;
+let passkeyAsk: { prompt: AppPrompt; answer: (d: PasskeyDecision) => void } | null = null;
 let passkeyQueue: Promise<unknown> = Promise.resolve();
 const PROMPT_WIDTH = 460;
 
-function approvePasskey(p: PasskeyPrompt): Promise<PasskeyDecision> {
+const promptTitle = (p: AppPrompt) =>
+  p.kind === 'pair' ? 'Boltwork: connect browser' : p.kind === 'ssh' ? 'Boltwork: SSH key request' : p.kind === 'create' ? 'Boltwork: save passkey' : 'Boltwork: sign in with passkey';
+
+/** Asks whether to connect a browser's extension. Only the user's click on Connect approves it. */
+async function approvePairing(code: string, name: string): Promise<boolean> {
+  const d = await askPrompt({ kind: 'pair', browser: name, code });
+  return d.action === 'ok';
+}
+
+const approvePasskey = (p: PasskeyPrompt) => askPrompt(p);
+
+function askPrompt(p: AppPrompt): Promise<PasskeyDecision> {
   const run = passkeyQueue.then(() => new Promise<PasskeyDecision>(resolve => {
     let done = false;
     const answer = (d: PasskeyDecision) => {
@@ -574,7 +586,7 @@ function approvePasskey(p: PasskeyPrompt): Promise<PasskeyDecision> {
     passkeyWin = new BrowserWindow({
       width: PROMPT_WIDTH, height: 320, x: Math.round(x + (width - PROMPT_WIDTH) / 2), y: Math.round(y + height * 0.24),
       show: false, frame: false, resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
-      alwaysOnTop: true, skipTaskbar: false, title: p.kind === 'create' ? 'Boltwork: save passkey' : 'Boltwork: sign in with passkey',
+      alwaysOnTop: true, skipTaskbar: false, title: promptTitle(p),
       backgroundColor: '#111318', icon: makeIcon(256, false, settings.colorScheme),
       webPreferences: { preload, contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
     });
@@ -839,6 +851,8 @@ const handlers: Handlers = {
     if (!passkeyWin || sender !== passkeyWin.webContents || !passkeyAsk) return;
     const p = passkeyAsk.prompt;
     const d = decision as PasskeyDecision;
+    if (p.kind === 'pair') return passkeyAsk.answer(d?.action === 'ok' ? { action: 'ok', index: 0 } : { action: 'cancel' });
+    if (p.kind === 'ssh') return passkeyAsk.answer(d?.action === 'ok' ? { action: 'ok', index: d.index === 1 ? 1 : 0 } : { action: 'cancel' });
     if (d?.action === 'fallback' && p.allowFallback !== false) return passkeyAsk.answer({ action: 'fallback' });
     if (d?.action !== 'ok' || !Number.isInteger(d.index) || d.index < 0 || d.index >= Math.max(1, p.accounts.length)) return passkeyAsk.answer({ action: 'cancel' });
     const target = p.kind === 'create' && typeof d.target === 'string' && (d.target === 'new' || p.targets?.some(t => t.itemId === d.target)) ? d.target : undefined;
@@ -1008,6 +1022,10 @@ app.whenReady().then(async () => {
     store: () => store,
     requestUnlock: () => showMain(),
     onUsed: id => { if (store) { store.markUsed(id); changed(); } },
+    ask: async key => {
+      const d = await askPrompt({ kind: 'ssh', ...key });
+      return d.action !== 'ok' ? 'deny' : d.index === 1 ? 'untilLock' : 'once';
+    },
   });
   if (settings.sshAgentEnabled) void setSshAgentEnabled(true);
   if (settings.browserIntegration) void setBrowserIntegration(true);
@@ -1047,26 +1065,7 @@ async function setBrowserIntegration(on: boolean) {
     onChanged: () => changed(),
     approvePasskey,
     waitForUnlock,
-    approvePairing: async (code, name) => {
-      showMain();
-      app.focus({ steal: true });
-      const opts = {
-        type: 'question' as const,
-        title: 'Boltwork: connect browser',
-        message: `Connect ${name} to Boltwork?`,
-        detail: `The Boltwork extension in ${name} is asking to fill and save logins.
-
-Only connect if the extension shows this code:
-
-    ${code}`,
-        buttons: ['Connect', 'Cancel'],
-        defaultId: 1,
-        cancelId: 1,
-        noLink: true,
-      };
-      const { response } = mainWin ? await dialog.showMessageBox(mainWin, opts) : await dialog.showMessageBox(opts);
-      return response === 0;
-    },
+    approvePairing,
   });
 }
 

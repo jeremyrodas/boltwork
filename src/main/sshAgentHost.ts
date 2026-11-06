@@ -1,5 +1,5 @@
 /** Runs the SSH agent inside Boltwork: serves SSH Key items from the vault and asks before each use. */
-import { app, dialog, Notification } from 'electron';
+import { Notification } from 'electron';
 import type net from 'node:net';
 import type { SshAgentStatus } from '../core/api';
 import { sshPublicBlob, sshSign } from '../core/ssh';
@@ -11,6 +11,8 @@ interface Host {
   /** Shows the main window so the user can unlock. */
   requestUnlock: () => void;
   onUsed: (itemId: string) => void;
+  /** Asks whether a program may sign with this key, in Boltwork's prompt window. */
+  ask: (key: { title: string; fingerprint: string; keyType: string }) => Promise<'once' | 'untilLock' | 'deny'>;
 }
 
 let server: net.Server | null = null;
@@ -54,21 +56,11 @@ function keysFrom(store: VaultStore): (AgentKey & { title: string; fingerprint: 
   return out;
 }
 
-async function approve(key: AgentKey, title: string, fingerprint: string): Promise<boolean> {
+async function approve(key: AgentKey, title: string, fingerprint: string, keyType: string): Promise<boolean> {
   if (approvedUntilLock.has(key.id)) return true;
-  app.focus({ steal: true });
-  const { response } = await dialog.showMessageBox({
-    type: 'question',
-    title: 'Boltwork: SSH key request',
-    message: `Allow an SSH client to use “${title}”?`,
-    detail: `${fingerprint}\n\nA program on this computer (such as ssh or git) is asking to sign in with this key. Only allow it if you just ran that command.`,
-    buttons: ['Allow', 'Allow until Boltwork locks', 'Deny'],
-    defaultId: 0,
-    cancelId: 2,
-    noLink: true,
-  });
-  if (response === 1) approvedUntilLock.add(key.id);
-  return response !== 2;
+  const answer = await host.ask({ title, fingerprint, keyType });
+  if (answer === 'untilLock') approvedUntilLock.add(key.id);
+  return answer !== 'deny';
 }
 
 export async function setSshAgentEnabled(enabled: boolean): Promise<void> {
@@ -89,7 +81,7 @@ export async function setSshAgentEnabled(enabled: boolean): Promise<void> {
         const s = await waitForUnlock();
         if (!s) return null;
         const k = keysFrom(s).find(x => x.id === key.id);
-        if (!k || !(await approve(key, k.title, k.fingerprint))) return null;
+        if (!k || !(await approve(key, k.title, k.fingerprint, k.keyType))) return null;
         const pk = s.getItem(key.id).fields.find(f => f.id === 'privateKey')!.value;
         host.onUsed(key.id);
         return sshSign(pk, data, flags);

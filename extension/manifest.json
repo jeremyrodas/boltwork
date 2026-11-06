@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Boltwork",
   "description": "Fill and save logins, and use passkeys, with the Boltwork desktop app.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvTIE688YUTUrVBXihzBpvv15lf0dIn3TySL3fdfFOpcovIys7sEy1zkdP9kFjZySMua18vFSQoGn6aH3rfaF8TBlzBtxELe/0nKo79/TSM2nzMWEgo9l6/Eoh3BQNocQ88S6PSPfy/loVYB3f0F7Tjp75desytyoh/mrvEY6LUmJEDaMGcosbLKqFZkNNw/8hPFG1Y+rcdOliLJt4EVw1JV0GvvMFj1w72/D6rsxZznbf+DggHUcMvVfFo/xeDQVXTiDyQn6iTs0rPrxF2yFungPw7Jl0ue+UbZaxnxAZunvBbiVFC1JlazFL76JQroW0ghZLm8iacapNSAx96ty4QIDAQAB",
   "minimum_chrome_version": "116",
   "permissions": [

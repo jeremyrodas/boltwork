@@ -42,12 +42,17 @@ writeFileSync(path.join(pkg, 'AppxManifest.xml'), `<?xml version="1.0" encoding=
   xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap5 com rescap">
+  xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
+  IgnorableNamespaces="uap uap5 com rescap desktop6">
   <Identity Name="Boltwork.PasskeyProvider" Publisher="${PUBLISHER}" Version="${version}.0" ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>Boltwork passkeys</DisplayName>
     <PublisherDisplayName>Boltwork</PublisherDisplayName>
     <Logo>Assets\\StoreLogo.png</Logo>
+    <!-- The helper may start Boltwork, which then runs inside this package: its vault must still be saved to the
+         real AppData folder, not a per-package copy, so Windows write redirection is off. -->
+    <desktop6:FileSystemWriteVirtualization>disabled</desktop6:FileSystemWriteVirtualization>
+    <desktop6:RegistryWriteVirtualization>disabled</desktop6:RegistryWriteVirtualization>
   </Properties>
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.26100.0" MaxVersionTested="10.0.26200.0" />
@@ -77,6 +82,7 @@ writeFileSync(path.join(pkg, 'AppxManifest.xml'), `<?xml version="1.0" encoding=
   </Applications>
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
+    <rescap:Capability Name="unvirtualizedResources" />
   </Capabilities>
 </Package>
 `);

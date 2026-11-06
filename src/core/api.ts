@@ -2,7 +2,7 @@
 import type {
   Collection, GeneratorOptions, Item, ItemContent, Settings, Strength, Vault, VaultData, WatchtowerCheck, WatchtowerReport,
 } from './types';
-import type { PasskeyDecision, PasskeyPrompt } from './browserBridge';
+import type { AppPrompt, PasskeyDecision } from './browserBridge';
 import type { PresetName } from './settings';
 import type { SshKeyInfo, SshKeyType } from './ssh';
 
@@ -129,7 +129,7 @@ export interface Api {
   largeType(text: string): void;
   getLargeTypeText(): string;
   /** The passkey prompt window: what it's asking, the user's answer, and its content height. */
-  getPasskeyPrompt(): PasskeyPrompt | null;
+  getPasskeyPrompt(): AppPrompt | null;
   answerPasskeyPrompt(decision: PasskeyDecision): void;
   fitPasskeyPrompt(height: number): void;
   openUrl(url: string): void;

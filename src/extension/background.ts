@@ -182,7 +182,10 @@ function publicPending(p: PendingSave) {
 
 chrome.runtime.onMessage.addListener((m: ExtMessage, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return false;
-  handle(m, sender).then(sendResponse, e => sendResponse({ error: String((e as Error).message ?? e) }));
+  handle(m, sender).then(sendResponse, e => {
+    console.error(`Boltwork: ${m.type} failed:`, e);
+    sendResponse({ error: String((e as Error).message ?? e) });
+  });
   return true;
 });
 
