@@ -56,8 +56,10 @@ targets:
     info:
       path: Boltwork/Resources/Info.plist
       properties:
+        # SyncServerURL allows plain http only for this device and private-network addresses. ATS can't express
+        # IP ranges, and its local-networking exception misses VPN ranges like 100.64/10, so it defers to that check.
         NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
+          NSAllowsArbitraryLoads: true
   BoltworkUITests:
     type: bundle.ui-testing
     supportedDestinations: [iOS, macOS]
