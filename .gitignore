@@ -9,3 +9,5 @@ server/data/
 release/
 build/
 release.local.json
+native/passkey-provider/bin/
+native/passkey-provider/obj/

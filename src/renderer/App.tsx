@@ -13,6 +13,7 @@ import { ItemDetail } from './views/ItemDetail';
 import { ItemEditor } from './views/ItemEditor';
 import { CategoryPicker, ItemList } from './views/ItemList';
 import { LargeType, QuickAccess } from './views/QuickAccess';
+import { PasskeyPromptView } from './views/PasskeyPrompt';
 import { SettingsView } from './views/Settings';
 import { Sidebar } from './views/Sidebar';
 import { WatchtowerView } from './views/Watchtower';
@@ -121,7 +122,7 @@ export function App() {
   const kind = window.location.hash.slice(1) || app?.window || 'main';
   return (
     <>
-      {kind === 'quickAccess' ? <QuickAccess /> : kind === 'largeType' ? <LargeType /> : <MainWindow />}
+      {kind === 'quickAccess' ? <QuickAccess /> : kind === 'largeType' ? <LargeType /> : kind === 'passkeyPrompt' ? <PasskeyPromptView /> : <MainWindow />}
       <Toasts />
       <ConfirmHost />
     </>

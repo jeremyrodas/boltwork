@@ -11,7 +11,7 @@ import { BrowserBridge, matchLogins } from '../src/core/browserBridge';
 import { EXTENSION_ID } from '../src/core/extensionId';
 import { startBrowserHost, stopBrowserHost } from '../src/main/browserHost';
 
-async function setup(approve = true) {
+async function setup(approve = true, passkeyDecision: () => import('../src/core/browserBridge').PasskeyDecision = () => ({ action: 'ok', index: 0 })) {
   await ready();
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sr-br-'));
   const store = await VaultStore.create(dir, 'correct horse battery', generateSecretKey(), KDF_FAST_FOR_TESTS);
@@ -26,11 +26,14 @@ async function setup(approve = true) {
     return store.saveItem({ ...c, vaultId }).id;
   };
   let locked = false;
+  const prompts: import('../src/core/browserBridge').PasskeyPrompt[] = [];
   const bridge = new BrowserBridge({
     store: () => (locked ? null : store), pairingsFile: path.join(dir, 'pairings.json'),
     approvePairing: async () => approve, showMain: () => {}, onChanged: () => {}, version: 'test',
+    approvePasskey: async p => { prompts.push(p); return passkeyDecision(); },
+    waitForUnlock: async () => !locked,
   });
-  return { store, bridge, login, dir, lock: (v: boolean) => { locked = v; } };
+  return { store, bridge, login, dir, prompts, lock: (v: boolean) => { locked = v; } };
 }
 
 const ORIGIN = `chrome-extension://${EXTENSION_ID}/`;
@@ -128,6 +131,7 @@ test('native host relays Chrome-framed messages to the app pipe, and only for ou
   await startBrowserHost({
     store: () => store, pairingsFile: path.join(dir, 'pairings.json'), version: 'test',
     approvePairing: async () => { approvals++; return true; }, showMain: () => {}, onChanged: () => {},
+    approvePasskey: async () => ({ action: 'cancel' }), waitForUnlock: async () => true,
   });
   try {
     const [paired] = await talk(ORIGIN, sock, [{ id: 1, msg: { type: 'pair', code: 'A', name: 'Chrome' } }]);
@@ -144,4 +148,62 @@ test('native host relays Chrome-framed messages to the app pipe, and only for ou
   // With the app gone, the host answers instead of hanging.
   const [gone] = await talk(ORIGIN, sock, [{ id: 3, msg: { type: 'status' } }]);
   assert.deepEqual(gone, { id: 3, body: { error: 'not-running' } });
+});
+
+test('passkeys through the bridge: create and sign in with approval, verified like a real site', async () => {
+  const { verifyAuthenticationResponse, verifyRegistrationResponse } = await import('@simplewebauthn/server');
+  let decision: import('../src/core/browserBridge').PasskeyDecision = { action: 'ok', index: 0 };
+  const { bridge, store, prompts, lock } = await setup(true, () => decision);
+  const { token } = await bridge.handle({ type: 'pair', code: 'X', name: 'Chrome' }, ORIGIN) as { token: string };
+  const ch = () => Buffer.from(Array.from({ length: 32 }, () => Math.floor(Math.random() * 256))).toString('base64url');
+  const createReq = { rp: { id: 'example.com', name: 'Example' }, user: { id: 'dXNlci0x', name: 'octo' }, challenge: ch(), pubKeyCredParams: [{ type: 'public-key', alg: -7 }] };
+
+  const made = await bridge.handle({ token, type: 'passkeyCreate', url: 'https://www.example.com/settings', request: createReq }, ORIGIN) as { response: never };
+  assert.equal(prompts.at(-1)?.kind, 'create');
+  assert.match(prompts.at(-1)!.site, /example\.com/);
+  const reg = await verifyRegistrationResponse({ response: made.response, expectedChallenge: createReq.challenge, expectedOrigin: 'https://www.example.com', expectedRPID: 'example.com' });
+  assert.ok(reg.verified);
+  assert.equal(store.passkeysFor('example.com').length, 1);
+
+  // The same account again: excluded.
+  const again = await bridge.handle({ token, type: 'passkeyCreate', url: 'https://example.com', request: { ...createReq, challenge: ch(), excludeCredentials: [{ id: reg.registrationInfo!.credential.id }] } }, ORIGIN) as { error: { name: string } };
+  assert.equal(again.error.name, 'InvalidStateError');
+
+  const getReq = { rpId: 'example.com', challenge: ch() };
+  const got = await bridge.handle({ token, type: 'passkeyGet', url: 'https://example.com/login', request: getReq }, ORIGIN) as { response: never };
+  assert.equal(prompts.at(-1)?.kind, 'get');
+  assert.deepEqual(prompts.at(-1)?.accounts, ['octo']);
+  const auth = await verifyAuthenticationResponse({ response: got.response, expectedChallenge: getReq.challenge, expectedOrigin: 'https://example.com', expectedRPID: 'example.com',
+    credential: { id: reg.registrationInfo!.credential.id, publicKey: reg.registrationInfo!.credential.publicKey, counter: 0 } });
+  assert.ok(auth.verified);
+
+  // The in-page menu: lists accounts without keys, and a picked passkey signs in without another prompt.
+  const list = await bridge.handle({ token, type: 'passkeyList', url: 'https://example.com/login', rpId: 'example.com' }, ORIGIN) as { passkeys: { credentialId: string; userName: string }[] };
+  assert.deepEqual(list.passkeys.map(p => p.userName), ['octo']);
+  assert.ok(!JSON.stringify(list).includes('privateKey'));
+  const before = prompts.length;
+  const picked = await bridge.handle({ token, type: 'passkeyGet', url: 'https://example.com/login', request: { challenge: ch() }, conditional: true, credentialId: list.passkeys[0].credentialId }, ORIGIN) as { response?: unknown };
+  assert.ok(picked.response);
+  assert.equal(prompts.length, before);
+
+  // "Use another device" and Cancel.
+  decision = { action: 'fallback' };
+  assert.deepEqual(await bridge.handle({ token, type: 'passkeyGet', url: 'https://example.com', request: { challenge: ch() } }, ORIGIN), { fallback: true });
+  decision = { action: 'cancel' };
+  assert.equal((await bridge.handle({ token, type: 'passkeyGet', url: 'https://example.com', request: { challenge: ch() } }, ORIGIN) as { error: { name: string } }).error.name, 'NotAllowedError');
+
+  // A site Strongroom has no passkey for goes to the browser, with no prompt.
+  const n = prompts.length;
+  assert.deepEqual(await bridge.handle({ token, type: 'passkeyGet', url: 'https://other.com', request: { challenge: ch() } }, ORIGIN), { fallback: true });
+  assert.equal(prompts.length, n);
+
+  // Another site can't ask for example.com's passkeys, and plain http is refused.
+  assert.equal((await bridge.handle({ token, type: 'passkeyGet', url: 'https://evil.com', request: { rpId: 'example.com', challenge: ch() } }, ORIGIN) as { error: { name: string } }).error.name, 'SecurityError');
+  assert.equal((await bridge.handle({ token, type: 'passkeyCreate', url: 'http://example.com', request: createReq }, ORIGIN) as { error: { name: string } }).error.name, 'SecurityError');
+
+  // Locked: silent autofill requests don't pop up the lock screen.
+  lock(true);
+  assert.deepEqual(await bridge.handle({ token, type: 'passkeyGet', url: 'https://example.com', request: { challenge: ch() }, conditional: true }, ORIGIN), { fallback: true });
+  // An unpaired extension gets nothing.
+  assert.deepEqual(await bridge.handle({ token: 'nope', type: 'passkeyList', url: 'https://example.com' } as never, ORIGIN), { error: 'unpaired' });
 });

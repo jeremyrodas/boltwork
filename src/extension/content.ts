@@ -95,10 +95,15 @@ function placeMenu() {
 async function openMenu(field: HTMLInputElement, kind: FieldKind) {
   if (Date.now() < suppressUntil) return;
   const res = await getMatches();
+  // A site waiting for an autofill passkey sign-in (see webauthn-relay.ts) also gets Strongroom's passkeys here.
+  const relay = window === window.top && kind !== 'otp' && kind !== 'password' ? window.__strongroomPasskeys : undefined;
+  const passkeys = relay?.pending() ? await relay.list() : [];
   if (document.activeElement !== field || !res || res.error) return;
   let items = res.items ?? [];
   if (kind === 'otp') items = items.filter(i => i.hasTotp);
-  if (!res.locked && !items.length) return;
+  // A login that's offered as a passkey above doesn't need a second row to fill its username.
+  if (passkeys.length) items = items.filter(i => !passkeys.some(p => p.title === i.title && p.userName === i.username));
+  if (!res.locked && !items.length && !passkeys.length) return;
   closeMenu();
   const { host, root } = shadowHost();
   const box = el('div', 'box');
@@ -110,6 +115,12 @@ async function openMenu(field: HTMLInputElement, kind: FieldKind) {
     const b = el('button', 'row');
     b.append(el('span', 't', '🔒 Unlock Strongroom'), el('span', 's', 'Then click this field again'));
     b.addEventListener('mousedown', pick(() => { closeMenu(); void send({ type: 'open' }); }));
+    box.append(b);
+  }
+  for (const pk of passkeys.slice(0, 4)) {
+    const b = el('button', 'row');
+    b.append(el('span', 't', `Sign in with passkey`), el('span', 's', pk.userName || pk.title));
+    b.addEventListener('mousedown', pick(() => { closeMenu(); suppressUntil = Date.now() + 3000; void relay!.pick(pk.credentialId); }));
     box.append(b);
   }
   for (const it of items.slice(0, 6)) {

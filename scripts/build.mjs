@@ -34,6 +34,8 @@ async function buildExtension() {
   await build({ ...ext, entryPoints: ['src/extension/background.ts'], outfile: `${out}/background.js` });
   await build({ ...ext, entryPoints: ['src/extension/content.ts'], outfile: `${out}/content.js` });
   await build({ ...ext, entryPoints: ['src/extension/popup.ts'], outfile: `${out}/popup.js` });
+  await build({ ...ext, entryPoints: ['src/extension/webauthn-page.ts'], outfile: `${out}/webauthn-page.js` });
+  await build({ ...ext, entryPoints: ['src/extension/webauthn-relay.ts'], outfile: `${out}/webauthn-relay.js` });
   for (const f of ['manifest.json', 'popup.html', 'popup.css']) copyFileSync(`extension/${f}`, `${out}/${f}`);
 
   // The extension ID comes from the manifest key; the app only trusts that ID.

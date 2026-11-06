@@ -12,3 +12,7 @@ const file = `Strongroom-Setup-${version}.exe`;
 if (!existsSync(dest)) { console.error(`Release copy skipped: ${dest} doesn't exist (is the drive connected?).`); process.exit(0); }
 copyFileSync(path.join('release', file), path.join(dest, file));
 console.log(`Copied ${file} to ${dest}`);
+// The Windows passkey provider package and the certificate other computers need to trust it, if built.
+const extras = [`Strongroom-Passkeys-${version}.msix`].map(f => path.join('release', f));
+const cer = path.join(process.env.APPDATA ?? '', 'Strongroom', 'signing', 'strongroom-dev.cer');
+for (const f of [...extras, cer]) if (existsSync(f)) { copyFileSync(f, path.join(dest, path.basename(f))); console.log(`Copied ${path.basename(f)} to ${dest}`); }

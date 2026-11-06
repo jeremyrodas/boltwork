@@ -152,6 +152,20 @@ async function handle(m: ExtMessage, sender: chrome.runtime.MessageSender): Prom
       await chrome.storage.local.set({ neverSave: (await neverSaveList()).filter(h => h !== m.host) });
       return { ok: true };
     }
+    case 'passkeyCreate':
+    case 'passkeyGet':
+    case 'passkeyList': {
+      // Only top-level pages, and only for the URL Chrome says the frame has. Anything else: the browser's own WebAuthn.
+      if (!tabId || sender.frameId !== 0 || !sender.url) return m.type === 'passkeyList' ? { passkeys: [] } : { fallback: true };
+      const { token } = await chrome.storage.local.get('token');
+      if (!token) return m.type === 'passkeyList' ? { passkeys: [] } : { fallback: true };
+      const r = m.type === 'passkeyList'
+        ? await call({ type: 'passkeyList', url: sender.url, rpId: m.rpId })
+        : await call({ ...m, url: sender.url }, 300_000);
+      // Not running, locked out, or any transport problem: let the browser handle it.
+      if (typeof r.error === 'string') return m.type === 'passkeyList' ? { passkeys: [] } : { fallback: true };
+      return r;
+    }
     case 'unpair': {
       if (fromPage) return { error: 'not-allowed' };
       await chrome.storage.local.remove('token');

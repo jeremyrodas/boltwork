@@ -57,7 +57,49 @@ export function BrowserPane() {
     <div className="settings-section">
       <h3>Using it</h3>
       <p className="muted">Click a username or password field and pick a login from the menu, or press <b>Ctrl+Shift+L</b> to fill the best match.
-        After you sign in with a new password, the extension offers to save or update it. Use the toolbar icon to search all your logins.</p>
+        After you sign in with a new password, the extension offers to save or update it. Use the toolbar icon to search all your logins.
+        Sites that use passkeys get Strongroom’s passkeys too.</p>
     </div>
+    <WindowsPasskeys />
   </>);
+}
+
+type ProviderStatus = Awaited<ReturnType<typeof api.passkeyProviderStatus>>;
+
+/** Strongroom in Windows' own passkey dialog, for apps and browsers without the extension. */
+function WindowsPasskeys() {
+  const { run, app } = useApp();
+  const [st, setSt] = useState<ProviderStatus | null>(null);
+  useEffect(() => {
+    let live = true;
+    const tick = () => { void api.passkeyProviderStatus().then(s => { if (live) setSt(s); }); };
+    tick();
+    const t = setInterval(tick, 4000);
+    return () => { live = false; clearInterval(t); };
+  }, []);
+  if (app?.platform !== 'win32' || !st) return null;
+  const register = async () => { const s = await run(api.passkeyProviderRegister(), 'Strongroom added to Windows'); if (s) setSt(s); };
+  return (
+    <div className="settings-section">
+      <h3>Windows passkeys</h3>
+      <p className="muted">Lets Windows’ own passkey dialog offer Strongroom, in any browser or app, not just Chrome with the extension. Needs Windows 11 with the November 2025 update or later.</p>
+      {!st.installed ? (
+        <p className="hint">The Strongroom passkey provider isn’t installed on this computer. It’s a separate small package; see <code>native/passkey-provider</code> in the Strongroom source for how to install it.</p>
+      ) : st.state === 'enabled' ? (<>
+        <div className="agent-status ok">● Strongroom is a passkey provider in Windows</div>
+        <div className="row gap">
+          <Button onClick={() => run(api.openWindowsPasskeySettings())}>Open Windows passkey settings</Button>
+          <Button onClick={async () => { const s = await run(api.passkeyProviderUnregister(), 'Removed from Windows'); if (s) setSt(s); }}>Remove from Windows</Button>
+        </div>
+      </>) : st.state === 'disabled' ? (<>
+        <div className="agent-status bad">● Added, but turned off in Windows</div>
+        <p className="muted">In Windows Settings, open <b>Accounts → Passkeys → Advanced options</b> and turn on <b>Strongroom</b>.</p>
+        <Button kind="primary" onClick={() => run(api.openWindowsPasskeySettings())}>Open Windows passkey settings</Button>
+      </>) : (<>
+        <p className="muted">The provider is installed. Add Strongroom to Windows, then turn it on in Windows Settings.</p>
+        <Button kind="primary" onClick={register}>Add Strongroom to Windows</Button>
+      </>)}
+      {st.error && <p className="hint">{st.error}</p>}
+    </div>
+  );
 }

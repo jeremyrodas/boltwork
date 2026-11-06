@@ -14,7 +14,11 @@ export type ExtMessage =
   | { type: 'saveDecision'; key: string; action: 'save' | 'dismiss' | 'never' }
   | { type: 'neverSaveList' }
   | { type: 'removeNeverSave'; host: string }
-  | { type: 'unpair' };
+  | { type: 'unpair' }
+  // Passkeys (from webauthn-relay.ts in top-level pages; the page URL comes from Chrome, not the message).
+  | { type: 'passkeyCreate'; request: Record<string, unknown> }
+  | { type: 'passkeyGet'; request: Record<string, unknown>; conditional?: boolean; credentialId?: string }
+  | { type: 'passkeyList'; rpId?: string };
 
 /** Messages the service worker sends to content scripts. */
 export type TabMessage =

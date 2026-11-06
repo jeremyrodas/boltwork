@@ -16,11 +16,13 @@ import { vaultExists, VaultStore, WrongPasswordError } from '../core/store';
 import { rateStrength } from '../core/strength';
 import { fieldByPurpose } from '../core/templates';
 import { currentTotp } from '../core/totp';
-import type { Settings, WatchtowerReport } from '../core/types';
+import type { Settings, VaultData, WatchtowerReport } from '../core/types';
 import { Worker } from 'node:worker_threads';
 import { makeIcon } from './icon';
 import { initSshAgent, setSshAgentEnabled, sshAgentLocked, sshAgentStatus } from './sshAgentHost';
 import { browserHostStatus, getBridge, registerNativeHost, startBrowserHost, stopBrowserHost } from './browserHost';
+import type { PasskeyDecision, PasskeyPrompt } from '../core/browserBridge';
+import { openWindowsPasskeySettings, providerStatus, registerProvider, scheduleCredentialSync, startPasskeyProvider, unregisterProvider } from './passkeyProvider';
 import {
   checkServer, disconnectSync, initSync, pushNewKeys, reconnect, scheduleSync, setupSync, signInNewDevice, startSyncLoop,
   stopSyncLoop, syncNow, syncStatus,
@@ -84,7 +86,7 @@ function rememberSecretKey(sk: string) {
 // ---------- events ----------
 
 function allWindows(): BrowserWindow[] {
-  return [mainWin, quickWin, largeTypeWin].filter((w): w is BrowserWindow => !!w && !w.isDestroyed());
+  return [mainWin, quickWin, largeTypeWin, passkeyWin].filter((w): w is BrowserWindow => !!w && !w.isDestroyed());
 }
 
 function emit<E extends keyof ApiEvents>(event: E, payload: ApiEvents[E]) {
@@ -94,6 +96,7 @@ function emit<E extends keyof ApiEvents>(event: E, payload: ApiEvents[E]) {
 function windowKind(wc: WebContents | null): AppState['window'] {
   if (quickWin && wc === quickWin.webContents) return 'quickAccess';
   if (largeTypeWin && wc === largeTypeWin.webContents) return 'largeType';
+  if (passkeyWin && wc === passkeyWin.webContents) return 'passkeyPrompt';
   return 'main';
 }
 
@@ -115,8 +118,9 @@ function broadcastState() {
 }
 
 function changed() {
-  if (store) emit('data', store.snapshot());
+  if (store) emit('data', forWindows(store.snapshot()));
   scheduleSync();
+  scheduleCredentialSync();
 }
 
 // ---------- Watchtower: one check at a time, in a worker thread ----------
@@ -200,6 +204,12 @@ function watchtowerRun(): Promise<WatchtowerReport> {
     }
   })();
   return wtRunning;
+}
+
+/** Vault data as windows see it: passkeys without their private keys, which only this process needs. */
+function forWindows(data: VaultData): VaultData {
+  for (const i of data.items) if (i.passkeys) i.passkeys = i.passkeys.map(p => ({ ...p, privateKey: '' }));
+  return data;
 }
 
 function requireStore(): VaultStore {
@@ -533,6 +543,102 @@ function quickStatus() {
 }
 
 /** Everything that happens after any successful unlock. */
+// ---------- passkey prompts (browser extension and Windows provider) ----------
+
+/**
+ * Asks the user to approve making or using a passkey, in Strongroom's own prompt window (styled like the app,
+ * on top of the browser or Windows' passkey window). One prompt at a time; closing it cancels.
+ */
+let passkeyWin: BrowserWindow | null = null;
+let passkeyAsk: { prompt: PasskeyPrompt; answer: (d: PasskeyDecision) => void } | null = null;
+let passkeyQueue: Promise<unknown> = Promise.resolve();
+const PROMPT_WIDTH = 460;
+
+function approvePasskey(p: PasskeyPrompt): Promise<PasskeyDecision> {
+  const run = passkeyQueue.then(() => new Promise<PasskeyDecision>(resolve => {
+    let done = false;
+    const answer = (d: PasskeyDecision) => {
+      if (done) return;
+      done = true;
+      passkeyAsk = null;
+      const w = passkeyWin;
+      passkeyWin = null;
+      if (w && !w.isDestroyed()) w.destroy();
+      resolve(d);
+    };
+    passkeyAsk = { prompt: p, answer };
+    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+    const { x, y, width, height } = display.workArea;
+    passkeyWin = new BrowserWindow({
+      width: PROMPT_WIDTH, height: 320, x: Math.round(x + (width - PROMPT_WIDTH) / 2), y: Math.round(y + height * 0.24),
+      show: false, frame: false, resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
+      alwaysOnTop: true, skipTaskbar: false, title: p.kind === 'create' ? 'Strongroom: save passkey' : 'Strongroom: sign in with passkey',
+      backgroundColor: '#111318', icon: makeIcon(256, false, settings.colorScheme),
+      webPreferences: { preload, contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
+    });
+    hardenWindow(passkeyWin);
+    passkeyWin.setAlwaysOnTop(true, 'screen-saver');
+    passkeyWin.loadFile(indexHtml, { hash: 'passkeyPrompt' });
+    passkeyWin.on('closed', () => answer({ action: 'cancel' }));
+    // Shown once the page has sized itself (fitPasskeyPrompt), with a fallback so it can never stay hidden.
+    setTimeout(() => showPasskeyWin(), 1500);
+  }));
+  passkeyQueue = run.catch(() => undefined);
+  return run;
+}
+
+function showPasskeyWin() {
+  const w = passkeyWin;
+  if (!w || w.isDestroyed() || w.isVisible()) return;
+  w.show();
+  w.moveTop();
+  app.focus({ steal: true });
+  w.focus();
+  w.webContents.focus();
+}
+
+/**
+ * While Windows' passkey window waits on Strongroom it stays on top of everything, so the lock screen and the
+ * approval prompt are raised above it and given the keyboard; afterwards the window goes back to how it was.
+ */
+let onTopDepth = 0;
+let raisedMain = false;
+let wasHidden = false;
+function keepOnTop(on: boolean) {
+  if (on) { onTopDepth++; return; }
+  if (onTopDepth === 0 || --onTopDepth > 0) return;
+  if (!raisedMain) return;
+  raisedMain = false;
+  if (!mainWin || mainWin.isDestroyed()) return;
+  mainWin.setAlwaysOnTop(false);
+  if (wasHidden) mainWin.hide();
+}
+
+/** Puts the lock screen above Windows' passkey window, with the keyboard, until the request is over. */
+function raiseMainForWindows() {
+  if (onTopDepth === 0 || raisedMain) return;
+  raisedMain = true;
+  wasHidden = !mainWin?.isVisible();
+  showMain();
+  mainWin!.setAlwaysOnTop(true, 'screen-saver');
+  mainWin!.moveTop();
+  app.focus({ steal: true });
+  mainWin!.focus();
+  mainWin!.webContents.focus();
+}
+
+/** Shows the lock screen and waits up to two minutes for an unlock. */
+async function waitForUnlock(): Promise<boolean> {
+  if (store) return true;
+  showMain();
+  raiseMainForWindows();
+  app.focus({ steal: true });
+  const until = Date.now() + 120_000;
+  while (!store && Date.now() < until) await new Promise(r => setTimeout(r, 250));
+  if (raisedMain && mainWin && !mainWin.isDestroyed()) mainWin.setAlwaysOnTop(false);
+  return !!store;
+}
+
 function afterUnlock() {
   const s = store!;
   s.historyLimit = settings.historyLimit;
@@ -541,6 +647,7 @@ function afterUnlock() {
   try { repairSshItems(s); } catch (e) { console.error('SSH item repair failed', e); }
   broadcastState();
   startSyncLoop();
+  scheduleCredentialSync();
 }
 
 async function reauth(password: string) {
@@ -609,7 +716,7 @@ const handlers: Handlers = {
   },
 
   lock: () => lock(),
-  getData: () => requireStore().snapshot(),
+  getData: () => forWindows(requireStore().snapshot()),
 
   saveItem: input => { const i = requireStore().saveItem(input); changed(); return i; },
   duplicateItem: id => { const i = requireStore().duplicateItem(id); changed(); return i; },
@@ -651,6 +758,7 @@ const handlers: Handlers = {
     return true;
   },
   removeAttachment: (itemId, attId) => { requireStore().removeAttachment(itemId, attId); changed(); },
+  removePasskey: (itemId, credentialId) => { requireStore().removePasskey(itemId, credentialId); changed(); },
 
   generate: options => { const password = generatePassword(options); return { password, strength: rateStrength(password) }; },
   rateStrength: pw => rateStrength(pw),
@@ -723,6 +831,23 @@ const handlers: Handlers = {
 
   largeType: text => showLargeType(text),
   getLargeTypeText: () => largeTypeText,
+  // Only the prompt window itself can read or answer the prompt.
+  getPasskeyPrompt: () => (passkeyWin && sender === passkeyWin.webContents && passkeyAsk ? passkeyAsk.prompt : null),
+  answerPasskeyPrompt: decision => {
+    if (!passkeyWin || sender !== passkeyWin.webContents || !passkeyAsk) return;
+    const p = passkeyAsk.prompt;
+    const d = decision as PasskeyDecision;
+    if (d?.action === 'fallback' && p.allowFallback !== false) return passkeyAsk.answer({ action: 'fallback' });
+    if (d?.action !== 'ok' || !Number.isInteger(d.index) || d.index < 0 || d.index >= Math.max(1, p.accounts.length)) return passkeyAsk.answer({ action: 'cancel' });
+    const target = p.kind === 'create' && typeof d.target === 'string' && (d.target === 'new' || p.targets?.some(t => t.itemId === d.target)) ? d.target : undefined;
+    passkeyAsk.answer({ action: 'ok', index: d.index, ...(target ? { target } : {}) });
+  },
+  fitPasskeyPrompt: height => {
+    if (!passkeyWin || sender !== passkeyWin.webContents) return;
+    const h = Math.max(160, Math.min(640, Math.ceil(Number(height) || 320)));
+    passkeyWin.setContentSize(PROMPT_WIDTH, h);
+    showPasskeyWin();
+  },
   openUrl: url => {
     const u = /^[a-z][a-z0-9+.-]*:/i.test(url) ? url : `https://${url}`;
     if (!/^https?:\/\//i.test(u)) throw new Error('Only web addresses can be opened.');
@@ -779,6 +904,10 @@ const handlers: Handlers = {
   syncReconnect: async password => { await reconnect(requireStore(), password, currentSecretKey()); changed(); return syncStatus(); },
   syncDisconnect: async deleteAccount => { await disconnectSync(requireStore(), deleteAccount); },
   browserShowExtensionFolder: () => { void shell.openPath(extensionFolder()); },
+  passkeyProviderStatus: () => providerStatus(),
+  passkeyProviderRegister: () => registerProvider(settings.colorScheme),
+  passkeyProviderUnregister: () => unregisterProvider(),
+  openWindowsPasskeySettings: () => openWindowsPasskeySettings(),
 
   quickAccessAction: async (itemId, action) => quickAccessAction(itemId, action),
   hideQuickAccess: () => { quickWin?.hide(); },
@@ -868,7 +997,7 @@ app.whenReady().then(async () => {
   const silent = argv.includes('--silent') || settings.startMinimized;
   createMainWindow(!silent);
   createQuickAccess();
-  initSync({ store: () => store, tokenFile: path.join(userData, 'sync-session.json'), onPulled: () => { if (store) emit('data', store.snapshot()); } });
+  initSync({ store: () => store, tokenFile: path.join(userData, 'sync-session.json'), onPulled: () => { if (store) emit('data', forWindows(store.snapshot())); } });
   initSshAgent({
     store: () => store,
     requestUnlock: () => showMain(),
@@ -876,6 +1005,13 @@ app.whenReady().then(async () => {
   });
   if (settings.sshAgentEnabled) void setSshAgentEnabled(true);
   if (settings.browserIntegration) void setBrowserIntegration(true);
+  // Windows passkey provider: always listening, so Windows can reach Strongroom once the user turns it on.
+  startPasskeyProvider({
+    store: () => store, approve: approvePasskey, waitForUnlock, keepOnTop, onChanged: () => changed(), userData,
+    launch: app.isPackaged
+      ? { command: process.execPath, args: [], cwd: path.dirname(process.execPath) }
+      : { command: process.execPath, args: [app.getAppPath()], cwd: app.getAppPath() },
+  });
   powerMonitor.on('suspend', () => { if (settings.lockOnSleep) lock(); });
   powerMonitor.on('lock-screen', () => { if (settings.lockOnScreenLock) lock(); });
   const url = argv.find(a => a.startsWith('strongroom://'));
@@ -903,6 +1039,8 @@ async function setBrowserIntegration(on: boolean) {
     version: app.getVersion(),
     showMain: route => showMain(route),
     onChanged: () => changed(),
+    approvePasskey,
+    waitForUnlock,
     approvePairing: async (code, name) => {
       showMain();
       app.focus({ steal: true });

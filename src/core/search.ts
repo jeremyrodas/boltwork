@@ -4,7 +4,7 @@ import type { Item, Vault } from './types';
 /**
  * Smart search. Plain words match titles, usernames, URLs, tags, notes and non-secret fields.
  * Filters: tag:x  -tag:x  vault:x  category:x (or type:x)  is:favorite  is:archived  is:deleted
- *          has:otp  has:attachment  url:x. Quote phrases: "my bank".
+ *          has:otp  has:attachment  has:passkey  url:x. Quote phrases: "my bank".
  */
 export interface ParsedQuery {
   terms: string[];
@@ -63,6 +63,7 @@ export function searchItems(items: Item[], vaults: Vault[], query: string): Item
     if (q.categories.length && !q.categories.some(c => item.category.toLowerCase().includes(c) || TEMPLATE_BY_CATEGORY[item.category].name.toLowerCase().includes(c))) continue;
     if (q.has.includes('otp') && !allFields(item).some(f => f.type === 'totp' && f.value)) continue;
     if (q.has.includes('attachment') && !item.attachments.length) continue;
+    if (q.has.includes('passkey') && !item.passkeys?.length) continue;
     if (q.urls.length && !q.urls.some(u => item.urls.some(x => x.url.toLowerCase().includes(u)))) continue;
     const { title, rest } = haystack(item);
     let score = 0, ok = true;

@@ -17,7 +17,9 @@ import {
   KDF_STRONG, type KdfParams, type Sealed,
 } from './crypto';
 import { RecordSet, recordAad, type RecordKind, type SealedRecord } from './records';
-import { allFields, fieldByPurpose } from './templates';
+import { allFields, blankContent, fieldByPurpose } from './templates';
+import type { Passkey } from './passkeys';
+import { domainOf as domainOfUrl } from './search';
 import type { Attachment, Collection, Item, ItemContent, Vault, VaultData } from './types';
 
 const FORMAT = 'strongroom-vault';
@@ -279,6 +281,10 @@ export class VaultStore {
     // History doesn't hold attachments, so keep the other side's files on the item rather than lose them.
     const have = new Set(w.attachments.map(a => a.id));
     w.attachments.push(...structuredClone(loser.attachments.filter(a => !have.has(a.id))));
+    // Same for passkeys: losing one would lock the user out of that site.
+    const keys = new Set((w.passkeys ?? []).map(p => p.credentialId));
+    const extra = (loser.passkeys ?? []).filter(p => !keys.has(p.credentialId));
+    if (extra.length) w.passkeys = [...(w.passkeys ?? []), ...structuredClone(extra)];
     return w;
   }
 
@@ -544,6 +550,79 @@ export class VaultStore {
     return added;
   }
 
+  // ---- passkeys ----
+
+  /** Active login items' passkeys for a relying party. */
+  passkeysFor(rpId: string): { itemId: string; title: string; passkey: Passkey }[] {
+    this.requireKey();
+    return this.data.items
+      .filter(i => i.state === 'active' && i.passkeys?.length)
+      .flatMap(i => i.passkeys!.filter(p => p.rpId === rpId).map(p => ({ itemId: i.id, title: i.title, passkey: structuredClone(p) })));
+  }
+
+  /** Every passkey credential ID in the vault (to honor a site's excludeCredentials). */
+  passkeyIds(): Set<string> {
+    this.requireKey();
+    return new Set(this.data.items.flatMap(i => (i.passkeys ?? []).map(p => p.credentialId)));
+  }
+
+  /**
+   * Where a new passkey for this site and account could go: the site's logins, best match first. `suggested` is
+   * where it goes unless the user picks otherwise ('new' for a new login).
+   */
+  passkeyTargets(rpId: string, userName: string): { targets: PasskeyTarget[]; suggested: string } {
+    this.requireKey();
+    const candidates = this.passkeyCandidates(rpId);
+    const want = userName.toLowerCase();
+    const targets = candidates.map(i => {
+      const u = fieldByPurpose(i, 'username')?.value ?? '';
+      return { itemId: i.id, title: i.title, userName: u, sameAccount: !!want && u.toLowerCase() === want,
+        passkeys: (i.passkeys ?? []).filter(p => p.rpId === rpId).length };
+    }).sort((a, b) => Number(b.sameAccount) - Number(a.sameAccount));
+    return { targets, suggested: this.autoTarget(candidates, userName)?.id ?? 'new' };
+  }
+
+  private passkeyCandidates(rpId: string): Item[] {
+    const site = (i: Item) => i.urls.some(u => { const h = domainOfUrl(u.url); return h === rpId || h.endsWith(`.${rpId}`); });
+    return this.data.items.filter(i => i.state === 'active' && i.category === 'login' && site(i));
+  }
+
+  private autoTarget(candidates: Item[], userName: string): Item | undefined {
+    const user = (i: Item) => (fieldByPurpose(i, 'username')?.value ?? '').toLowerCase();
+    return candidates.find(i => userName && user(i) === userName.toLowerCase())
+      ?? (candidates.length === 1 && !user(candidates[0]) ? candidates[0] : undefined);
+  }
+
+  /**
+   * Saves a new passkey. `target` is the login the user chose for it, or 'new' for a new login; left out, it goes
+   * on the login for that site and account, or a new one if there isn't one. Returns the item it went on.
+   */
+  addPasskey(passkey: Passkey, vaultId?: string, target?: string): Item {
+    this.requireKey();
+    const candidates = this.passkeyCandidates(passkey.rpId);
+    const chosen = target === 'new' ? undefined
+      : target ? candidates.find(i => i.id === target) : this.autoTarget(candidates, passkey.userName);
+    if (target && target !== 'new' && !chosen) throw new Error('That login is no longer in your vault.');
+    if (chosen) {
+      return this.patch(chosen.id, i => { i.passkeys = [...(i.passkeys ?? []), passkey]; });
+    }
+    const c = blankContentForPasskey(passkey);
+    const created = this.saveItem({ ...c, vaultId: vaultId ?? this.data.vaults[0].id });
+    return this.patch(created.id, i => { i.passkeys = [passkey]; });
+  }
+
+  markPasskeyUsed(itemId: string, credentialId: string): void {
+    this.patch(itemId, i => {
+      const p = i.passkeys?.find(x => x.credentialId === credentialId);
+      if (p) p.lastUsedAt = Date.now();
+      i.useCount += 1; i.lastUsedAt = Date.now();
+    }, false);
+  }
+
+  removePasskey(itemId: string, credentialId: string): void {
+    this.patch(itemId, i => { i.passkeys = (i.passkeys ?? []).filter(p => p.credentialId !== credentialId); });
+  }
+
   // ---- attachments ----
 
   private attachmentPath(id: string): string {
@@ -658,4 +737,18 @@ export { allFields };
 function importSignature(c: ItemContent): string {
   return JSON.stringify([c.category, c.title || 'Untitled', c.urls.map(u => u.url),
     [...c.fields, ...c.sections.flatMap(s => s.fields)].filter(f => f.value).map(f => [f.label, f.value]).sort(), c.notes]);
+}
+
+/** A new login for a passkey made on a site Strongroom has no login for yet. */
+/** A login a new passkey could be saved on (see VaultStore.passkeyTargets). */
+export interface PasskeyTarget { itemId: string; title: string; userName: string; sameAccount: boolean; passkeys: number }
+
+function blankContentForPasskey(p: Passkey): ItemContent {
+  const c = blankContent('login');
+  c.title = p.rpName?.trim() || p.rpId;
+  const local = p.rpId === 'localhost' || p.rpId.endsWith('.localhost');
+  c.urls = [{ label: 'website', url: `${local ? 'http' : 'https'}://${p.rpId}`, primary: true }];
+  const u = c.fields.find(f => f.purpose === 'username');
+  if (u) u.value = p.userName;
+  return c;
 }

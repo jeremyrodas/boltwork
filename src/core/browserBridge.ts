@@ -7,8 +7,9 @@
  */
 import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
+import { assertPasskey, checkOrigin, checkRpId, createPasskey, PasskeyError, usablePasskeys, type CreateRequest, type GetRequest } from './passkeys';
 import { baseDomain, domainOf } from './search';
-import type { VaultStore } from './store';
+import type { PasskeyTarget, VaultStore } from './store';
 import { blankContent, fieldByPurpose } from './templates';
 import { currentTotp } from './totp';
 import type { Item } from './types';
@@ -26,7 +27,32 @@ export type BridgeRequest =
   | { type: 'checkSave'; url: string; username: string; password: string }
   | { type: 'save'; url: string; username: string; password: string; title?: string }
   | { type: 'update'; id: string; username: string; password: string }
-  | { type: 'open'; route?: string };
+  | { type: 'open'; route?: string }
+  // Passkeys. `url` is the top-level page URL Chrome reported to the extension, never one the page supplied.
+  | { type: 'passkeyCreate'; url: string; request: CreateRequest }
+  | { type: 'passkeyGet'; url: string; request: GetRequest; conditional?: boolean; credentialId?: string }
+  | { type: 'passkeyList'; url: string; rpId?: string };
+
+/** What the user decided in Strongroom's passkey prompt. */
+export type PasskeyDecision = { action: 'ok'; index: number; target?: string } | { action: 'fallback' } | { action: 'cancel' };
+
+export interface PasskeyPrompt {
+  kind: 'create' | 'get';
+  site: string;
+  /** create: the account name; get: one entry per passkey to choose from. */
+  accounts: string[];
+  /** Offer "Use another device" (the browser's own WebAuthn). Not when Windows already chose Strongroom. */
+  allowFallback?: boolean;
+  /** create: logins on this site the passkey could go on, and which one is picked to start with ('new': a new login). */
+  targets?: PasskeyTarget[];
+  suggested?: string;
+}
+
+/** Fills in where a new passkey could go, so the prompt can say whether it joins a login or makes a new one. */
+export function createPrompt(store: VaultStore, site: string, rpId: string, userName: string, account: string, allowFallback?: boolean): PasskeyPrompt {
+  const { targets, suggested } = store.passkeyTargets(rpId, userName);
+  return { kind: 'create', site, accounts: [account], targets, suggested, ...(allowFallback === false ? { allowFallback } : {}) };
+}
 
 export interface BridgeDeps {
   store: () => VaultStore | null;
@@ -34,6 +60,10 @@ export interface BridgeDeps {
   /** Asks the user to approve a new browser. Resolves true if they allow it. */
   approvePairing: (code: string, name: string, origin: string) => Promise<boolean>;
   showMain: (route?: string) => void;
+  /** Asks the user to approve creating or using a passkey. */
+  approvePasskey: (p: PasskeyPrompt) => Promise<PasskeyDecision>;
+  /** Brings up the lock screen and waits for an unlock; false if it didn't happen in time. */
+  waitForUnlock: () => Promise<boolean>;
   onChanged: () => void;
   version: string;
 }
@@ -94,6 +124,11 @@ function toMatch(i: Item, url: string, exactHost: boolean): BridgeMatch {
   return { id: i.id, title: i.title, username: username(i), url, hasTotp: !!fieldByPurpose(i, 'totp')?.value, exactHost };
 }
 
+/** Replies the extension understands: a WebAuthn response, "let the browser handle it", or a DOMException to raise. */
+type PasskeyReply = { response: unknown } | { fallback: true } | { error: { name: string; message: string } } | { passkeys: { credentialId: string; userName: string; title: string }[] };
+
+const cancelled = { error: { name: 'NotAllowedError', message: 'The request was cancelled.' } };
+
 export class BrowserBridge {
   readonly pairings: PairingStore;
   constructor(private deps: BridgeDeps) { this.pairings = new PairingStore(deps.pairingsFile); }
@@ -107,6 +142,12 @@ export class BrowserBridge {
       return { token: this.pairings.add(name, origin) };
     }
     if (!this.pairings.check(msg.token)) return { error: 'unpaired' };
+    if (msg.type === 'passkeyCreate' || msg.type === 'passkeyGet' || msg.type === 'passkeyList') {
+      try { return await this.passkey(msg); } catch (e) {
+        if (e instanceof PasskeyError) return { error: { name: e.domName, message: e.message } };
+        throw e;
+      }
+    }
     const store = this.deps.store();
     if (msg.type === 'status') return { locked: !store, version: this.deps.version };
     if (msg.type === 'open') { this.deps.showMain(msg.route); return { ok: true }; }
@@ -171,5 +212,70 @@ export class BrowserBridge {
       default:
         return { error: 'unknown-request' };
     }
+  }
+
+  private async passkey(msg: Extract<BridgeRequest, { type: 'passkeyCreate' | 'passkeyGet' | 'passkeyList' }>): Promise<PasskeyReply> {
+    const origin = checkOrigin(String(msg.url));
+
+    if (msg.type === 'passkeyList') {
+      // For the extension's own sign-in menu: which accounts have passkeys here. No keys leave the app.
+      const store = this.deps.store();
+      if (!store) return { passkeys: [] };
+      const rpId = checkRpId(origin, msg.rpId);
+      return { passkeys: store.passkeysFor(rpId).map(x => ({ credentialId: x.passkey.credentialId, userName: x.passkey.userName, title: x.title })) };
+    }
+
+    let store = this.deps.store();
+    if (!store) {
+      // Silent autofill requests never pop up the lock screen; the browser's own UI still works.
+      if (msg.type === 'passkeyGet' && msg.conditional && !msg.credentialId) return { fallback: true };
+      if (!(await this.deps.waitForUnlock())) return { fallback: true };
+      store = this.deps.store();
+      if (!store) return { fallback: true };
+    }
+
+    if (msg.type === 'passkeyCreate') {
+      const req = msg.request;
+      const rpId = checkRpId(origin, req.rp?.id);
+      const site = req.rp?.name ? `${req.rp.name} (${rpId})` : rpId;
+      const mine = store.passkeyIds();
+      if (req.excludeCredentials?.some(c => mine.has(c.id))) {
+        throw new PasskeyError('InvalidStateError', 'Strongroom already has a passkey for this account.');
+      }
+      const decision = await this.deps.approvePasskey(createPrompt(store, site, rpId, req.user?.name ?? '', req.user?.displayName || req.user?.name || 'this account'));
+      if (decision.action === 'fallback') return { fallback: true };
+      if (decision.action === 'cancel') return cancelled;
+      const { passkey, response } = createPasskey(req, origin);
+      const live = this.deps.store();
+      if (!live) return cancelled; // locked while the prompt was open
+      live.addPasskey(passkey, undefined, decision.target);
+      this.deps.onChanged();
+      return { response };
+    }
+
+    const req = msg.request;
+    const rpId = checkRpId(origin, req.rpId);
+    const options = usablePasskeys(store.passkeysFor(rpId), req, origin);
+    if (!options.length) return { fallback: true };
+    let chosen: (typeof options)[number] | undefined;
+    if (msg.credentialId) {
+      // Picked in the extension's in-page menu with a real click.
+      chosen = options.find(o => o.passkey.credentialId === msg.credentialId);
+      if (!chosen) return cancelled;
+    } else {
+      const decision = await this.deps.approvePasskey({
+        kind: 'get', site: rpId,
+        accounts: options.map(o => o.passkey.userName || o.passkey.userDisplayName || o.title),
+      });
+      if (decision.action === 'fallback') return { fallback: true };
+      if (decision.action === 'cancel') return cancelled;
+      chosen = options[decision.index];
+    }
+    const live = this.deps.store();
+    if (!chosen || !live) return cancelled;
+    const response = assertPasskey(chosen.passkey, req, origin);
+    live.markPasskeyUsed(chosen.itemId, chosen.passkey.credentialId);
+    this.deps.onChanged();
+    return { response };
   }
 }

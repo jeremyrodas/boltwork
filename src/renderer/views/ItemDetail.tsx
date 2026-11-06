@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Copy, Download, Ellipsis, ExternalLink, Eye, EyeOff, FileQuestion, Paperclip, Pencil, Star } from 'lucide-react';
+import { Copy, Download, Ellipsis, ExternalLink, Eye, EyeOff, FileQuestion, Fingerprint, Paperclip, Pencil, Star, Trash2 } from 'lucide-react';
 import { previousPasswords } from '../../core/passwordHistory';
 import { fieldByPurpose, TEMPLATE_BY_CATEGORY } from '../../core/templates';
 import type { Field, Item, Strength, WatchtowerCheck } from '../../core/types';
@@ -240,6 +240,31 @@ export function ItemDetail({ id }: { id: string }) {
 
         {item.notes && (
           <div className="card"><div className="card-title">Notes</div><div className="notes">{settings?.privacyMode ? '••••••' : item.notes}</div></div>
+        )}
+
+        {(item.passkeys?.length ?? 0) > 0 && (
+          <div className="card">
+            <div className="card-title">Passkey{item.passkeys!.length > 1 ? 's' : ''}</div>
+            {item.passkeys!.map(p => (
+              <div key={p.credentialId} className="field-row">
+                <div className="field-main static">
+                  <div className="field-value with-icon"><Ico icon={Fingerprint} size={14} />{p.userName || p.userDisplayName || 'Passkey'}</div>
+                  <div className="field-label as-typed">
+                    {p.rpId} · created {new Date(p.createdAt).toLocaleDateString()}{p.lastUsedAt ? ` · last used ${timeAgo(p.lastUsedAt)}` : ' · not used yet'}
+                  </div>
+                </div>
+                {item.state === 'active' && (
+                  <div className="field-actions">
+                    <IconButton title="Remove passkey" onClick={async () => {
+                      if (await askConfirm('Remove this passkey?', `You won’t be able to sign in to ${p.rpId} with it any more. Make sure you can still sign in another way, or remove the passkey from your account on the site too.`, 'Remove passkey', true)) {
+                        void run(api.removePasskey(item.id, p.credentialId), 'Passkey removed');
+                      }
+                    }}><Ico icon={Trash2} /></IconButton>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         )}
 
         {item.attachments.length > 0 && (

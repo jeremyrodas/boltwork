@@ -2,6 +2,7 @@
 import type {
   Collection, GeneratorOptions, Item, ItemContent, Settings, Strength, Vault, VaultData, WatchtowerCheck, WatchtowerReport,
 } from './types';
+import type { PasskeyDecision, PasskeyPrompt } from './browserBridge';
 import type { PresetName } from './settings';
 import type { SshKeyInfo, SshKeyType } from './ssh';
 
@@ -44,7 +45,7 @@ export interface AppState {
   needsSecretKey: boolean;
   platform: NodeJS.Platform;
   version: string;
-  window: 'main' | 'quickAccess' | 'largeType';
+  window: 'main' | 'quickAccess' | 'largeType' | 'passkeyPrompt';
   /** Quick unlock offered on the lock screen, if set up on this device. */
   quickUnlock: { method: 'pin' | 'hello' | null; needsPassword?: string };
 }
@@ -103,6 +104,7 @@ export interface Api {
   addAttachments(itemId: string): number;
   saveAttachment(itemId: string, attachmentId: string): boolean;
   removeAttachment(itemId: string, attachmentId: string): void;
+  removePasskey(itemId: string, credentialId: string): void;
 
   generate(options: GeneratorOptions): { password: string; strength: Strength };
   rateStrength(password: string): Strength;
@@ -126,6 +128,10 @@ export interface Api {
 
   largeType(text: string): void;
   getLargeTypeText(): string;
+  /** The passkey prompt window: what it's asking, the user's answer, and its content height. */
+  getPasskeyPrompt(): PasskeyPrompt | null;
+  answerPasskeyPrompt(decision: PasskeyDecision): void;
+  fitPasskeyPrompt(height: number): void;
   openUrl(url: string): void;
   scanQrFromScreen(): string | null;
   addSearchHistory(q: string): void;
@@ -147,6 +153,11 @@ export interface Api {
   syncDisconnect(deleteAccount: boolean): void;
   browserRevoke(id: string): void;
   browserShowExtensionFolder(): void;
+  /** Windows passkey provider (Windows 11 with the November 2025 update or later). */
+  passkeyProviderStatus(): { installed: boolean; state?: 'enabled' | 'disabled' | 'not-registered'; serving: boolean; error?: string };
+  passkeyProviderRegister(): { installed: boolean; state?: 'enabled' | 'disabled' | 'not-registered'; serving: boolean; error?: string };
+  passkeyProviderUnregister(): { installed: boolean; state?: 'enabled' | 'disabled' | 'not-registered'; serving: boolean; error?: string };
+  openWindowsPasskeySettings(): void;
 
   quickAccessAction(itemId: string, action: QuickAccessAction): void;
   hideQuickAccess(): void;

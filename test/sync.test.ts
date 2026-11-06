@@ -273,3 +273,33 @@ test('live updates: a waiting device is woken by another device’s change, not 
     await srv.close();
   }
 });
+
+test('a passkey made on one device while the item was edited on another is kept', async () => {
+  const dir = tmp();
+  const srv = await startServer({ port: 0, dataDir: dir, signups: 'open', log: () => {} });
+  try {
+    const { createPasskey, checkOrigin } = await import('../src/core/passkeys');
+    const sk = generateSecretKey();
+    const a = await VaultStore.create(tmp(), PW, sk, KDF_FAST_FOR_TESTS);
+    const vaultId = a.snapshot().vaults[0].id;
+    const login = { ...blankContent('login'), title: 'Example', urls: [{ label: 'website', url: 'https://example.com' }] };
+    const id = a.saveItem({ ...login, vaultId }).id;
+    const ca = new SyncClient(srv.url);
+    await ca.signup('pk@example.com', await a.authKey(PW, sk), a.keyset(), 'A');
+    a.syncState = { serverUrl: srv.url, email: 'pk@example.com', cursor: 0 };
+    await syncOnce(a, ca);
+    const cb = new SyncClient(srv.url);
+    const b = await VaultStore.createFromRemote(tmp(), PW, sk, await signIn(cb, 'pk@example.com', PW, sk, 'B'), { serverUrl: srv.url, email: 'pk@example.com', cursor: 0 });
+    await syncOnce(b, cb);
+
+    const pk = createPasskey({ rp: { id: 'example.com' }, user: { id: 'dXNlcg', name: '' }, challenge: 'Y2hhbGxlbmdlLWNoYWxsZW5nZQ', pubKeyCredParams: [{ type: 'public-key', alg: -7 }] }, checkOrigin('https://example.com')).passkey;
+    a.addPasskey(pk);
+    await new Promise(r => setTimeout(r, 15));
+    b.saveItem({ ...b.getItem(id), notes: 'edited on B later', id, vaultId });
+    await syncOnce(a, ca); await syncOnce(b, cb); await syncOnce(a, ca);
+    for (const s of [a, b]) {
+      assert.equal(s.getItem(id).notes, 'edited on B later');
+      assert.deepEqual(s.getItem(id).passkeys?.map(p => p.credentialId), [pk.credentialId]);
+    }
+  } finally { await srv.close(); }
+});

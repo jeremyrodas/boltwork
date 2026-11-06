@@ -107,6 +107,8 @@ export interface Item extends ItemContent {
   useCount: number;
   passwordChangedAt?: number;
   attachments: Attachment[];
+  /** Passkeys for this login's site (see core/passkeys.ts). Not part of item history: removing one is deliberate. */
+  passkeys?: import('./passkeys').Passkey[];
   history: ItemVersion[];
   watchtowerIgnore: WatchtowerCheck[];
 }
