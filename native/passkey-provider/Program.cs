@@ -31,7 +31,9 @@ static unsafe class Program
     public static long LastActivity = Environment.TickCount64;
     public static int Busy;
 
-    [STAThread]
+    // Windows' plugin calls (register, unregister, credential sync) are refused with "not supported" from a
+    // single-threaded COM apartment on current Windows 11 builds, so the whole program runs multithreaded.
+    [MTAThread]
     static int Main(string[] args)
     {
         var cmd = args.FirstOrDefault()?.ToLowerInvariant() ?? "";
@@ -43,6 +45,7 @@ static unsafe class Program
                 "unregister" => Out(new JsonObject { ["hr"] = Hr(Unregister()) }),
                 "status" => Status(),
                 "sync" => Sync(),
+                "diag" => Diag(),
                 _ when cmd.Contains("pluginactivated") || cmd.Contains("embedding") => Serve(),
                 _ => Out(new JsonObject { ["error"] = "usage: register | unregister | status | sync" }, 2),
             };
@@ -113,6 +116,29 @@ static unsafe class Program
             Log($"register hr={Hr(hr)}");
             return Out(new JsonObject { ["hr"] = Hr(hr) }, hr < 0 ? 1 : 0);
         }
+    }
+
+    /** For troubleshooting registration: API version, package identity, and another plugin's state. */
+    static int Diag()
+    {
+        uint len = 0;
+        Native.GetCurrentPackageFullName(&len, null);
+        var buf = new char[Math.Max(len, 1)];
+        int pkgRc;
+        fixed (char* b = buf) pkgRc = Native.GetCurrentPackageFullName(&len, b);
+        var onePassword = new Guid("A1B0203F-8F26-4D45-88D0-AD1DC75B1DE7");
+        int st1, st2, mine = Clsid == default ? 0 : 1;
+        int hr1 = Native.WebAuthNPluginGetAuthenticatorState(&onePassword, &st1);
+        var c = Clsid;
+        int hr2 = Native.WebAuthNPluginGetAuthenticatorState(&c, &st2);
+        return Out(new JsonObject
+        {
+            ["apiVersion"] = Native.WebAuthNGetApiVersionNumber(),
+            ["package"] = pkgRc == 0 ? new string(buf, 0, (int)Math.Max(0, (int)len - 1)) : $"none (rc {pkgRc})",
+            ["onePasswordState"] = $"{Hr(hr1)} state {st1}",
+            ["ownState"] = $"{Hr(hr2)} state {st2}",
+            ["apartment"] = Thread.CurrentThread.GetApartmentState().ToString(),
+        });
     }
 
     static int Unregister() { var c = Clsid; return Native.WebAuthNPluginRemoveAuthenticator(&c); }

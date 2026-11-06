@@ -97,6 +97,9 @@ static unsafe partial class Native
     [LibraryImport(WebAuthn)] public static partial int WebAuthNPluginGetOperationSigningPublicKey(Guid* rclsid, uint* cb, byte** pb);
     [LibraryImport(WebAuthn)] public static partial void WebAuthNPluginFreePublicKeyResponse(byte* pb);
 
+    [LibraryImport(WebAuthn)] public static partial uint WebAuthNGetApiVersionNumber();
+    [LibraryImport("kernel32.dll")] public static partial int GetCurrentPackageFullName(uint* length, char* name);
+
     [LibraryImport("ole32.dll")] public static partial int CoInitializeEx(nint reserved, uint coinit);
     [LibraryImport("ole32.dll")] public static partial int CoRegisterClassObject(Guid* rclsid, nint pUnk, uint clsContext, uint flags, uint* cookie);
     [LibraryImport("ole32.dll")] public static partial int CoRevokeClassObject(uint cookie);
