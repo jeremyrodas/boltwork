@@ -63,12 +63,16 @@ struct LockView: View {
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task {
+            #if os(iOS)
+            // Face ID looks as soon as the screen shows. On the Mac, Touch ID waits for its button instead of
+            // prompting the moment Boltwork locks.
             if model.canQuickUnlock && !triedBiometrics {
                 triedBiometrics = true
                 unlockWithBiometrics()
-            } else {
-                passwordFocused = true
+                return
             }
+            #endif
+            passwordFocused = true
         }
     }
 

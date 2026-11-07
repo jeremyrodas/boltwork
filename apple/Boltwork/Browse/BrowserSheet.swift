@@ -1,7 +1,7 @@
 import BoltworkKit
 
 /// Sheets the vault browser can show.
-enum BrowserSheet: Identifiable {
+enum BrowserSheet: Identifiable, Equatable {
     case newItem(ItemCategory)
     case edit(Item)
     case generator

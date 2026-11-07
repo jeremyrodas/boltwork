@@ -62,6 +62,9 @@ struct ItemEditorView: View {
                     }
                     .onDelete { content.fields.remove(atOffsets: $0) }
                     AddFieldMenu(fields: $content.fields)
+                    if content.category == .sshKey {
+                        SSHKeyActions(fields: $content.fields)
+                    }
                 }
                 ForEach($content.sections) { $section in
                     Section(section.title) {

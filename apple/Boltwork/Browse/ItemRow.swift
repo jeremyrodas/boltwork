@@ -6,7 +6,7 @@ struct ItemRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ItemIcon(category: item.category)
+            ItemIcon(category: item.category, size: 36)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .lineLimit(1)

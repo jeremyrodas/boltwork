@@ -26,10 +26,17 @@ final class AppModel {
     var alertMessage: String?
 
     let sync = SyncController()
+    #if os(macOS)
+    let sshAgent = SSHAgentController()
+    let browserLink = BrowserLinkController()
+    #endif
 
     @ObservationIgnored private var store: VaultStore?
     @ObservationIgnored private var backgroundedAt: Date?
     @ObservationIgnored private var idleWatcher: Task<Void, Never>?
+    #if os(macOS)
+    @ObservationIgnored private var screenLockObserver: ScreenLockObserver?
+    #endif
     let directory: URL
 
     static var defaultDirectory: URL {
@@ -37,7 +44,8 @@ final class AppModel {
         // UI tests point the app at a fresh folder with `-vaultDirectory <path>`.
         if let path = UserDefaults.standard.string(forKey: "vaultDirectory") { return URL(filePath: path) }
         #endif
-        return URL.applicationSupportDirectory.appending(path: "Boltwork/vault")
+        SharedContainer.migrate()
+        return SharedContainer.vaultDirectory
     }
 
     init(directory: URL = AppModel.defaultDirectory) {
@@ -46,6 +54,10 @@ final class AppModel {
         phase = VaultStore.exists(at: directory) ? .locked : .welcome
         sync.onRemoteChanges = { [weak self] in self?.refresh() }
         #if os(macOS)
+        sshAgent.model = self
+        if UserDefaults.standard.bool(forKey: AppSettings.sshAgent) { sshAgent.setEnabled(true) }
+        browserLink.model = self
+        if UserDefaults.standard.bool(forKey: AppSettings.browserLink) { browserLink.setEnabled(true) }
         watchForSleep()
         #endif
     }
@@ -111,6 +123,7 @@ final class AppModel {
 
     private func didUnlock(_ store: VaultStore) {
         self.store = store
+        DeviceSecrets.share(account: store.accountId)
         accountId = store.accountId
         if store.repairedBlankKey > 0 {
             repairNotice = "Boltwork repaired \(store.repairedBlankKey) items that an earlier version saved incorrectly on this device."
@@ -131,6 +144,9 @@ final class AppModel {
         vaults = []
         idleWatcher?.cancel()
         AttachmentPreview.clear()
+        #if os(macOS)
+        sshAgent.locked()
+        #endif
         phase = .locked
     }
 
@@ -173,6 +189,51 @@ final class AppModel {
         guard let store else { return }
         vaults = store.vaults
         items = store.items
+        updateAutoFill()
+    }
+
+    /// Picks up what the AutoFill extension saved (a new passkey, a use count) while the app was in the background.
+    private func reloadIfChangedOnDisk() {
+        guard let store, store.changedOnDisk, let key = try? store.masterKeyCopy(), let fresh = try? VaultStore.open(at: directory, key: key) else { return }
+        sync.detach()
+        store.lock()
+        self.store = fresh
+        refresh()
+        sync.attach(store: fresh)
+    }
+
+    /// The open vault, for the browser link, which changes it directly and then calls `storeChanged()`.
+    var openStore: VaultStore? { phase == .unlocked ? store : nil }
+
+    func storeChanged() {
+        refresh()
+        sync.syncSoon()
+    }
+
+    #if os(macOS)
+    /// Brings Boltwork forward and waits up to a minute for the user to unlock it (for ssh or the browser).
+    func waitForUnlock() async -> Bool {
+        if phase == .unlocked { return true }
+        NSApp.activate()
+        for _ in 0..<200 {
+            try? await Task.sleep(for: .milliseconds(300))
+            if phase == .unlocked { return true }
+        }
+        return false
+    }
+    #endif
+
+    @ObservationIgnored private var autoFillUpdate: Task<Void, Never>?
+
+    /// Tells the system which sites and accounts Boltwork can fill, a moment after changes settle.
+    func updateAutoFill() {
+        autoFillUpdate?.cancel()
+        let items = items
+        autoFillUpdate = Task {
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled else { return }
+            await CredentialIdentities.replace(with: items)
+        }
     }
 
     // MARK: - Changing
@@ -319,7 +380,10 @@ final class AppModel {
                 lock()
             }
             backgroundedAt = nil
-            if phase == .unlocked { sync.start() }
+            if phase == .unlocked {
+                reloadIfChangedOnDisk()
+                sync.start()
+            }
         default:
             break
         }
@@ -349,9 +413,24 @@ final class AppModel {
         Task { [weak self] in
             for await _ in NSWorkspace.shared.notificationCenter.notifications(named: NSWorkspace.willSleepNotification) { self?.lock() }
         }
-        Task { [weak self] in
-            for await _ in DistributedNotificationCenter.default().notifications(named: .init("com.apple.screenIsLocked")) { self?.lock() }
-        }
+        screenLockObserver = ScreenLockObserver { [weak self] in self?.lock() }
     }
     #endif
 }
+
+#if os(macOS)
+/// Hears the Mac's screen lock right away. Without `.deliverImmediately`, macOS holds the notification
+/// until Boltwork is the active app again, so a vault left open in the background stayed unlocked.
+private final class ScreenLockObserver: NSObject {
+    private let onLock: () -> Void
+
+    init(onLock: @escaping () -> Void) {
+        self.onLock = onLock
+        super.init()
+        DistributedNotificationCenter.default().addObserver(self, selector: #selector(screenLocked), name: .init("com.apple.screenIsLocked"),
+                                                            object: nil, suspensionBehavior: .deliverImmediately)
+    }
+
+    @objc private func screenLocked() { onLock() }
+}
+#endif

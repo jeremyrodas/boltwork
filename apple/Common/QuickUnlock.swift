@@ -51,7 +51,7 @@ enum QuickUnlock {
     }
 
     static func isEnabled(account: String) -> Bool {
-        UserDefaults.standard.bool(forKey: "quickUnlock.\(account)")
+        SharedContainer.defaults.bool(forKey: "quickUnlock.\(account)")
     }
 
     static func enable(masterKey: [UInt8], account: String) throws {
@@ -60,13 +60,19 @@ enum QuickUnlock {
             throw Failure.unavailable
         }
         try Keychain.set(Data(masterKey), service: service, account: account, accessControl: access)
-        UserDefaults.standard.set(true, forKey: "quickUnlock.\(account)")
+        SharedContainer.defaults.set(true, forKey: "quickUnlock.\(account)")
+        SharedContainer.defaults.set(SharedContainer.isAvailable, forKey: "quickUnlockShared.\(account)")
     }
 
     static func disable(account: String) {
         Keychain.delete(service: service, account: account)
-        UserDefaults.standard.removeObject(forKey: "quickUnlock.\(account)")
+        SharedContainer.defaults.removeObject(forKey: "quickUnlock.\(account)")
+        SharedContainer.defaults.removeObject(forKey: "quickUnlockShared.\(account)")
     }
+
+    /// Whether the AutoFill extension can read the quick-unlock key. It can't until the key is saved again
+    /// into the app group, which `masterKey` does on the app's next biometric unlock.
+    static func isShared(account: String) -> Bool { SharedContainer.defaults.bool(forKey: "quickUnlockShared.\(account)") }
 
     /// Asks for biometrics, then returns the master key.
     static func masterKey(account: String, reason: String) async throws -> [UInt8] {
@@ -80,6 +86,9 @@ enum QuickUnlock {
         guard let data = try Keychain.get(service: service, account: account, context: context) else {
             disable(account: account)
             throw Failure.missing
+        }
+        if SharedContainer.isAvailable, !isShared(account: account) {
+            try? enable(masterKey: [UInt8](data), account: account)
         }
         return [UInt8](data)
     }

@@ -36,6 +36,15 @@ public final class VaultStore {
     public private(set) var repairedBlankKey = 0
 
     private var vaultURL: URL { directory.appending(path: "vault.json") }
+    /// The file's modification date when this store last read or wrote it.
+    private var fileDate: Date?
+
+    private static func modificationDate(_ directory: URL) -> Date? {
+        try? FileManager.default.attributesOfItem(atPath: directory.appending(path: "vault.json").path)[.modificationDate] as? Date
+    }
+
+    /// Whether another process (the AutoFill extension) has saved the vault since this store last did.
+    public var changedOnDisk: Bool { Self.modificationDate(directory) != fileDate }
     private var attachmentsURL: URL { directory.appending(path: "attachments") }
 
     private init(directory: URL, kdf: KdfParams, wrappedKey: Sealed, key: [UInt8], accountId: String, records: RecordSet = RecordSet()) {
@@ -94,6 +103,7 @@ public final class VaultStore {
 
     /// Opens the vault with its master key (from `masterKey(at:…)`, or quick unlock after checking it's right).
     public static func open(at directory: URL, key: [UInt8]) throws -> VaultStore {
+        let date = modificationDate(directory)
         let file = try readFile(directory)
         if file.version == 1 {
             guard let blob = file.data else { throw VaultError.unsupportedFormat }
@@ -132,6 +142,7 @@ public final class VaultStore {
         store.pwnedCache = local.pwnedCache ?? [:]
         store.searchHistory = local.searchHistory ?? []
         store.syncState = file.sync
+        store.fileDate = date
         if !opened.recovered.isEmpty || localRecovered {
             store.repairedBlankKey = opened.recovered.count + store.resealBlankAttachments()
             try store.persist()
@@ -254,6 +265,7 @@ public final class VaultStore {
             try fm.copyItem(at: vaultURL, to: bak)
         }
         try data.write(to: vaultURL, options: [.atomic, .completeFileProtection])
+        fileDate = Self.modificationDate(directory)
     }
 
     // MARK: - Vaults and collections
@@ -339,7 +351,7 @@ public final class VaultStore {
     }
 
     @discardableResult
-    private func patch(_ id: String, touch: Bool = true, _ change: (inout Item) -> Void) throws -> Item {
+    func patch(_ id: String, touch: Bool = true, _ change: (inout Item) -> Void) throws -> Item {
         _ = try requireKey()
         guard let i = items.firstIndex(where: { $0.id == id }) else { throw VaultError.notFound("Item") }
         change(&items[i])

@@ -10,7 +10,7 @@ let package = Package(
     targets: [
         .target(
             name: "BoltworkKit",
-            resources: [.process("Generator/wordlist.txt")],
+            resources: [.process("Generator/wordlist.txt"), .process("Resources/public-suffixes.txt")],
             swiftSettings: [
                 // Argon2id over 128 MiB is far too slow unoptimized, even in Debug builds.
                 .unsafeFlags(["-O"], .when(configuration: .debug))

@@ -11,8 +11,7 @@ struct GeneratorView: View {
     var body: some View {
         Form {
             Section {
-                Text(password)
-                    .font(.title3.monospaced())
+                PasswordText(password: password)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
                 StrengthMeter(strength: PasswordStrength(password))

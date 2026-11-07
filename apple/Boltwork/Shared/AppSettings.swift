@@ -8,4 +8,7 @@ enum AppSettings {
     static let itemSort = "itemSort"
     static let checkBreachedPasswords = "checkBreachedPasswords"
     static let generatorOptions = "generatorOptions"
+    static let appearance = "appearance"
+    static let sshAgent = "sshAgent"
+    static let browserLink = "browserLink"
 }

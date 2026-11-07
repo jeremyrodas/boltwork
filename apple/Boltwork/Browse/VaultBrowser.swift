@@ -9,7 +9,6 @@ struct VaultBrowser: View {
     @State private var sheet: BrowserSheet?
 
     var body: some View {
-        @Bindable var model = model
         NavigationSplitView {
             SidebarView(selection: $sidebar, sheet: $sheet)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 240)
@@ -31,22 +30,7 @@ struct VaultBrowser: View {
         .onChange(of: sidebar) {
             selectedItemID = nil
         }
-        .sheet(item: $sheet) { sheet in
-            switch sheet {
-            case .newItem(let category):
-                ItemEditorView(newItemOf: category, defaultVaultID: defaultVaultID, selection: $selectedItemID)
-            case .edit(let item):
-                ItemEditorView(editing: item, selection: $selectedItemID)
-            case .generator:
-                NavigationStack { GeneratorView() }
-            case .settings:
-                SettingsView()
-            }
-        }
-        .alert("Data Repaired", item: $model.repairNotice) { _ in
-        } message: { notice in
-            Text(notice)
-        }
+        .browserSheets($sheet, selection: $selectedItemID, defaultVaultID: defaultVaultID)
     }
 
     /// New items go into the vault being browsed, or the first vault.

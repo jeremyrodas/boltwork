@@ -1,32 +1,36 @@
 import BoltworkKit
 import SwiftUI
 
+/// Where the item lives, then its big icon and title.
 struct ItemHeader: View {
     let item: Item
     let vaultName: String?
 
     var body: some View {
-        HStack(spacing: 16) {
-            ItemIcon(category: item.category, size: 56)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.title)
-                    .font(.title2.bold())
-                    .textSelection(.enabled)
-                HStack(spacing: 6) {
-                    Text(item.category.displayName)
-                    if let vaultName {
-                        Text("·")
-                        Label(vaultName, systemImage: "lock.square.stack").labelStyle(.titleAndIcon)
-                    }
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 6) {
+                if let vaultName {
+                    Label(vaultName, systemImage: "lock.square.stack")
+                    Text("|").foregroundStyle(Theme.line)
                 }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                Label(item.category.displayName, systemImage: item.category.symbol)
+                if item.favorite {
+                    Text("|").foregroundStyle(Theme.line)
+                    Label("Favorite", systemImage: "star.fill")
+                        .foregroundStyle(.yellow)
+                }
             }
-            Spacer(minLength: 0)
-            if item.favorite {
-                Image(systemName: "star.fill").foregroundStyle(.yellow).accessibilityLabel("Favorite")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .labelStyle(.titleAndIcon)
+            HStack(spacing: 16) {
+                ItemIcon(category: item.category, size: 64)
+                Text(item.title)
+                    .font(.title2.weight(.semibold))
+                    .textSelection(.enabled)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 4)
+        .accessibilityElement(children: .combine)
     }
 }

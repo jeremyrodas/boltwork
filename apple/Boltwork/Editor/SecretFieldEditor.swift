@@ -42,6 +42,7 @@ struct SecretFieldEditor: View {
             NavigationStack {
                 GeneratorView(target: $field.value)
             }
+            .presentationDetents([.medium, .large])
         }
     }
 }

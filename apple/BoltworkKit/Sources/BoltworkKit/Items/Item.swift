@@ -22,7 +22,7 @@ public struct Item: Codable, Equatable, Hashable, Identifiable, Sendable {
 
     public var title: String { content.title }
     public var category: ItemCategory { content.category }
-    /// How many passkeys the item holds (they're created by the desktop browser extension).
+    /// How many passkeys the item holds.
     public var passkeyCount: Int { extras["passkeys"]?.arrayValue?.count ?? 0 }
 
     public init(id: String, vaultId: String, content: ItemContent, createdAt: Int64) {

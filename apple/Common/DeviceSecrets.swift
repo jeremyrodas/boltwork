@@ -26,6 +26,14 @@ enum DeviceSecrets {
         }
     }
 
+    /// Saves this device's secrets again, which moves ones saved before the app group existed into it.
+    static func share(account: String) {
+        guard SharedContainer.isAvailable, !SharedContainer.defaults.bool(forKey: "secretsShared.\(account)") else { return }
+        if let key = secretKey(account: account) { try? setSecretKey(key, account: account) }
+        if let token = syncToken(account: account) { try? setSyncToken(token, account: account) }
+        SharedContainer.defaults.set(true, forKey: "secretsShared.\(account)")
+    }
+
     static func forget(account: String) {
         Keychain.delete(service: secretKeyService, account: account)
         Keychain.delete(service: syncTokenService, account: account)

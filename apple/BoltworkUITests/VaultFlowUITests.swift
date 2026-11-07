@@ -30,6 +30,7 @@ final class VaultFlowUITests: XCTestCase {
 
         // It's in the list and its details show.
         XCTAssertTrue(app.staticTexts["Example Bank"].firstMatch.waitForExistence(timeout: 5))
+        if !app.buttons["Reveal"].firstMatch.waitForExistence(timeout: 2) { app.staticTexts["Example Bank"].firstMatch.tap() }
         XCTAssertTrue(app.staticTexts["alice@example.com"].firstMatch.waitForExistence(timeout: 5))
         app.buttons["Reveal"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["Tr0ub4dor&3-much-longer"].firstMatch.waitForExistence(timeout: 5), "the whole password was saved")
@@ -51,10 +52,7 @@ final class VaultFlowUITests: XCTestCase {
     #if os(iOS)
     func testSecretKeyAndEmergencyKitNeedPassword() throws {
         let app = launchWithNewVault()
-        // Settings is on the sidebar.
-        let back = app.navigationBars.buttons["BackButton"]
-        if back.waitForExistence(timeout: 5) { back.tap() }
-        app.buttons["Settings"].firstMatch.tap()
+        openSettings(app)
         app.buttons["Secret Key and Emergency Kit"].tap()
 
         // Nothing shows until the password is right.
@@ -88,22 +86,18 @@ final class VaultFlowUITests: XCTestCase {
     /// `xcrun simctl spawn booted notifyutil -p com.apple.BiometricKit_Sim.pearl.match`.
     func testUnlockWithFaceID() throws {
         let app = launchWithNewVault()
-        let back = app.navigationBars.buttons["BackButton"]
-        if back.waitForExistence(timeout: 5) { back.tap() }
-        app.buttons["Settings"].firstMatch.tap()
+        openSettings(app)
         let toggle = app.switches["Unlock with Face ID"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 5), "Face ID isn't enrolled on this simulator")
         toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
         XCTAssertEqual(toggle.value as? String, "1")
         app.buttons["Done"].tap()
 
-        app.buttons["Lock"].tap()
+        lock(app)
         // The first time, iOS asks whether Boltwork may use Face ID.
         let allow = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["OK"]
         if allow.waitForExistence(timeout: 5) { allow.tap() }
-        // Unlocked: the items list or the sidebar is back.
-        let unlocked = app.buttons.matching(NSPredicate(format: "label IN {'New Item', 'Settings'}")).firstMatch
-        XCTAssertTrue(unlocked.waitForExistence(timeout: 30), "Face ID unlocked the vault")
+        XCTAssertTrue(app.buttons["Account"].firstMatch.waitForExistence(timeout: 30), "Face ID unlocked the vault")
         XCTAssertFalse(app.secureTextFields["Account password"].exists)
         attach(app, "face-id-unlocked")
     }
@@ -116,7 +110,10 @@ final class VaultFlowUITests: XCTestCase {
         app.launchArguments += ["-vaultDirectory", dir, "-autolockMinutes", "-1"]
         app.launch()
 
-        app.buttons["Create a New Vault"].tap()
+        // Wait out the welcome screen's entrance animation before tapping.
+        let create = app.buttons["Create a New Vault"]
+        XCTAssertTrue(create.wait(for: \.isHittable, toEqual: true, timeout: 10))
+        create.tap()
         let fields = app.secureTextFields
         fields["Account password"].tap()
         fields["Account password"].typeText(password)
@@ -139,23 +136,32 @@ final class VaultFlowUITests: XCTestCase {
         return app
     }
 
-    /// On iPhone the split view starts at the sidebar; open All Items.
+    /// The Items tab on iPhone and iPad; the Mac shows the list already.
     private func openItemsList(_ app: XCUIApplication) {
-        let allItems = app.buttons["All Items"].firstMatch
-        if allItems.waitForExistence(timeout: 5), !app.buttons["New Item"].firstMatch.exists {
-            allItems.tap()
-        }
+        #if os(iOS)
+        let tab = app.tabBars.buttons["Items"].exists ? app.tabBars.buttons["Items"] : app.buttons["Items"].firstMatch
+        if tab.waitForExistence(timeout: 5) { tab.tap() }
+        #endif
     }
+
+    #if os(iOS)
+    private func openSettings(_ app: XCUIApplication) {
+        let account = app.buttons["Account"].firstMatch
+        XCTAssertTrue(account.waitForExistence(timeout: 10))
+        account.tap()
+        app.buttons["Settings"].firstMatch.tap()
+    }
+    #endif
 
     private func lock(_ app: XCUIApplication) {
         #if os(macOS)
         app.typeKey("l", modifierFlags: [.command, .shift])
         #else
-        // Back to the sidebar, where the Lock button is.
-        while !app.buttons["Lock"].exists, app.navigationBars.buttons.firstMatch.exists {
-            app.navigationBars.buttons.firstMatch.tap()
-        }
-        app.buttons["Lock"].tap()
+        // The Account menu lives on the Home tab.
+        let home = app.buttons["Home"].firstMatch
+        if !app.buttons["Account"].firstMatch.exists, home.exists { home.tap() }
+        app.buttons["Account"].firstMatch.tap()
+        app.buttons["Lock"].firstMatch.tap()
         #endif
     }
 
