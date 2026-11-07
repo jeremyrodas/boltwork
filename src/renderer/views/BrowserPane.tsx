@@ -70,6 +70,7 @@ type ProviderStatus = Awaited<ReturnType<typeof api.passkeyProviderStatus>>;
 function WindowsPasskeys() {
   const { run, app } = useApp();
   const [st, setSt] = useState<ProviderStatus | null>(null);
+  const [installing, setInstalling] = useState(false);
   useEffect(() => {
     let live = true;
     const tick = () => { void api.passkeyProviderStatus().then(s => { if (live) setSt(s); }); };
@@ -78,13 +79,21 @@ function WindowsPasskeys() {
     return () => { live = false; clearInterval(t); };
   }, []);
   if (app?.platform !== 'win32' || !st) return null;
+  const install = async () => {
+    setInstalling(true);
+    try { const s = await run(api.passkeyProviderInstall(), 'Boltwork added to Windows. Turn it on in the settings page that opened.'); if (s) setSt(s); }
+    finally { setInstalling(false); }
+  };
   const register = async () => { const s = await run(api.passkeyProviderRegister(), 'Boltwork added to Windows'); if (s) setSt(s); };
   return (
     <div className="settings-section">
       <h3>Windows passkeys</h3>
       <p className="muted">Lets Windows’ own passkey dialog offer Boltwork, in any browser or app, not just Chrome with the extension. Needs Windows 11 with the November 2025 update or later.</p>
-      {!st.installed ? (
-        <p className="hint">The Boltwork passkey provider isn’t installed on this computer. It’s a separate small package; see <code>native/passkey-provider</code> in the Boltwork source for how to install it.</p>
+      {!st.installed && st.bundled ? (<>
+        <p className="muted">Setting up installs Boltwork’s small passkey helper. Windows asks for administrator permission to trust Boltwork’s signing certificate, then opens the page where you turn Boltwork on.</p>
+        <Button kind="primary" disabled={installing} onClick={install}>{installing ? 'Setting up…' : 'Set up Windows passkeys'}</Button>
+      </>) : !st.installed ? (
+        <p className="hint">The Boltwork passkey helper isn’t installed on this computer, and this copy of Boltwork doesn’t include it. Install Boltwork with its setup program to get it, or see <code>native/passkey-provider</code> in the Boltwork source.</p>
       ) : st.state === 'enabled' ? (<>
         <div className="agent-status ok">● Boltwork is a passkey provider in Windows</div>
         <div className="row gap">

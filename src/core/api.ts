@@ -38,6 +38,16 @@ export interface SshAgentStatus {
   keys: { title: string; fingerprint: string; keyType: string }[];
 }
 
+/** Boltwork as a Windows passkey provider (src/main/passkeyProvider.ts). */
+export interface ProviderStatus {
+  installed: boolean;
+  /** The helper ships with this copy of Boltwork, so it can be set up from the app. */
+  bundled: boolean;
+  state?: 'enabled' | 'disabled' | 'not-registered';
+  serving: boolean;
+  error?: string;
+}
+
 export interface AppState {
   hasVault: boolean;
   locked: boolean;
@@ -154,9 +164,11 @@ export interface Api {
   browserRevoke(id: string): void;
   browserShowExtensionFolder(): void;
   /** Windows passkey provider (Windows 11 with the November 2025 update or later). */
-  passkeyProviderStatus(): { installed: boolean; state?: 'enabled' | 'disabled' | 'not-registered'; serving: boolean; error?: string };
-  passkeyProviderRegister(): { installed: boolean; state?: 'enabled' | 'disabled' | 'not-registered'; serving: boolean; error?: string };
-  passkeyProviderUnregister(): { installed: boolean; state?: 'enabled' | 'disabled' | 'not-registered'; serving: boolean; error?: string };
+  passkeyProviderStatus(): ProviderStatus;
+  passkeyProviderRegister(): ProviderStatus;
+  passkeyProviderUnregister(): ProviderStatus;
+  /** Installs the Windows passkey helper bundled with the app (asks Windows for administrator permission). */
+  passkeyProviderInstall(): ProviderStatus;
   openWindowsPasskeySettings(): void;
 
   quickAccessAction(itemId: string, action: QuickAccessAction): void;

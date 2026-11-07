@@ -15,7 +15,10 @@ import { createPrompt, type PasskeyDecision, type PasskeyPrompt } from '../core/
 import { authenticatorInfo, getAssertionResponse, makeCredentialResponse, parseGetAssertion, parseMakeCredential } from '../core/ctap';
 import { PasskeyError } from '../core/passkeys';
 import { SCHEMES } from '../core/schemes';
+import type { ProviderStatus } from '../core/api';
 import type { VaultStore } from '../core/store';
+
+export type { ProviderStatus };
 
 export interface ProviderDeps {
   store: () => VaultStore | null;
@@ -30,6 +33,10 @@ export interface ProviderDeps {
   /** How the helper can start Boltwork when Windows needs it and it isn't running. */
   launch: { command: string; args: string[]; cwd: string };
   userData: string;
+  /** Where the installer put the helper package and its install script (resources\passkeys). */
+  bundleDir?: string;
+  /** The current color scheme, for the logo Windows shows. */
+  scheme?: () => keyof typeof SCHEMES;
 }
 
 export const PROVIDER_PIPE = process.env.BOLTWORK_PASSKEY_SOCK || '\\\\.\\pipe\\boltwork-passkeys';
@@ -75,6 +82,60 @@ export function startPasskeyProvider(d: ProviderDeps): void {
   });
   srv.on('error', e => { lastError = (e as NodeJS.ErrnoException).code === 'EADDRINUSE' ? 'Another copy of Boltwork is the Windows passkey provider.' : e.message; server = null; });
   srv.listen(PROVIDER_PIPE, () => { server = srv; lastError = ''; });
+  void finishInstallerSetup();
+}
+
+// ---------- installing the helper ----------
+
+const justInstalledFlag = () => path.join(process.env.LOCALAPPDATA ?? '', 'Boltwork', 'passkeys-just-installed');
+
+/** The install script shipped with the app, if this copy has the helper bundled. */
+function bundledInstaller(): string | null {
+  const p = deps?.bundleDir && path.join(deps.bundleDir, 'install.ps1');
+  return p && fs.existsSync(p) && fs.existsSync(path.join(deps!.bundleDir!, 'Boltwork-Passkeys.msix')) ? p : null;
+}
+
+const INSTALL_ERRORS: Record<number, string> = {
+  2: 'Windows’ administrator prompt was declined, so the certificate wasn’t trusted.',
+  4: 'Trusting Boltwork’s signing certificate failed.',
+  5: 'This version of Windows doesn’t support passkey providers. Windows 11 24H2 or later is needed.',
+  6: 'Windows didn’t install the package.',
+};
+
+/**
+ * Installs the bundled helper (trusting its certificate brings up Windows' administrator prompt), adds Boltwork
+ * to Windows' passkey providers and opens the settings page where it's turned on.
+ */
+export async function installProvider(): Promise<ProviderStatus> {
+  const script = bundledInstaller();
+  if (!script) throw new Error('This copy of Boltwork doesn’t include the Windows passkey helper.');
+  const code = await new Promise<number>(resolve => {
+    const ps = path.join(process.env.WINDIR ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+    const child = spawn(ps, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', script], { windowsHide: true, stdio: 'ignore' });
+    child.on('error', () => resolve(6));
+    child.on('exit', c => resolve(c ?? 6));
+  });
+  if (code !== 0) {
+    throw new Error(`${INSTALL_ERRORS[code] ?? `Setting up Windows passkeys failed (code ${code}).`} Details are in %TEMP%\\boltwork-passkeys\\install.log.`);
+  }
+  try { fs.rmSync(justInstalledFlag(), { force: true }); } catch { /* handled below either way */ }
+  return addAndOpenSettings();
+}
+
+async function addAndOpenSettings(): Promise<ProviderStatus> {
+  // Windows can take a moment to make a new package's execution alias available.
+  for (let i = 0; i < 20 && !providerExe(); i++) await new Promise(r => setTimeout(r, 500));
+  const st = await registerProvider(deps?.scheme?.() ?? 'brass');
+  if (st.state !== 'enabled') openWindowsPasskeySettings();
+  return st;
+}
+
+/** After the installer set the helper up: add Boltwork to Windows and open the page where it's turned on. */
+async function finishInstallerSetup() {
+  const flag = justInstalledFlag();
+  if (!fs.existsSync(flag)) return;
+  try { fs.rmSync(flag, { force: true }); } catch { return; }
+  try { await addAndOpenSettings(); } catch (e) { lastError = (e as Error).message; }
 }
 
 export function stopPasskeyProvider() { server?.close(); server = null; }
@@ -152,15 +213,15 @@ function runHelper(cmd: string, input?: unknown): Promise<Record<string, unknown
   });
 }
 
-export interface ProviderStatus { installed: boolean; state?: 'enabled' | 'disabled' | 'not-registered'; serving: boolean; error?: string }
 
 export async function providerStatus(): Promise<ProviderStatus> {
-  if (process.platform !== 'win32') return { installed: false, serving: false };
-  if (!providerExe()) return { installed: false, serving: !!server, error: lastError || undefined };
+  if (process.platform !== 'win32') return { installed: false, bundled: false, serving: false };
+  const bundled = !!bundledInstaller();
+  if (!providerExe()) return { installed: false, bundled, serving: !!server, error: lastError || undefined };
   try {
     const r = await runHelper('status');
-    return { installed: true, state: r.state as ProviderStatus['state'], serving: !!server, error: lastError || undefined };
-  } catch (e) { return { installed: true, serving: !!server, error: (e as Error).message }; }
+    return { installed: true, bundled, state: r.state as ProviderStatus['state'], serving: !!server, error: lastError || undefined };
+  } catch (e) { return { installed: true, bundled, serving: !!server, error: (e as Error).message }; }
 }
 
 /** Adds (or refreshes) Boltwork in Windows' list of passkey providers, then syncs the passkey list. */

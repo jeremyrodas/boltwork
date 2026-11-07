@@ -22,7 +22,7 @@ import { makeIcon } from './icon';
 import { initSshAgent, setSshAgentEnabled, sshAgentLocked, sshAgentStatus } from './sshAgentHost';
 import { browserHostStatus, getBridge, registerNativeHost, startBrowserHost, stopBrowserHost } from './browserHost';
 import type { AppPrompt, PasskeyDecision, PasskeyPrompt } from '../core/browserBridge';
-import { openWindowsPasskeySettings, providerStatus, registerProvider, scheduleCredentialSync, startPasskeyProvider, unregisterProvider } from './passkeyProvider';
+import { installProvider, openWindowsPasskeySettings, providerStatus, registerProvider, scheduleCredentialSync, startPasskeyProvider, unregisterProvider } from './passkeyProvider';
 import {
   checkServer, disconnectSync, initSync, pushNewKeys, reconnect, scheduleSync, setupSync, signInNewDevice, startSyncLoop,
   stopSyncLoop, syncNow, syncStatus,
@@ -923,6 +923,7 @@ const handlers: Handlers = {
   passkeyProviderStatus: () => providerStatus(),
   passkeyProviderRegister: () => registerProvider(settings.colorScheme),
   passkeyProviderUnregister: () => unregisterProvider(),
+  passkeyProviderInstall: () => installProvider(),
   openWindowsPasskeySettings: () => openWindowsPasskeySettings(),
 
   quickAccessAction: async (itemId, action) => quickAccessAction(itemId, action),
@@ -1032,6 +1033,9 @@ app.whenReady().then(async () => {
   // Windows passkey provider: always listening, so Windows can reach Boltwork once the user turns it on.
   startPasskeyProvider({
     store: () => store, approve: approvePasskey, waitForUnlock, keepOnTop, onChanged: () => changed(), userData,
+    // The helper package the installer ships (installer/installer.nsh); in development, the staged copy.
+    bundleDir: app.isPackaged ? path.join(process.resourcesPath, 'passkeys') : path.join(appRoot, 'build', 'passkeys'),
+    scheme: () => settings.colorScheme,
     launch: app.isPackaged
       ? { command: process.execPath, args: [], cwd: path.dirname(process.execPath) }
       : { command: process.execPath, args: [app.getAppPath()], cwd: app.getAppPath() },

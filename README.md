@@ -75,7 +75,7 @@ In Boltwork, open **Settings → Browser Extension** and turn it on. Then:
 
 ### Windows passkey provider (optional)
 
-This is a small packaged helper (`Boltwork-Passkeys-<version>.msix`) that lets Windows hand passkey requests to Boltwork. It's signed with a self-signed certificate, so the certificate must be trusted once before installing. See [native/passkey-provider/README.md](native/passkey-provider/README.md) for the steps.
+This is a small packaged helper that lets Windows hand passkey requests to Boltwork. It comes with the setup program, which asks once whether to set it up: say yes, approve Windows' administrator prompt (it trusts Boltwork's self-signed certificate), then turn Boltwork on in the Windows settings page that opens. You can also set it up later from **Settings → Browser Extension → Windows passkeys**. See [native/passkey-provider/README.md](native/passkey-provider/README.md) for details.
 
 ### Sync server (optional)
 
