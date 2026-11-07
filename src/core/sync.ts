@@ -2,6 +2,7 @@
  * Talks to a Boltwork sync server and keeps a VaultStore in step with it.
  * Only sealed records, the wrapped master key and KDF parameters ever leave the device.
  */
+import sodium from 'libsodium-wrappers-sumo';
 import { deriveKek, authKeyFrom, wipe, type KdfParams, type Sealed } from './crypto';
 import type { SealedRecord } from './records';
 import type { VaultStore } from './store';
@@ -10,7 +11,7 @@ export class SyncError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
-const b64u = (u: Uint8Array) => Buffer.from(u).toString('base64url');
+const b64u = (u: Uint8Array) => sodium.to_base64(u, sodium.base64_variants.URLSAFE_NO_PADDING);
 
 /** Turns Node's bare "fetch failed" into something a person can act on. */
 export function unreachable(serverUrl: string, e: unknown): SyncError {

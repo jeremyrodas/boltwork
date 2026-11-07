@@ -11,6 +11,8 @@
  *   SIGNUPS              first | open | closed   (default first: only the first account may sign up)
  *   TRUST_PROXY          1 to take the client IP from X-Forwarded-For (for rate limiting behind a proxy)
  *   STORAGE_LIMIT_MB     per-account limit for attachment files (default 0: no limit)
+ *   WEB_VAULT            on to serve the web vault at / (default off; see web.ts)
+ *   WEB_DIR              the web vault's files (default: the web folder next to server.js)
  *
  * Attachments are stored as files under DATA_DIR/blobs/<account>/<id>, exactly as the apps sealed them.
  */
@@ -19,11 +21,14 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { webVault } from './web';
 
 export interface ServerOptions {
   port?: number; dataDir?: string; signups?: 'first' | 'open' | 'closed'; trustProxy?: boolean; log?: (s: string) => void;
   /** Per-account attachment storage limit in bytes; 0 for none. */
   storageLimit?: number;
+  /** Folder with the web vault's files to serve at /; none by default. */
+  webDir?: string;
 }
 
 const MAX_BODY = 32 * 1024 * 1024;
@@ -47,6 +52,9 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
   const trustProxy = opts.trustProxy ?? process.env.TRUST_PROXY === '1';
   const log = opts.log ?? (s => console.log(`${new Date().toISOString()} ${s}`));
   const storageLimit = opts.storageLimit ?? Number(process.env.STORAGE_LIMIT_MB ?? 0) * 1024 * 1024;
+  const webDir = opts.webDir ?? (process.env.WEB_VAULT === 'on' ? process.env.WEB_DIR ?? path.join(__dirname, 'web') : undefined);
+  const web = webDir ? webVault(webDir) : null;
+  if (webDir && !web) throw new Error(`WEB_VAULT is on, but ${webDir} has no index.html. Build it with npm run build (dist-web).`);
   fs.mkdirSync(dataDir, { recursive: true });
   const blobRoot = path.join(dataDir, 'blobs');
 
@@ -382,7 +390,9 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
       res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', connection: status >= 400 ? 'close' : 'keep-alive' });
       res.end(json);
     };
-    const blob = /^\/api\/v1\/blobs\/([^/]+)$/.exec(new URL(req.url ?? '/', 'http://localhost').pathname);
+    const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+    if (web && !pathname.startsWith('/api/') && web(req, res, pathname)) return;
+    const blob = /^\/api\/v1\/blobs\/([^/]+)$/.exec(pathname);
     if (blob) {
       blobRoute(req, res, decodeURIComponent(blob[1])).then(r => { if (r !== undefined) send(200, r); }, (e: unknown) => {
         if (e instanceof HttpError) send(e.status, { error: e.message });
@@ -410,7 +420,7 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
   return new Promise(resolve => server.listen(port, () => {
     const addr = server.address() as { port: number };
     const url = `http://localhost:${addr.port}`;
-    log(`strongroom-server listening on ${addr.port} (sign-ups: ${signups}, data: ${dataDir})`);
+    log(`strongroom-server listening on ${addr.port} (sign-ups: ${signups}, data: ${dataDir}${web ? ', web vault: on' : ''})`);
     resolve({ server, url, close: () => new Promise<void>(r => { server.close(() => { db.close(); r(); }); server.closeAllConnections(); }) });
   }));
 }

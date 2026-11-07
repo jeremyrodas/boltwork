@@ -1,0 +1,16 @@
+# Only the server image is built with Docker; keep the build context small.
+.git
+node_modules
+dist
+dist-test
+dist-extension
+dist-web
+release
+build
+apple
+native
+extension
+server/dist
+server/data
+data
+*.log

@@ -49,8 +49,8 @@ export function parseTotp(input: string): TotpParams {
 
 export function totpAt(p: TotpParams, timeMs: number): string {
   const counter = Math.floor(timeMs / 1000 / p.period);
-  const buf = Buffer.alloc(8);
-  buf.writeBigUInt64BE(BigInt(counter));
+  const buf = new Uint8Array(8);
+  new DataView(buf.buffer).setBigUint64(0, BigInt(counter));
   const h = createHmac(p.algorithm.toLowerCase(), p.secret).update(buf).digest();
   const off = h[h.length - 1] & 15;
   const bin = ((h[off] & 127) << 24) | (h[off + 1] << 16) | (h[off + 2] << 8) | h[off + 3];

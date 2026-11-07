@@ -43,7 +43,8 @@ export interface AppState {
   locked: boolean;
   /** True on a device that has never stored this vault's Secret Key. */
   needsSecretKey: boolean;
-  platform: NodeJS.Platform;
+  /** 'web' for the web vault a sync server can serve. */
+  platform: NodeJS.Platform | 'web';
   version: string;
   window: 'main' | 'quickAccess' | 'largeType' | 'passkeyPrompt';
   /** Quick unlock offered on the lock screen, if set up on this device. */

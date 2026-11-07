@@ -676,7 +676,7 @@ export class VaultStore {
     const key = this.requireKey();
     if (!this.referencedAttachmentIds().has(id)) throw new Error('No item refers to that attachment.');
     let sealed: Sealed;
-    try { sealed = JSON.parse(Buffer.from(blob).toString('utf8')) as Sealed; } catch { throw new Error('Attachment file is damaged.'); }
+    try { sealed = JSON.parse(new TextDecoder().decode(blob)) as Sealed; } catch { throw new Error('Attachment file is damaged.'); }
     try { wipe(open(key, sealed, aadAttachment(id))); } catch { throw new Error('Attachment file is damaged.'); }
     fs.mkdirSync(path.join(this.dir, 'attachments'), { recursive: true });
     const target = this.attachmentPath(id);

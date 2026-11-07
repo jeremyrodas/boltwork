@@ -1,42 +1,36 @@
-/** Runs sync in the app: after changes, every minute, and on unlock. The session token is kept with safeStorage. */
-import { safeStorage } from 'electron';
+/**
+ * Runs sync for an unlocked vault: after changes, every minute, on unlock, and as soon as the server says
+ * another device changed something. Used by the desktop app and the web vault, which keep the session token
+ * in their own ways.
+ */
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import type { SyncStatus } from '../core/api';
-import { VaultStore } from '../core/store';
-import { normalizeServerUrl, signIn, SyncClient, SyncError, syncOnce } from '../core/sync';
+import type { SyncStatus } from './api';
+import { VaultStore } from './store';
+import { normalizeServerUrl, signIn, SyncClient, SyncError, syncOnce } from './sync';
 
-interface Host {
+export interface SyncHost {
   store: () => VaultStore | null;
-  tokenFile: string;
   /** Called when a sync brought in changes, so windows refresh. */
   onPulled: () => void;
+  /** How this device appears in the account's device list. */
+  deviceName: string;
+  /** Keeps the sync session token (the app encrypts it with the system; the web vault keeps it in memory). */
+  token: { save(token: string): void; load(): string; clear(): void };
 }
 
-let host: Host;
+let host: SyncHost;
 let timer: NodeJS.Timeout | null = null;
 let debounce: NodeJS.Timeout | null = null;
 let running: Promise<void> | null = null;
 let again = false;
 let status: { syncing: boolean; error?: string; signedOut?: boolean } = { syncing: false };
 
-const deviceName = () => `${os.hostname()} (${process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'Mac' : 'Linux'})`;
+const deviceName = () => host.deviceName;
+const saveToken = (token: string) => host.token.save(token);
+const loadToken = () => host.token.load();
 
-export function initSync(h: Host) { host = h; }
-
-function saveToken(token: string) {
-  const enc = safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(token).toString('base64') : null;
-  if (!enc) throw new Error('This system can’t store the sync session securely.');
-  fs.writeFileSync(host.tokenFile, JSON.stringify({ token: enc }));
-}
-
-function loadToken(): string {
-  try {
-    const { token } = JSON.parse(fs.readFileSync(host.tokenFile, 'utf8')) as { token: string };
-    return safeStorage.decryptString(Buffer.from(token, 'base64'));
-  } catch { return ''; }
-}
+export function initSync(h: SyncHost) { host = h; }
 
 function clientFor(store: VaultStore): SyncClient {
   return new SyncClient(store.syncState!.serverUrl, loadToken());
@@ -185,7 +179,7 @@ export async function signInNewDevice(dir: string, url: string, email: string, p
     // Don't leave a half-downloaded vault behind; the user can simply try again.
     store.lock();
     for (const f of ['vault.json', 'vault.json.bak']) { try { fs.unlinkSync(path.join(dir, f)); } catch { /* not there */ } }
-    try { fs.unlinkSync(host.tokenFile); } catch { /* not there */ }
+    host.token.clear();
     throw err;
   }
   return store;
@@ -205,7 +199,7 @@ export async function disconnectSync(store: VaultStore, deleteAccount: boolean) 
     try { await (deleteAccount ? client.deleteAccount() : client.logout()); } catch (e) { if (deleteAccount) throw e; }
   }
   stopSyncLoop();
-  try { fs.unlinkSync(host.tokenFile); } catch { /* none */ }
+  host.token.clear();
   store.syncState = undefined;
   // Forget server revisions so a future setup uploads everything again.
   for (const r of store.records.all()) { r.rev = 0; r.dirty = true; }

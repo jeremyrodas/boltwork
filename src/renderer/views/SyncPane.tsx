@@ -14,7 +14,8 @@ const ago = (t?: number) => {
 
 /** Settings → Sync: connect this vault to a self-hosted Boltwork server. */
 export function SyncPane() {
-  const { run } = useApp();
+  const { run, app } = useApp();
+  const web = app?.platform === 'web';
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [setup, setSetup] = useState(false);
   const [reauth, setReauth] = useState(false);
@@ -49,10 +50,12 @@ export function SyncPane() {
           {status.signedOut
             ? <Button kind="primary" onClick={() => setReauth(true)}>Sign in again…</Button>
             : <Button disabled={status.syncing} onClick={async () => { const s = await run(api.syncNow()); if (s) setStatus(s); }}>Sync now</Button>}
-          <Button onClick={() => setOff(true)}>Turn off sync…</Button>
+          {!web && <Button onClick={() => setOff(true)}>Turn off sync…</Button>}
         </div>
+        {web && <p className="hint">The web vault always works from this server. Locking signs this tab out.</p>}
       </>)}
     </div>
+    {!web && (<>
     <div className="settings-section">
       <h3>Add another computer</h3>
       <p className="muted">Install Boltwork there and choose <b>Sign in to your server</b> on the welcome screen. You’ll need the server address, your email, your account password and your Secret Key (it’s in your Emergency Kit).</p>
@@ -61,6 +64,7 @@ export function SyncPane() {
       <h3>Run your own server</h3>
       <p className="muted">The server is in the <code>server/</code> folder of the Boltwork source. With Docker, run <code>docker compose up -d</code> there, then put it behind HTTPS (Caddy, Traefik or nginx). Only the first account can sign up unless you set <code>SIGNUPS=open</code>.</p>
     </div>
+    </>)}
     <p className="hint">File attachments sync too, still encrypted. Each file can be up to 100 MB.</p>
     {setup && <SetupModal onClose={() => setSetup(false)} onDone={s => { setStatus(s); setSetup(false); }} />}
     {reauth && <ReauthModal onClose={() => setReauth(false)} onDone={s => { setStatus(s); setReauth(false); }} />}

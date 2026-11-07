@@ -86,6 +86,9 @@ docker compose up -d
 
 Then in Boltwork open **Settings → Sync → Set up sync…** and enter the server's address. See [server/README.md](server/README.md) for settings, https, backups and the API.
 
+The server can also serve a **web vault**, so you can open your vault in a browser at the server's address. It's off by default;
+read [the trade-off](server/README.md#web-vault-optional) before turning it on with `WEB_VAULT: "on"`.
+
 ## Build from source
 
 Needs Node.js 22.13+ (Node 24 recommended). The passkey provider also needs the .NET 10 SDK.

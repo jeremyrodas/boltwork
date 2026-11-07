@@ -10,7 +10,7 @@ import { useApp } from '../state';
 
 /** Editor body for SSH Key items: generate or import a key; the fields themselves are not hand-edited. */
 export function SshKeyEditor({ fields, title, onKey }: { fields: Field[]; title: string; onKey: (info: SshKeyInfo) => void }) {
-  const { run, toast } = useApp();
+  const { run, toast, app } = useApp();
   const f = (id: string) => fields.find(x => x.id === id)?.value ?? '';
   const [mode, setMode] = useState<'choose' | 'import'>('choose');
   const [type, setType] = useState<SshKeyType>('ed25519');
@@ -40,7 +40,8 @@ export function SshKeyEditor({ fields, title, onKey }: { fields: Field[]; title:
           <div className="edit-field"><label className="lbl">key type</label><div>{f('keyType')}</div></div>
         </div>
       )}
-      {mode === 'choose' && (
+      {mode === 'choose' && app?.platform === 'web' && <p className="hint">Generate or import SSH keys in a Boltwork app. They sync here.</p>}
+      {mode === 'choose' && app?.platform !== 'web' && (
         <div className="row gap wrap">
           <select value={type} onChange={e => setType(e.target.value as SshKeyType)} title="Key type">
             <option value="ed25519">Ed25519 (recommended)</option>

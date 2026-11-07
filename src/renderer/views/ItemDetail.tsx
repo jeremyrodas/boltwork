@@ -38,7 +38,7 @@ function TotpValue({ t }: { t: ReturnType<typeof useTotp> }) {
 const SHORTCUT: Partial<Record<string, string>> = { password: 'Ctrl+Shift+C', username: 'Ctrl+Alt+C', totp: 'Ctrl+Alt+O' };
 
 function FieldRow({ itemId, field }: { itemId: string; field: Field }) {
-  const { settings, run, reveal, toggleReveal } = useApp();
+  const { settings, run, reveal, toggleReveal, app } = useApp();
   const [strength, setStrength] = useState<Strength | null>(null);
   const key = `${itemId}:${field.id}`;
   // With "conceal by default" off, the reveal toggle works in reverse (click to hide).
@@ -75,7 +75,7 @@ function FieldRow({ itemId, field }: { itemId: string; field: Field }) {
       <div className="field-actions">
         {concealed && <IconButton title={shown ? 'Conceal' : 'Reveal'} onClick={() => toggleReveal(key)}><Ico icon={shown ? EyeOff : Eye} /></IconButton>}
         <IconButton title={copyTitle} onClick={copyThis}><Ico icon={Copy} /></IconButton>
-        {field.type !== 'totp' && (
+        {field.type !== 'totp' && app?.platform !== 'web' && (
           <Menu trigger={<IconButton title={`More for ${field.label}`} onClick={() => undefined}><Ico icon={Ellipsis} /></IconButton>} items={[
             { label: 'Show in Large Type', onClick: () => api.largeType(field.value) },
           ]} />
