@@ -23,7 +23,7 @@ struct LockView: View {
                 .font(.title.bold())
             VStack(spacing: 12) {
                 SecureField("Account password", text: $password)
-                    .textContentType(.password)
+                    .noAutoFill()
                     .focused($passwordFocused)
                     .onSubmit(unlock)
                 if needsSecretKey {

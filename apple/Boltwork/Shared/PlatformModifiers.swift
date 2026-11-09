@@ -47,3 +47,16 @@ extension View {
         #endif
     }
 }
+
+extension View {
+    /// The account password on the lock screen. AutoFill can't help there: Boltwork is the password manager and
+    /// it's locked, so offering it (or any other provider) only gets in the way. iOS has no "none" content type;
+    /// the one-time-code type keeps it from offering saved passwords.
+    func noAutoFill() -> some View {
+        #if os(iOS)
+        textContentType(.oneTimeCode)
+        #else
+        textContentType(nil)
+        #endif
+    }
+}
