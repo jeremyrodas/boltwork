@@ -73,6 +73,7 @@ export function Setup({ onDone }: { onDone: () => void }) {
 
 export function Unlock({ compact }: { compact?: boolean }) {
   const { app } = useApp();
+  if (app?.platform === 'web') return <WebSignIn />;
   const quick = app?.quickUnlock;
   const [usePassword, setUsePassword] = useState(false);
   if (quick?.method && !quick.needsPassword && !usePassword && !app?.needsSecretKey) {
@@ -190,4 +191,66 @@ function SyncSignIn({ onBack, onDone }: { onBack: () => void; onDone: () => void
       <Button kind="primary" disabled={!ready || busy} onClick={go}>{busy ? 'Signing in…' : 'Sign in'}</Button>
     </div>
   </>);
+}
+
+/** What the web vault may remember in this browser: the email always, the Secret Key only if asked to. */
+const WEB_ACCOUNT_KEY = 'boltwork.web.account';
+function savedAccount(): { email?: string; secretKey?: string } {
+  try { return JSON.parse(localStorage.getItem(WEB_ACCOUNT_KEY) ?? '{}') ?? {}; } catch { return {}; }
+}
+function saveAccount(a: { email?: string; secretKey?: string }) {
+  try { localStorage.setItem(WEB_ACCOUNT_KEY, JSON.stringify(a)); } catch { /* private window */ }
+}
+
+/** The web vault's lock screen: there's nothing in the browser to unlock, so each visit signs in to this server. */
+function WebSignIn() {
+  const saved = savedAccount();
+  const [email, setEmail] = useState(saved.email ?? '');
+  const [pw, setPw] = useState('');
+  const [sk, setSk] = useState('');
+  const [keptKey, setKeptKey] = useState(saved.secretKey ?? '');
+  const [remember, setRemember] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const key = keptKey || sk;
+  const ready = !!email.trim() && !!pw && key.replace(/[^A-Za-z0-9]/g, '').length >= 20;
+  const submit = async () => {
+    if (!ready || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      await api.syncSignIn(location.origin, email.trim(), pw, key);
+      saveAccount({ email: email.trim(), ...(keptKey || remember ? { secretKey: key } : {}) });
+    } catch (e) {
+      setError((e as Error).message);
+      setPw('');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const forgetKey = () => { setKeptKey(''); saveAccount({ email: email.trim() || undefined }); };
+  return (
+    <div className="welcome">
+      <div className="welcome-card">
+        <BrandMark size={64} turning={busy} className="dial" />
+        <h1>Boltwork web vault</h1>
+        <p className="muted lock-sub">Your vault downloads encrypted and opens only in this tab. Locking or closing the tab removes it.</p>
+        <label className="lbl" htmlFor="web-email">Email</label>
+        <input id="web-email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" spellCheck={false} autoFocus={!email} />
+        {keptKey ? (
+          <p className="hint">Your Secret Key is saved in this browser. <button className="link" onClick={forgetKey}>Forget it</button></p>
+        ) : (<>
+          <label className="lbl" htmlFor="web-sk">Secret Key</label>
+          <input id="web-sk" className="mono" value={sk} onChange={e => setSk(e.target.value)} placeholder="SR1-XXXXXX-XXXXX-XXXXX-XXXXX-XXXXX" spellCheck={false} autoComplete="off" />
+          <p className="hint">It’s in your Emergency Kit, or in Settings → Security in a Boltwork app.</p>
+        </>)}
+        <label className="lbl" htmlFor="web-pw">Account password</label>
+        <PasswordInput id="web-pw" value={pw} onChange={setPw} autoFocus={!!email} onEnter={submit} placeholder="Enter your account password" invalid={!!error} />
+        {!keptKey && <label className="check"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /> Remember my Secret Key in this browser</label>}
+        {error && <p className="error-text" role="alert">{error}</p>}
+        <Button kind="primary" disabled={!ready || busy} onClick={submit}>{busy ? 'Unlocking…' : 'Unlock'}</Button>
+        <p className="muted small">No account yet? Create your vault in a Boltwork app, then turn on sync to this server.</p>
+      </div>
+    </div>
+  );
 }

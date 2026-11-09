@@ -21,6 +21,9 @@ const PANES = [
   ['export', '📤', 'Export'], ['shortcuts', '⌨️', 'Keyboard Shortcuts'], ['about', 'ℹ️', 'About'],
 ] as const;
 
+/** Panes for things only the apps can do, left out of the web vault. */
+const APP_ONLY_PANES = new Set<string>(['quickaccess', 'browser', 'ssh']);
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <div className="settings-section"><h3>{title}</h3>{children}</div>;
 }
@@ -76,7 +79,8 @@ function ChangePassword({ onClose }: { onClose: () => void }) {
 }
 
 function SecurityPane() {
-  const { settings, updateSettings, run } = useApp();
+  const { settings, updateSettings, run, app } = useApp();
+  const web = app?.platform === 'web';
   const [modal, setModal] = useState<'password' | 'reveal' | 'kit' | null>(null);
   const [secretKey, setSecretKey] = useState('');
   if (!settings) return null;
@@ -91,28 +95,30 @@ function SecurityPane() {
       </div>
       {settings.securityPreset === 'custom' && <p className="hint">You’re using custom settings.</p>}
     </Section>
-    <QuickUnlockSection />
+    {!web && <QuickUnlockSection />}
     <Section title="Auto-lock">
-      <NumberSelect label="Lock after the computer is idle for" value={settings.autolockMinutes} onChange={v => updateSettings({ autolockMinutes: v })}
+      <NumberSelect label={web ? 'Lock after this tab is idle for' : 'Lock after the computer is idle for'} value={settings.autolockMinutes} onChange={v => updateSettings({ autolockMinutes: v })}
         options={[[1, '1 minute'], [2, '2 minutes'], [5, '5 minutes'], [10, '10 minutes'], [30, '30 minutes'], [60, '1 hour'], [240, '4 hours'], [480, '8 hours'], [0, 'Never']]} />
-      <Toggle label="Lock when the computer sleeps" checked={settings.lockOnSleep} onChange={v => updateSettings({ lockOnSleep: v })} />
-      <Toggle label="Lock when the screen locks" checked={settings.lockOnScreenLock} onChange={v => updateSettings({ lockOnScreenLock: v })} />
-      <Toggle label="Lock when the window is closed" checked={settings.lockOnTrayClose} onChange={v => updateSettings({ lockOnTrayClose: v })} />
+      {web ? <p className="hint">Closing or reloading the tab always locks the web vault.</p> : (<>
+        <Toggle label="Lock when the computer sleeps" checked={settings.lockOnSleep} onChange={v => updateSettings({ lockOnSleep: v })} />
+        <Toggle label="Lock when the screen locks" checked={settings.lockOnScreenLock} onChange={v => updateSettings({ lockOnScreenLock: v })} />
+        <Toggle label="Lock when the window is closed" checked={settings.lockOnTrayClose} onChange={v => updateSettings({ lockOnTrayClose: v })} />
+      </>)}
     </Section>
     <Section title="Clipboard">
       <NumberSelect label="Clear copied passwords after" value={settings.clipboardClearSeconds} onChange={v => updateSettings({ clipboardClearSeconds: v })}
         options={[[30, '30 seconds'], [90, '90 seconds'], [180, '3 minutes'], [300, '5 minutes'], [0, 'Never']]} />
-      <Toggle label="Notify when the clipboard is cleared" checked={settings.notifyClipboardCleared} onChange={v => updateSettings({ notifyClipboardCleared: v })} />
+      {!web && <Toggle label="Notify when the clipboard is cleared" checked={settings.notifyClipboardCleared} onChange={v => updateSettings({ notifyClipboardCleared: v })} />}
     </Section>
     <Section title="Screen">
-      <Toggle label="Hide Boltwork from screenshots and screen sharing" checked={settings.screenCaptureProtection} onChange={v => updateSettings({ screenCaptureProtection: v })} />
+      {!web && <Toggle label="Hide Boltwork from screenshots and screen sharing" checked={settings.screenCaptureProtection} onChange={v => updateSettings({ screenCaptureProtection: v })} />}
       <Toggle label="Blur the window when it is not in focus" hint="Keeps passwords from being read over your shoulder." checked={settings.blurWhenUnfocused} onChange={v => updateSettings({ blurWhenUnfocused: v })} />
     </Section>
     <Section title="Account">
       <div className="row gap wrap">
         <Button onClick={() => setModal('password')}>Change account password…</Button>
         <Button onClick={() => setModal('reveal')}>Show Secret Key…</Button>
-        <Button onClick={() => setModal('kit')}>Save Emergency Kit…</Button>
+        {!web && <Button onClick={() => setModal('kit')}>Save Emergency Kit…</Button>}
       </div>
       {secretKey && <div className="secret-key small-key" onClick={() => setSecretKey('')} title="Click to hide">{secretKey}</div>}
     </Section>
@@ -295,7 +301,7 @@ export function SettingsView({ pane = 'general' }: { pane?: string }) {
   return (
     <section className="settings">
       <nav className="settings-nav">
-        {PANES.map(([id, icon, label]) => (
+        {PANES.filter(([id]) => app?.platform !== 'web' || !APP_ONLY_PANES.has(id)).map(([id, icon, label]) => (
           <button key={id} className={`side-item${pane === id ? ' active' : ''}`} aria-current={pane === id ? 'page' : undefined} onClick={() => navigate(`/settings/${id}`)}>
             <span className="side-icon">{SETTINGS_ICONS[id] ? <Ico icon={SETTINGS_ICONS[id]} /> : icon}</span>{label}
           </button>
@@ -381,14 +387,16 @@ export function SettingsView({ pane = 'general' }: { pane?: string }) {
                 ['↑ ↓', 'Move through items'], ['Ctrl+Shift+C', 'Copy password of selected item'], ['Ctrl+Alt+C', 'Copy username of selected item'], ['Ctrl+Alt+O', 'Copy one-time code of selected item'], ['Ctrl+E', 'Edit selected item'],
                 ['Quick Access: Enter', 'Auto-Type (Windows) or copy password'], ['Quick Access: Ctrl+C', 'Copy password'], ['Quick Access: Ctrl+Shift+C', 'Copy username'],
                 ['Quick Access: Ctrl+Alt+C', 'Copy one-time password'], ['Quick Access: Ctrl+O', 'Open website and copy password'],
-              ].map(([k, d]) => <tr key={k + d}><td className="mono">{k.replace('CommandOrControl', 'Ctrl')}</td><td>{d}</td></tr>)}
+              ].filter(([k, d]) => app?.platform !== 'web' || !(d.includes('(from anywhere)') || k.startsWith('Quick Access'))).map(([k, d]) => <tr key={k + d}><td className="mono">{k.replace('CommandOrControl', 'Ctrl')}</td><td>{d}</td></tr>)}
             </tbody></table>
           </Section>
         )}
         {pane === 'about' && (
           <Section title="Boltwork">
             <p>Version {app?.version}</p>
-            <p className="muted">A local-first password manager. Your vault is encrypted with XChaCha20-Poly1305 using a key derived from your account password (Argon2id) and your 128-bit Secret Key. Your data never leaves this device unless you turn on optional online checks or export it.</p>
+            {app?.platform === 'web'
+              ? <p className="muted">The web vault downloads your vault from this server still encrypted, and unlocks it only in this tab with your account password and Secret Key. Changes are encrypted here before they’re sent back. Nothing is kept in the browser after you lock or close the tab.</p>
+              : <p className="muted">A local-first password manager. Your vault is encrypted with XChaCha20-Poly1305 using a key derived from your account password (Argon2id) and your 128-bit Secret Key. Your data never leaves this device unless you turn on optional online checks or export it.</p>}
             <p className="muted small">Word list for memorable passwords: EFF Large Wordlist (CC BY 3.0). Password strength: zxcvbn-ts. Breach data: Have I Been Pwned. 2FA data: 2fa.directory.</p>
           </Section>
         )}

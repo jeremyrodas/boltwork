@@ -14,11 +14,13 @@ const ago = (t?: number) => {
 
 /** Settings → Sync: connect this vault to a self-hosted Boltwork server. */
 export function SyncPane() {
-  const { run } = useApp();
+  const { run, app } = useApp();
+  const web = app?.platform === 'web';
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [setup, setSetup] = useState(false);
   const [reauth, setReauth] = useState(false);
   const [off, setOff] = useState(false);
+  const [backup, setBackup] = useState(false);
   useEffect(() => {
     let live = true;
     const tick = () => { void api.syncStatus().then(s => { if (live) setStatus(s); }); };
@@ -37,11 +39,17 @@ export function SyncPane() {
         <Button kind="primary" onClick={() => setSetup(true)}>Set up sync…</Button>
       </>) : (<>
         <div className={`agent-status ${status.error ? 'bad' : 'ok'}`}>
-          {status.syncing ? '● Syncing…' : status.error ? <>● {status.error}</> : <>● Synced {ago(status.lastSyncAt)}</>}
+          {status.syncing ? '● Syncing…' : status.error ? <>● {status.error}</> : <>● Synced {ago(status.lastSyncAt)}{status.usingBackup && ' through the backup address'}</>}
         </div>
         <div className="list-row"><span className="list-icon"><Ico icon={Server} /></span>
           <span className="grow"><b>{status.serverUrl}</b><span className="muted small">{status.email}</span></span>
         </div>
+        {!web && (
+          <div className="list-row">
+            <span className="grow"><b>Backup address</b><span className="muted small">{status.backupUrl ?? 'None. Add another way to reach this server, such as a VPN address for when you’re away.'}</span></span>
+            <Button small onClick={() => setBackup(true)}>{status.backupUrl ? 'Change…' : 'Add…'}</Button>
+          </div>
+        )}
         {status.serverUrl?.startsWith('http:') && (
           <p className="hint">This server uses plain http. Your vault is still end-to-end encrypted, but others on the network could see your sync sign-in. Use https if the server is reachable from outside your home.</p>
         )}
@@ -49,10 +57,12 @@ export function SyncPane() {
           {status.signedOut
             ? <Button kind="primary" onClick={() => setReauth(true)}>Sign in again…</Button>
             : <Button disabled={status.syncing} onClick={async () => { const s = await run(api.syncNow()); if (s) setStatus(s); }}>Sync now</Button>}
-          <Button onClick={() => setOff(true)}>Turn off sync…</Button>
+          {!web && <Button onClick={() => setOff(true)}>Turn off sync…</Button>}
         </div>
+        {web && <p className="hint">The web vault always works from this server. Locking signs this tab out.</p>}
       </>)}
     </div>
+    {!web && (<>
     <div className="settings-section">
       <h3>Add another computer</h3>
       <p className="muted">Install Boltwork there and choose <b>Sign in to your server</b> on the welcome screen. You’ll need the server address, your email, your account password and your Secret Key (it’s in your Emergency Kit).</p>
@@ -61,9 +71,11 @@ export function SyncPane() {
       <h3>Run your own server</h3>
       <p className="muted">The server is in the <code>server/</code> folder of the Boltwork source. With Docker, run <code>docker compose up -d</code> there, then put it behind HTTPS (Caddy, Traefik or nginx). Only the first account can sign up unless you set <code>SIGNUPS=open</code>.</p>
     </div>
+    </>)}
     <p className="hint">File attachments sync too, still encrypted. Each file can be up to 100 MB.</p>
     {setup && <SetupModal onClose={() => setSetup(false)} onDone={s => { setStatus(s); setSetup(false); }} />}
     {reauth && <ReauthModal onClose={() => setReauth(false)} onDone={s => { setStatus(s); setReauth(false); }} />}
+    {backup && <BackupModal current={status.backupUrl} onClose={() => setBackup(false)} onDone={s => { setStatus(s); setBackup(false); }} />}
     {off && <OffModal onClose={() => setOff(false)} onDone={() => { setOff(false); void api.syncStatus().then(setStatus); }} />}
   </>);
 }
@@ -97,6 +109,32 @@ function SetupModal({ onClose, onDone }: { onClose: () => void; onDone: (s: Sync
             if (s) onDone(s);
           }}>{busy ? 'Uploading…' : 'Turn on sync'}</Button></div>
       </>)}
+    </Modal>
+  );
+}
+
+function BackupModal({ current, onClose, onDone }: { current?: string; onClose: () => void; onDone: (s: SyncStatus) => void }) {
+  const { run } = useApp();
+  const [url, setUrl] = useState(current ?? '');
+  const [busy, setBusy] = useState(false);
+  const save = async (value: string | null) => {
+    setBusy(true);
+    const s = await run(api.syncSetBackup(value), value ? 'Backup address saved' : 'Backup address removed');
+    setBusy(false);
+    if (s) onDone(s);
+  };
+  return (
+    <Modal title="Backup address" onClose={onClose}>
+      <p className="muted">Another way to reach the same server, such as a VPN address for when you’re away from home. Boltwork tries the main address first and uses this one when the main one can’t be reached.</p>
+      <label className="lbl">Address</label>
+      <input value={url} onChange={e => setUrl(e.target.value)} placeholder="100.64.0.5:8787" autoFocus spellCheck={false}
+        onKeyDown={e => { if (e.key === 'Enter' && url.trim() && !busy) void save(url); }} />
+      <div className="row gap end">
+        {current && <Button kind="danger" disabled={busy} onClick={() => save(null)}>Remove</Button>}
+        <span className="spacer" />
+        <Button onClick={onClose}>Cancel</Button>
+        <Button kind="primary" disabled={!url.trim() || busy} onClick={() => save(url)}>{busy ? 'Checking…' : 'Save'}</Button>
+      </div>
     </Modal>
   );
 }

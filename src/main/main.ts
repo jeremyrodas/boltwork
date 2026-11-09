@@ -24,14 +24,15 @@ import { browserHostStatus, getBridge, registerNativeHost, startBrowserHost, sto
 import type { AppPrompt, PasskeyDecision, PasskeyPrompt } from '../core/browserBridge';
 import { installProvider, openWindowsPasskeySettings, providerStatus, registerProvider, scheduleCredentialSync, startPasskeyProvider, unregisterProvider } from './passkeyProvider';
 import {
-  checkServer, disconnectSync, initSync, pushNewKeys, reconnect, scheduleSync, setupSync, signInNewDevice, startSyncLoop,
+  checkServer, disconnectSync, initSync, pushNewKeys, reconnect, scheduleSync, setBackupAddress, setupSync, signInNewDevice, startSyncLoop,
   stopSyncLoop, syncNow, syncStatus,
-} from './syncHost';
+} from '../core/syncLoop';
 import { generateSshKey, importSshKey } from '../core/ssh';
 import { repairSshItems } from '../core/sshRepair';
 import { QuickUnlock, QuickUnlockError } from '../core/quickUnlock';
 import { helloAvailable, helloDelete, helloSign } from './hello';
 import { moveFromStrongroom } from './rename';
+import { syncTokenFile } from './syncToken';
 
 // ---------- single instance & CLI ----------
 
@@ -919,6 +920,7 @@ const handlers: Handlers = {
   syncNow: async () => { await syncNow(); return syncStatus(); },
   syncReconnect: async password => { await reconnect(requireStore(), password, currentSecretKey()); changed(); return syncStatus(); },
   syncDisconnect: async deleteAccount => { await disconnectSync(requireStore(), deleteAccount); },
+  syncSetBackup: async url => { await setBackupAddress(requireStore(), url); return syncStatus(); },
   browserShowExtensionFolder: () => { void shell.openPath(extensionFolder()); },
   passkeyProviderStatus: () => providerStatus(),
   passkeyProviderRegister: () => registerProvider(settings.colorScheme),
@@ -1018,7 +1020,12 @@ app.whenReady().then(async () => {
   const silent = argv.includes('--silent') || settings.startMinimized;
   createMainWindow(!silent);
   createQuickAccess();
-  initSync({ store: () => store, tokenFile: path.join(userData, 'sync-session.json'), onPulled: () => { if (store) emit('data', forWindows(store.snapshot())); } });
+  initSync({
+    store: () => store,
+    onPulled: () => { if (store) emit('data', forWindows(store.snapshot())); },
+    deviceName: `${os.hostname()} (${process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'Mac' : 'Linux'})`,
+    token: syncTokenFile(path.join(userData, 'sync-session.json')),
+  });
   initSshAgent({
     store: () => store,
     requestUnlock: () => showMain(),

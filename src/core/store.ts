@@ -55,7 +55,15 @@ export interface SyncState {
   /** Highest server revision this device has pulled. */
   cursor: number;
   lastSyncAt?: number;
+  /**
+   * Another address for the same server, tried when `serverUrl` can't be reached (say, a VPN address for when
+   * you're away from home). Set per device; apps that don't know it ignore it.
+   */
+  backupUrl?: string;
 }
+
+/** The addresses to try, main first. */
+export const syncAddresses = (s: SyncState) => [s.serverUrl, ...(s.backupUrl ? [s.backupUrl] : [])];
 
 interface VaultFileV2 {
   format: typeof FORMAT;
@@ -676,7 +684,7 @@ export class VaultStore {
     const key = this.requireKey();
     if (!this.referencedAttachmentIds().has(id)) throw new Error('No item refers to that attachment.');
     let sealed: Sealed;
-    try { sealed = JSON.parse(Buffer.from(blob).toString('utf8')) as Sealed; } catch { throw new Error('Attachment file is damaged.'); }
+    try { sealed = JSON.parse(new TextDecoder().decode(blob)) as Sealed; } catch { throw new Error('Attachment file is damaged.'); }
     try { wipe(open(key, sealed, aadAttachment(id))); } catch { throw new Error('Attachment file is damaged.'); }
     fs.mkdirSync(path.join(this.dir, 'attachments'), { recursive: true });
     const target = this.attachmentPath(id);

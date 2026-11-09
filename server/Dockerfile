@@ -1,16 +1,22 @@
-# Boltwork sync server. Build: docker build -t boltwork-server .  (run from this folder)
+# Boltwork sync server, with the web vault (off unless WEB_VAULT=on).
+# Build from the repository root: docker build -f server/Dockerfile -t boltwork-server .
 FROM node:24-alpine AS build
 WORKDIR /src
-COPY package.json ./
-RUN npm install --no-audit --no-fund
+COPY package.json package-lock.json ./
+# No install scripts: nothing here needs the desktop app's Electron download.
+RUN npm ci --ignore-scripts --no-audit --no-fund
+COPY tsconfig.json ./
+COPY scripts ./scripts
 COPY src ./src
-RUN npm run build
+COPY server/src ./server/src
+RUN node scripts/build.mjs --server
 
 FROM node:24-alpine
 WORKDIR /app
-COPY --from=build /src/dist/server.js ./server.js
+COPY --from=build /src/server/dist/server.js ./server.js
+COPY --from=build /src/dist-web ./web
 RUN mkdir /data && chown node:node /data
-ENV NODE_ENV=production DATA_DIR=/data PORT=8787 SIGNUPS=first
+ENV NODE_ENV=production DATA_DIR=/data PORT=8787 SIGNUPS=first WEB_VAULT=off
 VOLUME /data
 EXPOSE 8787
 USER node

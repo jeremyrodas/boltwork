@@ -47,7 +47,7 @@ function pickFile(accept: string): Promise<File | null> {
 }
 
 function TotpEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { run, toast } = useApp();
+  const { run, toast, app } = useApp();
   const preview = useTotp(value || undefined);
   const [show, setShow] = useState(!value);
   return (
@@ -58,10 +58,10 @@ function TotpEditor({ value, onChange }: { value: string; onChange: (v: string) 
         <IconButton title={show ? 'Hide setup key' : 'Show setup key'} onClick={() => setShow(x => !x)}><Ico icon={show ? EyeOff : Eye} /></IconButton>
       </div>
       <div className="row gap wrap">
-        <Button small onClick={async () => {
+        {app?.platform !== 'web' && <Button small onClick={async () => {
           const r = await run(api.scanQrFromScreen());
           if (r) { onChange(r); toast('QR code found'); } else if (r === null) toast('No QR code found on screen. Make sure it is visible.', 'error');
-        }}>Scan QR code on screen</Button>
+        }}>Scan QR code on screen</Button>}
         <Button small onClick={async () => {
           const f = await pickFile('image/*');
           if (!f) return;

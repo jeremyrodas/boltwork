@@ -2,6 +2,7 @@ node_modules/
 dist/
 dist-test/
 dist-extension/
+dist-web/
 server/dist/
 server/data/
 *.log

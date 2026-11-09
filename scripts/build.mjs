@@ -5,9 +5,15 @@ import { createRequire } from 'node:module';
 import { deflateSync } from 'node:zlib';
 
 const tests = process.argv.includes('--tests');
+/** Only the sync server and the web vault it can serve (what the Docker image needs). */
+const serverOnly = process.argv.includes('--server');
 const common = { bundle: true, sourcemap: true, logLevel: 'warning' };
 
-if (tests) {
+if (serverOnly) {
+  await build({ ...common, sourcemap: false, entryPoints: ['server/src/main.ts'], outfile: 'server/dist/server.js', platform: 'node', format: 'cjs', target: 'node22' });
+  mkdirSync('dist', { recursive: true });
+  await buildWeb();
+} else if (tests) {
   rmSync('dist-test', { recursive: true, force: true });
   const entryPoints = readdirSync('test').filter(f => f.endsWith('.test.ts')).map(f => `test/${f}`);
   await build({ ...common, entryPoints, outdir: 'dist-test', platform: 'node', format: 'cjs', target: 'node20' });
@@ -20,8 +26,29 @@ if (tests) {
   await build({ ...common, entryPoints: ['src/main/watchtowerWorker.ts'], outfile: 'dist/watchtowerWorker.js', platform: 'node', format: 'cjs', target: 'node20' });
   await buildExtension();
   await build({ ...common, sourcemap: false, entryPoints: ['server/src/main.ts'], outfile: 'server/dist/server.js', platform: 'node', format: 'cjs', target: 'node22' });
+  await buildWeb();
   const v = Date.now().toString(36);
   writeFileSync('dist/index.html', readFileSync('src/renderer/index.html', 'utf8').replace('renderer.css', `renderer.css?v=${v}`).replace('renderer.js', `renderer.js?v=${v}`));
+}
+
+// ---------- web vault (dist-web/, served by the sync server when WEB_VAULT=on) ----------
+
+/** The renderer in a browser, with the vault handled in the page; Node's built-ins become small stand-ins. */
+export async function buildWeb(out = 'dist-web') {
+  rmSync(out, { recursive: true, force: true });
+  mkdirSync(out, { recursive: true });
+  const web = {
+    ...common, sourcemap: false, minify: true, platform: 'browser', format: 'iife', target: ['chrome120', 'firefox121', 'safari17'],
+    alias: { 'node:fs': './src/web/shims/fs.ts', 'node:path': './src/web/shims/path.ts', 'node:crypto': './src/web/shims/crypto.ts' },
+    inject: ['./src/web/shims/buffer.ts'],
+    define: { __VERSION__: JSON.stringify(JSON.parse(readFileSync('package.json', 'utf8')).version) },
+  };
+  await build({ ...web, entryPoints: ['src/web/index.ts'], outfile: `${out}/web.js`, loader: { '.css': 'css' } });
+  await build({ ...web, entryPoints: ['src/web/watchtowerWorker.ts'], outfile: `${out}/watchtower.js` });
+  copyFileSync('src/web/index.html', `${out}/index.html`);
+  await build({ ...common, sourcemap: false, entryPoints: ['src/core/iconBitmap.ts'], outfile: 'dist/iconBitmap.cjs', platform: 'node', format: 'cjs' });
+  const { drawIcon } = createRequire(import.meta.url)('../dist/iconBitmap.cjs');
+  writeFileSync(`${out}/icon.png`, png(64, drawIcon(64)));
 }
 
 // ---------- browser extension (dist-extension/, load it unpacked in Chrome) ----------
