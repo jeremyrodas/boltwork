@@ -2,7 +2,7 @@
 
 A local-first, end-to-end encrypted password manager for the desktop.
 
-*Formerly called Strongroom. Updating from Strongroom copies your data over on first launch; see [Renamed from Strongroom](#renamed-from-strongroom).*
+*Formerly called Strongroom.
 
 Boltwork keeps your logins, passkeys, SSH keys, cards, notes and files in a vault on your own computer. The vault is sealed with your account password plus a random **Secret Key**, so a stolen copy is useless without both. If you want your vault on more than one computer, you sync it through a small server that you run yourself. That server only ever sees encrypted records.
 
