@@ -39,7 +39,10 @@ final class SyncController {
     func attach(store: VaultStore) {
         self.store = store
         guard let state = store.syncState else {
+            stop()
             client = nil
+            activeClient = nil
+            activeURL = nil
             status = .off
             serverURL = nil
             email = nil
@@ -155,7 +158,8 @@ final class SyncController {
             if result.pulled > 0 || result.filesDown > 0 || result.conflicts > 0 { onRemoteChanges?() }
             return true
         } catch is CancellationError {
-            status = .idle
+            // Stopped, or sync was turned off meanwhile (then the status already says so).
+            if self.client != nil { status = .idle }
             return false
         } catch let error as SyncError where error.isSignedOut {
             try? DeviceSecrets.setSyncToken(nil, account: store.accountId)

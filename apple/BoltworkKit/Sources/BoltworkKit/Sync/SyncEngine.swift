@@ -27,18 +27,27 @@ public enum SyncEngine {
     /// One round: pull everything newer than the cursor, push local changes, then sync attachment files.
     @discardableResult
     public static func syncOnce(store: VaultStore, client: SyncClient) async throws -> SyncResult {
-        guard var state = store.syncState else { throw SyncError(status: 0, message: "Sync is not set up.") }
+        guard var cursor = store.syncState?.cursor else { throw SyncError(status: 0, message: "Sync is not set up.") }
         var result = SyncResult()
 
+        // Progress goes onto the vault's sync state as it is now: it can be turned off, or its backup address
+        // changed, while this round waits on the server, and a saved copy from the start would undo that.
+        func record(_ change: (inout SyncState) -> Void) throws {
+            guard var state = store.syncState else { throw CancellationError() }
+            change(&state)
+            store.syncState = state
+        }
+
         while true {
-            let page = try await client.pull(since: state.cursor)
+            let page = try await client.pull(since: cursor)
+            guard store.syncState != nil else { throw CancellationError() }
             for r in page.records {
                 let how = try store.mergeRemote(r)
                 if how != .skipped { result.pulled += 1 }
                 if how == .conflict { result.conflicts += 1 }
             }
-            state.cursor = page.cursor
-            store.syncState = state
+            cursor = page.cursor
+            try record { $0.cursor = cursor }
             if !page.more { break }
         }
 
@@ -48,6 +57,7 @@ public enum SyncEngine {
             for start in stride(from: 0, to: dirty.count, by: 500) {
                 let batch = Array(dirty[start..<min(start + 500, dirty.count)])
                 let res = try await client.push(batch)
+                guard store.syncState != nil else { throw CancellationError() }
                 let sent = Dictionary(uniqueKeysWithValues: batch.map { ($0.id, $0.updatedAt) })
                 for a in res.accepted {
                     store.markSynced(id: a.id, rev: a.rev, updatedAt: sent[a.id] ?? 0)
@@ -60,8 +70,7 @@ public enum SyncEngine {
 
         try await syncFiles(store: store, client: client, result: &result)
 
-        state.lastSyncAt = VaultStore.now()
-        store.syncState = state
+        try record { $0.lastSyncAt = VaultStore.now() }
         try store.writeFile()
         return result
     }

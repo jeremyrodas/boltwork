@@ -49,6 +49,36 @@ final class VaultFlowUITests: XCTestCase {
         attach(app, "unlocked")
     }
 
+    /// Needs a throwaway sync server: TEST_RUNNER_BOLTWORK_SYNC_SERVER=http://localhost:8796 (the simulator reaches the Mac at localhost).
+    func testTurnSyncOnAndOff() throws {
+        guard let server = ProcessInfo.processInfo.environment["BOLTWORK_SYNC_SERVER"] else { throw XCTSkip("No test sync server") }
+        let app = launchWithNewVault()
+        openSettings(app)
+        let address = app.textFields["Server address"]
+        for _ in 0..<6 where !address.isHittable { app.swipeUp() }
+        XCTAssertTrue(address.isHittable, app.debugDescription)
+        address.tap()
+        address.typeText(server)
+        app.textFields["Email"].tap()
+        app.textFields["Email"].typeText("ui-\(Int(Date().timeIntervalSince1970))@example.test")
+        app.secureTextFields["Account password"].firstMatch.tap()
+        app.secureTextFields["Account password"].firstMatch.typeText(password)
+        app.buttons["Turn On Sync"].tap()
+        let stop = app.buttons["Stop Syncing This Device…"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 30), "sync turned on")
+        attach(app, "sync-on")
+
+        stop.tap()
+        let confirm = app.buttons["Stop Syncing"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "asks to confirm")
+        attach(app, "sync-confirm")
+        confirm.tap()
+        XCTAssertTrue(app.buttons["Turn On Sync"].waitForExistence(timeout: 15), "back to the connect form")
+        sleep(3)
+        XCTAssertTrue(app.buttons["Turn On Sync"].exists, "stays off")
+        attach(app, "sync-off")
+    }
+
     #if os(iOS)
     func testSecretKeyAndEmergencyKitNeedPassword() throws {
         let app = launchWithNewVault()

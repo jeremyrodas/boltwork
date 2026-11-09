@@ -374,6 +374,8 @@ final class AppModel {
 
     func disconnectSync() async {
         guard let store else { return }
+        // Stop first, so no round starts (or finishes) while this device signs out.
+        sync.stop()
         if let state = store.syncState, let token = DeviceSecrets.syncToken(account: store.accountId) {
             try? await SyncClient.reachable(state.addresses, token: token).logout()
         }

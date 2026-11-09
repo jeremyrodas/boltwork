@@ -73,6 +73,7 @@ struct SyncSettingsSection: View {
     private var connectForm: some View {
         Section {
             TextField("Server address", text: $server, prompt: Text("sync.example.com"))
+                .accessibilityLabel("Server address")
                 .textContentType(.URL)
                 .keyboard(.url)
                 .plainTextEntry()
