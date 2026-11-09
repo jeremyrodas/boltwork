@@ -50,6 +50,29 @@ Mac debug builds are signed ad hoc and can't carry the app group, so AutoFill on
 under Signing & Capabilities and remove the `CODE_SIGN_IDENTITY` and `CODE_SIGN_ENTITLEMENTS` Debug lines in
 `project.yml`.
 
+## Mac disk image for other people
+
+`tools/make-dmg.sh` builds a signed, notarized `release/Boltwork-<version>.dmg` that opens on any Mac without warnings.
+One-time setup:
+
+1. Create a **Developer ID Application** certificate: Xcode → Settings → Accounts → your team → Manage Certificates → + .
+   Only the team's Account Holder can create one.
+2. Save notarization credentials in your keychain. Make an app-specific password at account.apple.com first, then:
+
+   ```bash
+   xcrun notarytool store-credentials boltwork-notary --apple-id <your Apple ID> --team-id <your team ID>
+   ```
+
+Then build it:
+
+```bash
+TEAM_ID=<your team ID> apple/tools/make-dmg.sh
+```
+
+It archives the app, exports it with Developer ID, puts it on a disk image next to an Applications link, signs and
+notarizes the image and staples the ticket. `SKIP_NOTARIZE=1` stops after signing; `MACOS_MIN` sets the oldest
+macOS it runs on (default 26.0).
+
 ## Mac: SSH agent and browser extension
 
 - **SSH agent** (Settings → SSH): serves SSH Key items to ssh and git, and asks before each use. Point ssh at it

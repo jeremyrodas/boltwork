@@ -181,6 +181,8 @@ Pick the **Boltwork** scheme and run it on a Mac, an iPhone or iPad, or a simula
 xcodebuild build -project Boltwork.xcodeproj -scheme Boltwork -destination 'platform=macOS' DEVELOPMENT_TEAM=<your team ID> -allowProvisioningUpdates
 ```
 
+To build a notarized Mac disk image for other people (`release/Boltwork-<version>.dmg`), see [Mac disk image](apple/README.md#mac-disk-image-for-other-people).
+
 Tests:
 
 ```bash
