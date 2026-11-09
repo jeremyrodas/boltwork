@@ -80,7 +80,7 @@ function SetupModal({ onClose, onDone }: { onClose: () => void; onDone: (s: Sync
       {!checked ? (<>
         <label className="lbl">Server address</label>
         <input value={server} onChange={e => setServer(e.target.value)} placeholder="https://vault.example.com" autoFocus spellCheck={false} />
-        <p className="hint">Use https. Plain http works only for a server on this computer or your home network (like 192.168.1.20:8787).</p>
+        <p className="hint">Use https. Plain http works only for a server on this computer or a private network, such as your home network or a VPN (like 192.168.1.20:8787).</p>
         <div className="row gap end"><Button onClick={onClose}>Cancel</Button>
           <Button kind="primary" disabled={!server.trim() || busy} onClick={async () => { setBusy(true); const r = await run(api.syncCheckServer(server)); setBusy(false); if (r) setChecked(r); }}>{busy ? 'Checking…' : 'Next'}</Button></div>
       </>) : (<>

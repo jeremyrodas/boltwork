@@ -11,3 +11,8 @@ build/
 release.local.json
 native/passkey-provider/bin/
 native/passkey-provider/obj/
+apple/tools/.build/
+apple/BoltworkKit/.build/
+apple/BoltworkKit/.swiftpm/
+apple/build/
+xcuserdata/

@@ -1,0 +1,163 @@
+# Generate Boltwork.xcodeproj with: cd apple && xcodegen
+name: Boltwork
+options:
+  bundleIdPrefix: app.boltwork
+  deploymentTarget:
+    iOS: "27.0"
+    macOS: "27.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.4.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+packages:
+  BoltworkKit:
+    path: BoltworkKit
+targets:
+  Boltwork:
+    type: application
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: Boltwork
+      - path: Common
+    dependencies:
+      - package: BoltworkKit
+      - target: AutoFill
+      - target: BrowserHost
+        destinationFilters: [macOS]
+        copy:
+          destination: executables
+    entitlements:
+      path: Boltwork/Resources/Boltwork.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.files.user-selected.read-write: true
+        # Shared with the AutoFill extension: the vault, its Keychain items and quick-unlock settings.
+        com.apple.security.application-groups: [group.app.boltwork.apple]
+        # Settings lists an AutoFill provider only when its app has this too.
+        com.apple.developer.authentication-services.autofill-credential-provider: true
+        # The browser link (Mac): its socket where the native messaging host looks, as with the desktop app,
+        # and each browser's list of native messaging hosts.
+        com.apple.security.temporary-exception.files.home-relative-path.read-write:
+          - /Library/Application Support/Google/Chrome/NativeMessagingHosts/
+          - /Library/Application Support/Microsoft Edge/NativeMessagingHosts/
+          - /Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/
+          - /Library/Application Support/Chromium/NativeMessagingHosts/
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.boltwork.apple
+        PRODUCT_NAME: Boltwork
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Boltwork
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        INFOPLIST_KEY_NSFaceIDUsageDescription: Boltwork uses Face ID to unlock your vault without your account password.
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: Boltwork connects to a sync server on your private network if you set one up.
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortraitUpsideDown"
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+      configs:
+        # Mac debug builds are signed ad hoc, which can't carry the app group. Set a team and drop these two
+        # lines to use AutoFill on the Mac.
+        Debug:
+          CODE_SIGN_IDENTITY[sdk=macosx*]: "-"
+          CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: Boltwork/Resources/Boltwork-AdHoc.entitlements
+    info:
+      path: Boltwork/Resources/Info.plist
+      properties:
+        # SyncServerURL allows plain http only for this device and private-network addresses. ATS can't express
+        # IP ranges, and its local-networking exception misses VPN ranges like 100.64/10, so it defers to that check.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+  AutoFill:
+    type: app-extension
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: AutoFill
+      - path: Common
+      - path: Boltwork/Shared/Theme.swift
+    dependencies:
+      - package: BoltworkKit
+    entitlements:
+      path: AutoFill/AutoFill.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups: [group.app.boltwork.apple]
+        com.apple.developer.authentication-services.autofill-credential-provider: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.boltwork.apple.autofill
+        PRODUCT_NAME: Boltwork AutoFill
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Boltwork
+        INFOPLIST_KEY_NSFaceIDUsageDescription: Boltwork uses Face ID to unlock your vault when you fill a password or passkey.
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+        SKIP_INSTALL: YES
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY[sdk=macosx*]: "-"
+          CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: AutoFill/AutoFill-AdHoc.entitlements
+    info:
+      path: AutoFill/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.authentication-services-credential-provider-ui
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).CredentialProviderViewController
+          NSExtensionAttributes:
+            ASCredentialProviderExtensionCapabilities:
+              ProvidesPasswords: true
+              ProvidesPasskeys: true
+              ShowsConfigurationUI: true
+  BrowserHost:
+    type: tool
+    platform: macOS
+    sources:
+      - path: BrowserHost
+    settings:
+      base:
+        PRODUCT_NAME: boltwork-browser-host
+        PRODUCT_BUNDLE_IDENTIFIER: app.boltwork.apple.browser-host
+        # A plain tool with its own reader thread; nothing in it belongs on the main actor.
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+        SKIP_INSTALL: YES
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY: "-"
+  BoltworkUITests:
+    type: bundle.ui-testing
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: BoltworkUITests
+    dependencies:
+      - target: Boltwork
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.boltwork.apple.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Boltwork
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY[sdk=macosx*]: "-"
+schemes:
+  Boltwork:
+    build:
+      targets:
+        Boltwork: all
+    test:
+      targets:
+        - BoltworkUITests
