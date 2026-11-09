@@ -53,21 +53,54 @@ APP="$WORK/export/Boltwork.app"
 codesign --verify --deep --strict "$APP"
 
 echo "→ Making the disk image"
+ICON="$APP/Contents/Resources/AppIcon.icns"
+VOLNAME="Boltwork"
 mkdir -p "$WORK/stage"
 ditto "$APP" "$WORK/stage/Boltwork.app"
 ln -s /Applications "$WORK/stage/Applications"
+hdiutil create -volname "$VOLNAME" -srcfolder "$WORK/stage" -fs HFS+ -format UDRW -size 200m -quiet "$WORK/rw.dmg"
+
+# Lay out the window Finder opens: just the app and the Applications link, large, with no toolbar or sidebar.
+[[ -d "/Volumes/$VOLNAME" ]] && hdiutil detach "/Volumes/$VOLNAME" -quiet
+MOUNT="$(hdiutil attach "$WORK/rw.dmg" -readwrite -noverify -noautoopen | awk -F'\t' '/\/Volumes\//{print $NF}')"
+osascript <<APPLESCRIPT
+tell application "Finder"
+  tell disk "$VOLNAME"
+    open
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set bounds of container window to {200, 120, 860, 520}
+    set opts to the icon view options of container window
+    set arrangement of opts to not arranged
+    set icon size of opts to 128
+    set text size of opts to 14
+    set position of item "Boltwork.app" of container window to {170, 180}
+    set position of item "Applications" of container window to {490, 180}
+    update without registering applications
+    delay 1
+    close
+  end tell
+end tell
+APPLESCRIPT
+# The disk's own icon goes on after Finder is done with the window, which otherwise drops it.
+cp "$ICON" "$MOUNT/.VolumeIcon.icns"
+SetFile -a C "$MOUNT"
+rm -rf "$MOUNT/.fseventsd"
+sync
+hdiutil detach "$MOUNT" -quiet
 rm -f "$DMG"
-hdiutil create -volname "Boltwork $VERSION" -srcfolder "$WORK/stage" -fs APFS -format ULFO -quiet "$DMG"
+hdiutil convert "$WORK/rw.dmg" -format ULFO -o "$DMG" -quiet
 IDENTITY="$(security find-identity -v -p codesigning | grep "Developer ID Application" | grep "($TEAM_ID)" | head -1 | awk '{print $2}')"
 codesign --sign "$IDENTITY" --timestamp "$DMG"
 
-if [[ "${SKIP_NOTARIZE:-}" == 1 ]]; then
-  echo "Signed, not notarized: $DMG"
-  exit 0
+if [[ "${SKIP_NOTARIZE:-}" != 1 ]]; then
+  echo "→ Notarizing (usually a few minutes)"
+  xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+  xcrun stapler staple "$DMG"
+  spctl --assess --type open --context context:primary-signature --verbose "$DMG"
 fi
 
-echo "→ Notarizing (usually a few minutes)"
-xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
-xcrun stapler staple "$DMG"
-spctl --assess --type open --context context:primary-signature --verbose "$DMG"
+# The .dmg file shows the app icon in Finder too (kept on this Mac; some downloads drop it, the mounted disk keeps its own).
+osascript -l JavaScript -e "ObjC.import('AppKit'); \$.NSWorkspace.sharedWorkspace.setIconForFileOptions(\$.NSImage.alloc.initWithContentsOfFile('$ICON'), '$DMG', 0)" >/dev/null
 echo "Done: $DMG"
