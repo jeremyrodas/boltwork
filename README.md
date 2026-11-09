@@ -1,15 +1,16 @@
 # Boltwork
 
-A local-first, end-to-end encrypted password manager for the desktop.
+A local-first, end-to-end encrypted password manager for Windows, Mac, iPhone and iPad.
 
 *Formerly called Strongroom.
 
 Boltwork keeps your logins, passkeys, SSH keys, cards, notes and files in a vault on your own computer. The vault is sealed with your account password plus a random **Secret Key**, so a stolen copy is useless without both. If you want your vault on more than one computer, you sync it through a small server that you run yourself. That server only ever sees encrypted records.
 
-Built with Electron, React and TypeScript. Encryption uses libsodium (XChaCha20-Poly1305) and Argon2id.
+The Windows app is built with Electron, React and TypeScript. The Mac, iPhone and iPad apps are native SwiftUI and open the same vault format. Encryption uses XChaCha20-Poly1305 and Argon2id everywhere.
 
 - **Your data stays yours.** No cloud account, no telemetry. Online checks are off until you turn them on.
 - **Passkeys everywhere.** Boltwork's browser extension uses passkeys in Chrome, Edge and Brave, and Boltwork can register as a Windows passkey provider so any app can use them.
+- **On every device.** Native apps for Mac, iPhone and iPad fill passwords and passkeys through AutoFill and unlock with Face ID or Touch ID. A self-hosted server, easy to run in Docker, keeps them all in sync and can even serve your vault to a browser.
 - **Built for daily use.** Fill and save logins from the browser, a Quick Access hotkey with auto-type, an SSH agent for `ssh` and `git`, and unlock with Windows Hello or a PIN.
 
 ## Features
@@ -54,6 +55,14 @@ Built with Electron, React and TypeScript. Encryption uses libsodium (XChaCha20-
 - Tray icon, `boltwork://` links, start at login, Large Type
 - Light and dark themes, plus five color schemes (Brass, Copper, Verdigris, Blued steel, Silver) with matching app icons
 
+**Mac, iPhone and iPad** (native SwiftUI)
+- Opens the same vault as the Windows app and syncs through the same server, so items, passkeys and attachments go everywhere
+- AutoFill for passwords and passkeys in Safari and other apps. Save new passkeys straight into Boltwork
+- Quick unlock with Face ID or Touch ID, auto-lock, and an account password field that never offers to AutoFill itself
+- Watchtower, the password generator, one-time codes, multiple vaults, and the Secret Key and Emergency Kit behind your password
+- Sync with a **backup address**: when the main server address can't be reached, the app tries the backup (for example a VPN address for the same server)
+- On the Mac: an SSH agent for `ssh` and `git`, and a link to the same browser extension the Windows app uses
+
 **Import and export**
 - Import from 1Password (`.1pux`), Bitwarden, Chrome, Edge, Firefox, Safari, LastPass, Dashlane, KeePass/KeePassXC and CSV
 - Export to an encrypted backup, JSON or CSV. Print an Emergency Kit PDF with your Secret Key
@@ -77,17 +86,61 @@ In Boltwork, open **Settings → Browser Extension** and turn it on. Then:
 
 This is a small packaged helper that lets Windows hand passkey requests to Boltwork. It comes with the setup program, which asks once whether to set it up: say yes, approve Windows' administrator prompt (it trusts Boltwork's self-signed certificate), then turn Boltwork on in the Windows settings page that opens. You can also set it up later from **Settings → Browser Extension → Windows passkeys**. See [native/passkey-provider/README.md](native/passkey-provider/README.md) for details.
 
+### Mac, iPhone and iPad
+
+The Apple apps live in [`apple/`](apple/README.md). Build them with Xcode (see [Build the Apple apps](#build-the-apple-apps)), then either create a new vault or turn on sync and sign in with your email, password and Secret Key to bring over the vault from your other devices.
+
+- **AutoFill:** turn on quick unlock (Face ID or Touch ID) in Settings first, then turn on AutoFill there and pick Boltwork in the system's AutoFill settings. The AutoFill extension only unlocks with Face ID or Touch ID.
+- **Mac extras:** Settings → SSH turns on the SSH agent, and Settings → Browser links the browser extension to the Mac app.
+
 ### Sync server (optional)
 
+The sync server runs in Docker. See [Docker](#docker) below. Then turn on sync in Boltwork: on Windows open **Settings → Sync → Set up sync…**; on Mac, iPhone and iPad open **Settings → Sync**, enter the server address and **Turn On Sync**.
+
+## Docker
+
+The sync server (and the optional web vault) ships as a Docker image built from this repository.
+
 ```bash
-cd server
+git clone https://github.com/jeremyrodas/boltwork.git
+cd boltwork/server
 docker compose up -d
 ```
 
-Then in Boltwork open **Settings → Sync → Set up sync…** and enter the server's address. See [server/README.md](server/README.md) for settings, https, backups and the API.
+The image is built from the repository root, because it also bundles the web vault. Data lives in the `strongroom-data` volume (the name is kept so existing servers keep their data). By default the server listens on `127.0.0.1:8787` only.
 
-The server can also serve a **web vault**, so you can open your vault in a browser at the server's address. It's off by default;
-read [the trade-off](server/README.md#web-vault-optional) before turning it on with `WEB_VAULT: "on"`.
+**Settings** go under `environment:` in [`server/docker-compose.yml`](server/docker-compose.yml):
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SIGNUPS` | `first` | `first`: only the first account may sign up. `open`: anyone who can reach it. `closed`: nobody |
+| `TRUST_PROXY` | off | `1` behind a reverse proxy, so rate limits use the client address it forwards |
+| `WEB_VAULT` | `off` | `on` serves the web vault at `/` |
+| `STORAGE_LIMIT_MB` | `0` (no limit) | Attachment storage allowed per account |
+
+**Reaching it.** On your home network or a VPN you can use plain http, for example `http://192.168.1.20:8787`. Change the port mapping to `8787:8787` so other devices can reach it. The apps allow http only for private addresses (10.x, 172.16–31.x, 192.168.x, the 100.64–127.x VPN range) and `.local` names. For anything reachable from outside, put it behind an https reverse proxy (Caddy, nginx, Nginx Proxy Manager…), set `TRUST_PROXY: "1"`, and raise the proxy's upload limit to about 150 MB for attachments (`client_max_body_size 150m;` in nginx).
+
+**Backup address.** If the server has two addresses, for example an https domain and a VPN IP, add the second one as the **Backup Address** in each app's sync settings. The apps always try the main address first and fall back to the backup when it can't be reached.
+
+**Web vault.** With `WEB_VAULT: "on"`, opening the server's address in a browser shows Boltwork's own screens. You sign in with your email, password and Secret Key, and the vault is decrypted only inside the tab. Accounts are created in an app, not in the web vault. It's off by default because the page's code comes from the server each time, so someone who takes over the server or its proxy could change it. Read [the trade-off](server/README.md#web-vault-optional) before you turn it on, and only use it over https.
+
+**Updating.**
+
+```bash
+git pull
+cd server
+docker compose up -d --build
+```
+
+**Backups.** Back up the data volume. Compose names it after the project folder, so it's usually `server_strongroom-data` (`docker volume ls` shows the exact name):
+
+```bash
+docker run --rm -v server_strongroom-data:/data -v "$PWD":/backup alpine tar czf /backup/boltwork-data.tgz -C /data .
+```
+
+It holds only encrypted data, so you still need your password and Secret Key to use it.
+
+See [server/README.md](server/README.md) for every setting, running without Docker, and the API.
 
 ## Build from source
 
@@ -112,6 +165,36 @@ Use a throwaway profile while developing: `BOLTWORK_PROFILE=C:\temp\sr-test npm 
 
 To have `npm run dist` copy each release somewhere, create `release.local.json` (not committed), for example `{ "copyTo": "D:\\" }`.
 
+### Build the Apple apps
+
+Needs Xcode 27 and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+
+```bash
+cd apple
+xcodegen
+open Boltwork.xcodeproj
+```
+
+Pick the **Boltwork** scheme and run it on a Mac, an iPhone or iPad, or a simulator. To run on a device, use AutoFill or use Face ID / Touch ID on the Mac, set your team under **Signing & Capabilities**, or pass it on the command line so it stays out of the project:
+
+```bash
+xcodebuild build -project Boltwork.xcodeproj -scheme Boltwork -destination 'platform=macOS' DEVELOPMENT_TEAM=<your team ID> -allowProvisioningUpdates
+```
+
+Tests:
+
+```bash
+cd apple/BoltworkKit
+swift test
+```
+
+```bash
+cd apple
+xcodebuild test -project Boltwork.xcodeproj -scheme Boltwork -destination 'platform=iOS Simulator,name=iPhone 18 Pro'
+```
+
+The test vaults in `BoltworkKit/Tests` are made by the TypeScript core, so the tests prove the apps read each other's vaults. Some UI tests need a throwaway sync server: build it (`cd server && npm install && npm run build`), start it with `SIGNUPS=open PORT=8796 DATA_DIR=$(mktemp -d) node dist/server.js`, then set `TEST_RUNNER_BOLTWORK_SYNC_SERVER=http://localhost:8796`. See [apple/README.md](apple/README.md) for AutoFill and passkey testing.
+
 ## Security model
 
 | Piece | How |
@@ -121,16 +204,17 @@ To have `npm run dist` copy each release somewhere, create `release.local.json` 
 | Storage | One sealed record per vault, collection and item, each bound to its ID and type with associated data, so records can't be swapped or moved unnoticed |
 | Encryption | XChaCha20-Poly1305 (libsodium). Tampering is detected |
 | Attachments | Each file sealed separately, bound to its ID |
-| Secret Key on device | Kept in the operating system's protected storage (Windows DPAPI, macOS Keychain, libsecret) |
-| Quick unlock | A device-bound copy of the master key, sealed with Windows Hello or an Argon2id-stretched PIN. Expires 14 days after the last password unlock |
+| Secret Key on device | Kept in the operating system's protected storage (Windows DPAPI, the Apple Keychain, libsecret) |
+| Quick unlock | A device-bound copy of the master key, sealed with Windows Hello or an Argon2id-stretched PIN (expires 14 days after the last password unlock), or kept in the Apple Keychain behind Face ID / Touch ID |
 | Passkeys | ES256 keys generated and kept in the vault. The browser extension accepts only the page address Chrome reports; the Windows helper checks every request was signed by Windows |
 | Sync server | Stores only encrypted records and files. It never sees your password, Secret Key or master key |
 | Process isolation | Decrypted data stays in the main process. Windows that show your data are sandboxed, with context isolation and a strict content security policy |
+| Web vault | Off by default. When on, the vault is decrypted only in the browser tab, under a strict content security policy. You trust the server to serve honest code |
 | Online checks | Off by default. Pwned Passwords uses k-anonymity (5-character SHA-1 prefix) |
 
 Read [SECURITY.md](SECURITY.md) for the full design and how to report a problem.
 
-Your vault lives in `%APPDATA%\Boltwork\vault\`.
+Your vault lives in `%APPDATA%\Boltwork\vault\` on Windows, and in the app's container (shared with its AutoFill extension) on Mac, iPhone and iPad.
 
 ## Project layout
 
@@ -142,7 +226,12 @@ Your vault lives in `%APPDATA%\Boltwork\vault\`.
 | `src/extension/`, `extension/` | The browser extension |
 | `src/nmhost/` | Native messaging host, which links the browser to the app |
 | `native/passkey-provider/` | Windows passkey provider helper (C#, packaged as MSIX) |
-| `server/` | Self-hosted sync server (Node.js + SQLite, Docker) |
+| `src/web/` | The web vault: the same React UI running in the browser |
+| `server/` | Self-hosted sync server (Node.js + SQLite, Docker), which can also serve the web vault |
+| `apple/BoltworkKit/` | Swift package: vault format, crypto, items, generator, Watchtower and sync client |
+| `apple/Boltwork/` | The SwiftUI app, one target for Mac, iPhone and iPad |
+| `apple/AutoFill/` | AutoFill extension for passwords and passkeys |
+| `apple/BrowserHost/` | The Mac's native messaging host for the browser extension |
 | `test/` | Tests (`node --test`) |
 
 ## Roadmap
@@ -151,7 +240,8 @@ Your vault lives in `%APPDATA%\Boltwork\vault\`.
 - Detecting a sync server rolling back records
 - Firefox and Safari extensions, store listings, and filling identities and cards
 - Signing for public releases (a trusted code-signing certificate or the Microsoft Store), so no certificate step is needed
-- macOS and Linux builds
+- Import and export in the Mac, iPhone and iPad apps
+- A Linux build
 
 ## Renamed from Strongroom
 
