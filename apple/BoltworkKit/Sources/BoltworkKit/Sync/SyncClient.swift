@@ -86,7 +86,25 @@ public struct SyncClient: Sendable {
         Data(b).base64EncodedString().replacing("+", with: "-").replacing("/", with: "_").replacing("=", with: "")
     }
 
-    public func health() async throws -> Health { try await call("GET", "/health") }
+    public func health(timeout: TimeInterval = 30) async throws -> Health { try await call("GET", "/health", timeout: timeout) }
+
+    /// A client for the first of `addresses` (main, then backup) whose server answers. With one address there's
+    /// nothing to choose, so it's returned without asking. The main address gets a short wait, since the backup
+    /// is there for when it's out of reach; a server error behind a proxy (5xx) counts as out of reach too.
+    public static func reachable(_ addresses: [String], token: String = "", probeTimeout: TimeInterval = 5) async throws -> SyncClient {
+        guard addresses.count > 1 else { return SyncClient(serverURL: addresses.first ?? "", token: token) }
+        var firstError: SyncError?
+        for address in addresses {
+            let client = SyncClient(serverURL: address, token: token)
+            do {
+                _ = try await client.health(timeout: probeTimeout)
+                return client
+            } catch let error as SyncError where error.status == 0 || error.status >= 500 {
+                firstError = firstError ?? error
+            }
+        }
+        throw SyncError(status: 0, message: "\(firstError?.message ?? "Can’t reach the sync server.") Its backup address didn’t answer either.")
+    }
 
     public func prelogin(email: String) async throws -> KdfParams {
         struct R: Decodable { let kdf: KdfParams }

@@ -167,7 +167,7 @@ final class AppModel {
                                                             oldPassword: current, newPassword: new, secretKey: secretKey)
         // Update the server first: if that fails, the old password still works everywhere.
         if let state = store.syncState, let token = DeviceSecrets.syncToken(account: store.accountId) {
-            try await SyncClient(serverURL: state.serverUrl, token: token).updateKeys(authKey: authKey, keyset: keyset)
+            try await SyncClient.reachable(state.addresses, token: token).updateKeys(authKey: authKey, keyset: keyset)
         }
         try store.adopt(keyset: keyset)
     }
@@ -337,16 +337,45 @@ final class AppModel {
     func signInToSync(password: String) async throws {
         guard let store, let state = store.syncState, let secretKey = storedSecretKey else { throw VaultError.locked }
         let authKey = try await VaultStore.authKey(keyset: store.keyset, password: password, secretKey: secretKey)
-        var client = SyncClient(serverURL: state.serverUrl)
+        var client = try await SyncClient.reachable(state.addresses)
         _ = try await client.login(email: state.email, authKey: authKey, device: Self.deviceName)
         try DeviceSecrets.setSyncToken(client.token, account: store.accountId)
         sync.use(client: client)
     }
 
+    /// Sets or clears (nil or empty) another address for the sync server, tried when the main one can't be reached.
+    /// It must lead to the same server: this device's session has to work there, for the same account.
+    func setBackupSyncAddress(_ input: String?) async throws {
+        guard let store, var state = store.syncState else { throw VaultError.locked }
+        let trimmed = input?.trimmingCharacters(in: .whitespaces) ?? ""
+        if trimmed.isEmpty {
+            state.backupUrl = nil
+        } else {
+            let address = try SyncServerURL.normalize(trimmed)
+            guard address != state.serverUrl else { throw SyncError(status: 0, message: "That’s already the server’s main address.") }
+            guard let token = DeviceSecrets.syncToken(account: store.accountId) else {
+                throw SyncError(status: 401, message: "Sign in to the sync server again first.")
+            }
+            let account: SyncClient.Account
+            do {
+                account = try await SyncClient(serverURL: address, token: token).account()
+            } catch let error as SyncError where error.isSignedOut {
+                throw SyncError(status: 0, message: "\(address) is a different sync server. Use an address that leads to the same server as \(state.serverUrl).")
+            }
+            guard account.email.lowercased() == state.email.lowercased() else {
+                throw SyncError(status: 0, message: "\(address) is a different sync server. Use an address that leads to the same server as \(state.serverUrl).")
+            }
+            state.backupUrl = address
+        }
+        store.syncState = state
+        try store.writeFile()
+        sync.addressesChanged()
+    }
+
     func disconnectSync() async {
         guard let store else { return }
         if let state = store.syncState, let token = DeviceSecrets.syncToken(account: store.accountId) {
-            try? await SyncClient(serverURL: state.serverUrl, token: token).logout()
+            try? await SyncClient.reachable(state.addresses, token: token).logout()
         }
         try? DeviceSecrets.setSyncToken(nil, account: store.accountId)
         store.syncState = nil

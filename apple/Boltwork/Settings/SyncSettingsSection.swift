@@ -11,6 +11,8 @@ struct SyncSettingsSection: View {
     @State private var working = false
     @State private var errorMessage: String?
     @State private var confirmingDisconnect = false
+    @State private var editingBackup = false
+    @State private var backupDraft = ""
 
     var body: some View {
         if model.phase == .unlocked {
@@ -26,8 +28,11 @@ struct SyncSettingsSection: View {
     private var statusSection: some View {
         Section {
             LabeledContent("Server", value: model.sync.serverURL ?? "")
+            LabeledContent("Backup Address", value: model.sync.backupURL ?? "None")
             LabeledContent("Email", value: model.sync.email ?? "")
-            LabeledContent("Status") { SyncStatusText(status: model.sync.status, lastSync: model.sync.lastSyncAt) }
+            LabeledContent("Status") {
+                SyncStatusText(status: model.sync.status, lastSync: model.sync.lastSyncAt, usingBackup: model.sync.isUsingBackup)
+            }
             if model.sync.status == .signedOut {
                 SecureField("Account password", text: $password)
                     .textContentType(.password)
@@ -36,6 +41,22 @@ struct SyncSettingsSection: View {
             } else {
                 Button("Sync Now", systemImage: "arrow.triangle.2.circlepath") { Task { await model.sync.syncOnce() } }
                     .disabled(model.sync.status == .syncing)
+            }
+            Button(model.sync.backupURL == nil ? "Add Backup Address…" : "Change Backup Address…", systemImage: "point.3.connected.trianglepath.dotted") {
+                backupDraft = model.sync.backupURL ?? ""
+                editingBackup = true
+            }
+            .disabled(working)
+            .alert("Backup Address", isPresented: $editingBackup) {
+                TextField("Address", text: $backupDraft, prompt: Text("100.64.0.5:8787"))
+                    .plainTextEntry()
+                Button("Save") { saveBackup(backupDraft) }
+                if model.sync.backupURL != nil {
+                    Button("Remove", role: .destructive) { saveBackup(nil) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Another way to reach the same server, such as a VPN address for when you’re away. Boltwork tries the main address first and uses this one when the main one can’t be reached.")
             }
             Button("Stop Syncing This Device…", role: .destructive) { confirmingDisconnect = true }
                 .confirmationDialog("Stop syncing this device?", isPresented: $confirmingDisconnect) {
@@ -82,6 +103,15 @@ struct SyncSettingsSection: View {
 
     private func connect() {
         run { try await model.connectSync(server: server, email: email.trimmingCharacters(in: .whitespaces), password: password, createAccount: createAccount) }
+    }
+
+    private func saveBackup(_ address: String?) {
+        working = true
+        errorMessage = nil
+        Task {
+            defer { working = false }
+            do { try await model.setBackupSyncAddress(address) } catch { errorMessage = error.localizedDescription }
+        }
     }
 
     private func signInAgain() {

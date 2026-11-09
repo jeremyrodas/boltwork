@@ -5,13 +5,20 @@ public struct SyncState: Codable, Equatable, Sendable {
     /// Highest server revision this device has pulled.
     public var cursor: Int
     public var lastSyncAt: Int64?
+    /// Another address for the same server, used when `serverUrl` can't be reached (say, a VPN address
+    /// for when you're away from home). Set per device; apps that don't know it ignore it.
+    public var backupUrl: String?
 
-    public init(serverUrl: String, email: String, cursor: Int = 0, lastSyncAt: Int64? = nil) {
+    public init(serverUrl: String, email: String, cursor: Int = 0, lastSyncAt: Int64? = nil, backupUrl: String? = nil) {
         self.serverUrl = serverUrl
         self.email = email
         self.cursor = cursor
         self.lastSyncAt = lastSyncAt
+        self.backupUrl = backupUrl
     }
+
+    /// The addresses to try, main first.
+    public var addresses: [String] { [serverUrl] + (backupUrl.map { [$0] } ?? []) }
 }
 
 /// `vault.json`, format version 2 (see `src/core/store.ts`).

@@ -2,7 +2,8 @@ import BoltworkKit
 import Foundation
 
 /// Keeps the open vault in step with its sync server: syncs soon after local changes, and waits on the
-/// server's long poll so changes from other devices arrive within seconds.
+/// server's long poll so changes from other devices arrive within seconds. Each round tries the server's main
+/// address first and its backup address (if set) when the main one is out of reach.
 @MainActor
 @Observable
 final class SyncController {
@@ -13,13 +14,20 @@ final class SyncController {
     private(set) var status = Status.off
     private(set) var lastSyncAt: Date?
     private(set) var serverURL: String?
+    private(set) var backupURL: String?
+    /// The address the last sync used; differs from `serverURL` while the backup address is in use.
+    private(set) var activeURL: String?
     private(set) var email: String?
+
+    var isUsingBackup: Bool { activeURL != nil && activeURL == backupURL }
 
     /// Called after a sync brings in changes, so the model can refresh what it shows.
     @ObservationIgnored var onRemoteChanges: (() -> Void)?
 
     @ObservationIgnored private var store: VaultStore?
+    /// The main address with this device's session; each round works out which address to use with it.
     @ObservationIgnored private var client: SyncClient?
+    @ObservationIgnored private var activeClient: SyncClient?
     @ObservationIgnored private var loop: Task<Void, Never>?
     @ObservationIgnored private var waitTask: Task<SyncClient.Changes, any Error>?
     @ObservationIgnored private var isSyncing = false
@@ -38,6 +46,8 @@ final class SyncController {
             return
         }
         serverURL = state.serverUrl
+        backupURL = state.backupUrl
+        activeURL = nil
         email = state.email
         lastSyncAt = state.lastSyncAt.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) }
         if let token = DeviceSecrets.syncToken(account: store.accountId) {
@@ -53,14 +63,27 @@ final class SyncController {
         stop()
         store = nil
         client = nil
+        activeClient = nil
+        activeURL = nil
         status = .off
+    }
+
+    /// After the backup address changes: the next round tries the new set of addresses.
+    func addressesChanged() {
+        backupURL = store?.syncState?.backupUrl
+        activeClient = nil
+        activeURL = nil
+        syncSoon()
     }
 
     /// Uses a newly signed-in client (after joining or connecting an account).
     func use(client: SyncClient) {
         stop()
-        self.client = client
+        self.client = SyncClient(serverURL: store?.syncState?.serverUrl ?? client.serverURL, token: client.token)
+        activeClient = nil
+        activeURL = nil
         serverURL = store?.syncState?.serverUrl
+        backupURL = store?.syncState?.backupUrl
         email = store?.syncState?.email
         status = .idle
         start()
@@ -106,7 +129,7 @@ final class SyncController {
                 continue
             }
             failures = 0
-            guard let client, let cursor = store?.syncState?.cursor else { break }
+            guard let client = activeClient ?? client, let cursor = store?.syncState?.cursor else { break }
             let wait = Task { try await client.waitForChanges(since: cursor) }
             waitTask = wait
             _ = try? await wait.value
@@ -123,7 +146,10 @@ final class SyncController {
         status = .syncing
         defer { isSyncing = false }
         do {
-            let result = try await SyncEngine.syncOnce(store: store, client: client)
+            let active = try await SyncClient.reachable(store.syncState?.addresses ?? [client.serverURL], token: client.token)
+            activeClient = active
+            activeURL = active.serverURL
+            let result = try await SyncEngine.syncOnce(store: store, client: active)
             lastSyncAt = .now
             status = .idle
             if result.pulled > 0 || result.filesDown > 0 || result.conflicts > 0 { onRemoteChanges?() }
