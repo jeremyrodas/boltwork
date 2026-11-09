@@ -24,7 +24,7 @@ import { browserHostStatus, getBridge, registerNativeHost, startBrowserHost, sto
 import type { PasskeyDecision, PasskeyPrompt } from '../core/browserBridge';
 import { openWindowsPasskeySettings, providerStatus, registerProvider, scheduleCredentialSync, startPasskeyProvider, unregisterProvider } from './passkeyProvider';
 import {
-  checkServer, disconnectSync, initSync, pushNewKeys, reconnect, scheduleSync, setupSync, signInNewDevice, startSyncLoop,
+  checkServer, disconnectSync, initSync, pushNewKeys, reconnect, scheduleSync, setBackupAddress, setupSync, signInNewDevice, startSyncLoop,
   stopSyncLoop, syncNow, syncStatus,
 } from '../core/syncLoop';
 import { generateSshKey, importSshKey } from '../core/ssh';
@@ -906,6 +906,7 @@ const handlers: Handlers = {
   syncNow: async () => { await syncNow(); return syncStatus(); },
   syncReconnect: async password => { await reconnect(requireStore(), password, currentSecretKey()); changed(); return syncStatus(); },
   syncDisconnect: async deleteAccount => { await disconnectSync(requireStore(), deleteAccount); },
+  syncSetBackup: async url => { await setBackupAddress(requireStore(), url); return syncStatus(); },
   browserShowExtensionFolder: () => { void shell.openPath(extensionFolder()); },
   passkeyProviderStatus: () => providerStatus(),
   passkeyProviderRegister: () => registerProvider(settings.colorScheme),

@@ -340,6 +340,8 @@ const handlers: Handlers = {
   syncNow: async () => { await syncNow(); return syncStatus(); },
   syncReconnect: async password => { await reconnect(requireStore(), password, secretKey!); changed(); return syncStatus(); },
   syncDisconnect: () => { throw new Error('The web vault always syncs with this server. Use Lock to sign out.'); },
+  // The page came from this server and only talks to it.
+  syncSetBackup: appsOnly,
   browserRevoke: () => undefined,
   browserShowExtensionFolder: appsOnly,
   passkeyProviderStatus: () => ({ installed: false, serving: false }),

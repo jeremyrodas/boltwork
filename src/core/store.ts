@@ -55,7 +55,15 @@ export interface SyncState {
   /** Highest server revision this device has pulled. */
   cursor: number;
   lastSyncAt?: number;
+  /**
+   * Another address for the same server, tried when `serverUrl` can't be reached (say, a VPN address for when
+   * you're away from home). Set per device; apps that don't know it ignore it.
+   */
+  backupUrl?: string;
 }
+
+/** The addresses to try, main first. */
+export const syncAddresses = (s: SyncState) => [s.serverUrl, ...(s.backupUrl ? [s.backupUrl] : [])];
 
 interface VaultFileV2 {
   format: typeof FORMAT;

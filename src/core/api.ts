@@ -20,6 +20,10 @@ export interface BrowserStatus {
 export interface SyncStatus {
   configured: boolean;
   serverUrl?: string;
+  /** Another address for the same server, tried when the main one can't be reached. */
+  backupUrl?: string;
+  /** The last sync went through the backup address. */
+  usingBackup?: boolean;
   email?: string;
   lastSyncAt?: number;
   syncing: boolean;
@@ -152,6 +156,8 @@ export interface Api {
   syncNow(): SyncStatus;
   syncReconnect(password: string): SyncStatus;
   syncDisconnect(deleteAccount: boolean): void;
+  /** Sets or clears (null or empty) the server's backup address; it must lead to the same server. */
+  syncSetBackup(url: string | null): SyncStatus;
   browserRevoke(id: string): void;
   browserShowExtensionFolder(): void;
   /** Windows passkey provider (Windows 11 with the November 2025 update or later). */

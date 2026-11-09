@@ -41,7 +41,9 @@ export function isLocalNetworkHost(hostname: string): boolean {
   const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
   if (v4) {
     const [a, b] = [Number(v4[1]), Number(v4[2])];
-    return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254);
+    // 100.64/10 is the shared address range VPNs like Tailscale hand out (as the Apple apps allow).
+    return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254)
+      || (a === 100 && b >= 64 && b <= 127);
   }
   return h === '::1' || /^f[cd][0-9a-f]{2}:/.test(h) || /^fe[89ab][0-9a-f]:/.test(h);
 }
@@ -82,7 +84,28 @@ export class SyncClient {
     return json;
   }
 
-  health() { return this.req<{ ok: boolean; name: string; signups: string }>('GET', '/health'); }
+  health(timeoutMs?: number) { return this.req<{ ok: boolean; name: string; signups: string }>('GET', '/health', undefined, { timeoutMs }); }
+
+  /**
+   * A client for the first of `addresses` (main, then backup) whose server answers. With one address there's
+   * nothing to choose, so it's returned without asking. The main address gets a short wait, since the backup is
+   * there for when it's out of reach; a server error behind a proxy (5xx) counts as out of reach too.
+   */
+  static async reachable(addresses: string[], token = '', probeMs = 5_000): Promise<SyncClient> {
+    if (addresses.length < 2) return new SyncClient(addresses[0] ?? '', token);
+    let first: SyncError | undefined;
+    for (const address of addresses) {
+      const client = new SyncClient(address, token);
+      try {
+        await client.health(probeMs);
+        return client;
+      } catch (e) {
+        if (!(e instanceof SyncError) || (e.status !== 0 && e.status < 500)) throw e;
+        first ??= e;
+      }
+    }
+    throw new SyncError(0, `${first?.message ?? 'Can’t reach the sync server.'} Its backup address didn’t answer either.`);
+  }
   prelogin(email: string) { return this.req<{ kdf: KdfParams }>('POST', '/prelogin', { email }); }
 
   async signup(email: string, authKey: Uint8Array, keyset: { kdf: KdfParams; wrappedKey: Sealed; accountId: string }, device: string) {
