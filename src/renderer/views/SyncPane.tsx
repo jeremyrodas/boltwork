@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import type { SyncStatus } from '../../core/api';
 import { api } from '../api';
 import { Server } from 'lucide-react';
@@ -21,6 +22,7 @@ export function SyncPane() {
   const [reauth, setReauth] = useState(false);
   const [off, setOff] = useState(false);
   const [backup, setBackup] = useState(false);
+  const [code, setCode] = useState(false);
   useEffect(() => {
     let live = true;
     const tick = () => { void api.syncStatus().then(s => { if (live) setStatus(s); }); };
@@ -62,6 +64,13 @@ export function SyncPane() {
         {web && <p className="hint">The web vault always works from this server. Locking signs this tab out.</p>}
       </>)}
     </div>
+    {status.configured && (
+    <div className="settings-section">
+      <h3>Set up a phone or tablet</h3>
+      <p className="muted">Show a setup code here, then scan it in Boltwork on the new device: choose <b>I Already Use Boltwork</b>, then <b>Scan Setup Code</b>. You’ll still type your account password there.</p>
+      <Button onClick={() => setCode(true)}>Show setup code…</Button>
+    </div>
+    )}
     {!web && (<>
     <div className="settings-section">
       <h3>Add another computer</h3>
@@ -76,6 +85,7 @@ export function SyncPane() {
     {setup && <SetupModal onClose={() => setSetup(false)} onDone={s => { setStatus(s); setSetup(false); }} />}
     {reauth && <ReauthModal onClose={() => setReauth(false)} onDone={s => { setStatus(s); setReauth(false); }} />}
     {backup && <BackupModal current={status.backupUrl} onClose={() => setBackup(false)} onDone={s => { setStatus(s); setBackup(false); }} />}
+    {code && <SetupCodeModal onClose={() => setCode(false)} />}
     {off && <OffModal onClose={() => setOff(false)} onDone={() => { setOff(false); void api.syncStatus().then(setStatus); }} />}
   </>);
 }
@@ -162,6 +172,35 @@ function OffModal({ onClose, onDone }: { onClose: () => void; onDone: () => void
       <label className="check"><input type="checkbox" checked={del} onChange={e => setDel(e.target.checked)} /> Also delete the account and all its data from the server (other computers will stop syncing)</label>
       <div className="row gap end"><Button onClick={onClose}>Cancel</Button>
         <Button kind={del ? 'danger' : 'primary'} onClick={async () => { const ok = await run(api.syncDisconnect(del).then(() => true), del ? 'Server account deleted' : 'Sync turned off'); if (ok) onDone(); }}>{del ? 'Delete and turn off' : 'Turn off sync'}</Button></div>
+    </Modal>
+  );
+}
+
+/** Asks for the account password, then shows the setup code until the window is closed. */
+function SetupCodeModal({ onClose }: { onClose: () => void }) {
+  const [pw, setPw] = useState('');
+  const [err, setErr] = useState('');
+  const [image, setImage] = useState('');
+  const go = async () => {
+    setErr('');
+    try {
+      const text = await api.syncSetupCode(pw);
+      setImage(await QRCode.toDataURL(text, { errorCorrectionLevel: 'M', margin: 2, width: 280 }));
+    } catch (e) { setErr((e as Error).message); }
+    setPw('');
+  };
+  return (
+    <Modal title="Setup code" onClose={onClose}>
+      {image ? (<>
+        <img className="setup-code" src={image} width={280} height={280} alt="Setup code" />
+        <p className="hint">This code contains your Secret Key. Don’t share it or take a picture of it. Close this window when you’re done.</p>
+        <div className="row gap end"><Button kind="primary" onClick={onClose}>Done</Button></div>
+      </>) : (<>
+        <label className="lbl">Account password</label>
+        <PasswordInput value={pw} onChange={setPw} autoFocus onEnter={go} />
+        {err && <p className="error-text">{err}</p>}
+        <div className="row gap end"><Button onClick={onClose}>Cancel</Button><Button kind="primary" onClick={go} disabled={!pw}>Continue</Button></div>
+      </>)}
     </Modal>
   );
 }

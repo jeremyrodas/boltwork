@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import jsQR from 'jsqr';
+import { setupCodeText } from '../core/setupCode';
 import type { Api, ApiEvents, AppState, ImportPreview, QuickAccessAction } from '../core/api';
 import { generateSecretKey, normalizeSecretKey, ready } from '../core/crypto';
 import { generatePassword, suggestUsername } from '../core/generator';
@@ -921,6 +922,12 @@ const handlers: Handlers = {
   syncReconnect: async password => { await reconnect(requireStore(), password, currentSecretKey()); changed(); return syncStatus(); },
   syncDisconnect: async deleteAccount => { await disconnectSync(requireStore(), deleteAccount); },
   syncSetBackup: async url => { await setBackupAddress(requireStore(), url); return syncStatus(); },
+  syncSetupCode: async pw => {
+    await reauth(pw);
+    const st = syncStatus();
+    if (!st.serverUrl || !st.email) throw new Error('Turn on sync first.');
+    return setupCodeText({ server: st.serverUrl, backup: st.backupUrl, email: st.email, secretKey: currentSecretKey() });
+  },
   browserShowExtensionFolder: () => { void shell.openPath(extensionFolder()); },
   passkeyProviderStatus: () => providerStatus(),
   passkeyProviderRegister: () => registerProvider(settings.colorScheme),

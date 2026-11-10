@@ -16,7 +16,9 @@ struct SettingsView: View {
                 Form { SecuritySettingsSection() }.formStyle(.grouped)
             }
             Tab("Sync", systemImage: "arrow.triangle.2.circlepath") {
-                Form { UnlockedOnly { SyncSettingsSection() } }.formStyle(.grouped)
+                NavigationStack {
+                    Form { UnlockedOnly { SyncSettingsSection() } }.formStyle(.grouped)
+                }
             }
             #if !APP_STORE
             Tab("Browser", systemImage: "globe") {

@@ -10,6 +10,7 @@ import type { Api, ApiEvents, AppState, Bridge, ImportPreview, SyncStatus } from
 import { normalizeSecretKey, ready } from '../core/crypto';
 import { generatePassword, suggestUsername } from '../core/generator';
 import { buildExport, encryptExport, exportCsv, importFile, NeedsPasswordError, type ImportResult } from '../core/importexport';
+import { setupCodeText } from '../core/setupCode';
 import { detectPreset, mergeSettings, SECURITY_PRESETS } from '../core/settings';
 import { VaultStore, WrongPasswordError } from '../core/store';
 import { rateStrength } from '../core/strength';
@@ -342,6 +343,11 @@ const handlers: Handlers = {
   syncDisconnect: () => { throw new Error('The web vault always syncs with this server. Use Lock to sign out.'); },
   // The page came from this server and only talks to it.
   syncSetBackup: appsOnly,
+  syncSetupCode: async pw => {
+    await reauth(pw);
+    const st = syncStatus();
+    return setupCodeText({ server: location.origin, email: st.email ?? '', secretKey: secretKey! });
+  },
   browserRevoke: () => undefined,
   browserShowExtensionFolder: appsOnly,
   passkeyProviderStatus: () => ({ installed: false, bundled: false, serving: false }),

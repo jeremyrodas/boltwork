@@ -59,6 +59,11 @@ struct SyncSettingsSection: View {
             } message: {
                 Text("Another way to reach the same server, such as a VPN address for when you’re away. Boltwork tries the main address first and uses this one when the main one can’t be reached.")
             }
+            NavigationLink {
+                SetupCodeView()
+            } label: {
+                Label("Set Up Another Device", systemImage: "qrcode")
+            }
             Button("Stop Syncing This Device…", role: .destructive) { confirmingDisconnect = true }
                 .confirmationDialog("Stop syncing this device?", isPresented: $confirmingDisconnect) {
                     Button("Stop Syncing", role: .destructive) { Task { try? await model.disconnectSync() } }

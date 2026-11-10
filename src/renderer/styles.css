@@ -184,6 +184,7 @@ h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: v
 input[aria-invalid='true'] { border-color: var(--bad); }
 .secret-key { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 18px; letter-spacing: .05em; background: var(--panel-2); border: 1px dashed var(--accent); padding: 14px; border-radius: 10px; text-align: center; user-select: all; }
 .secret-key.small-key { font-size: 15px; margin-top: 12px; cursor: pointer; }
+.setup-code { display: block; margin: 4px auto 12px; border-radius: 10px; }
 .check { display: flex; gap: 8px; align-items: center; margin: 6px 0; cursor: pointer; }
 .pw-input { display: flex; align-items: center; gap: 4px; position: relative; }
 .pw-input input { flex: 1; }

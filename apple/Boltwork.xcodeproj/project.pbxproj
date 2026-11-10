@@ -136,6 +136,7 @@
 		D7AA11883E1012C76AEC7FF3 /* AutoFillUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B53DF005883AC87E57CD7B08 /* AutoFillUITests.swift */; };
 		DB125A1C15BD3A5B12169131 /* VaultBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21F504F311154EA8D302AB4D /* VaultBrowser.swift */; };
 		DBAF018EAFFC333756C014F3 /* SharedContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7376C2233326CEEAAD544A /* SharedContainer.swift */; };
+		DBD6D06C319A8B4D1E0BC420 /* SetupCodeScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FDA6B08E4FA1EAFD7417A65 /* SetupCodeScanner.swift */; };
 		DD7FC1DDCAF8EFDD9DD979F8 /* SyncController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A17B34A2BAA1F0AEA41B06 /* SyncController.swift */; };
 		DDA77A3979AA9A6F7406BD8C /* WebsiteRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20D245A36B17CC62F65D70F8 /* WebsiteRow.swift */; };
 		E009596FBA0DD5956B7761A8 /* QuickUnlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17414F39B87F99B246DB11C5 /* QuickUnlock.swift */; };
@@ -146,6 +147,7 @@
 		E9D2EB54A6890A34CE28C00B /* CredentialProviderViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDE27C35C4FA2F64292F490F /* CredentialProviderViewController.swift */; };
 		F1313DA19CFC741FC2CA0B05 /* VaultCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DA65F62921350FE328EF2BA /* VaultCommands.swift */; };
 		FC65DA623C5738329DC5720E /* DeviceSecrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEC10F8DA68343DE18A1D42 /* DeviceSecrets.swift */; };
+		FFA6BAE323D8959FC5649106 /* SetupCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4CD9A85EE720877A3515A83 /* SetupCodeView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -287,6 +289,7 @@
 		9D44525D5F77328E8E30702B /* AutoFill.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AutoFill.entitlements; sourceTree = "<group>"; };
 		9D59D5A2F9C32110462BBE3F /* BrowserSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserSettingsSection.swift; sourceTree = "<group>"; };
 		9FD0D81B4076335C52B0EB18 /* ItemsList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemsList.swift; sourceTree = "<group>"; };
+		9FDA6B08E4FA1EAFD7417A65 /* SetupCodeScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupCodeScanner.swift; sourceTree = "<group>"; };
 		A03B6DBEC901F1FC7C870677 /* PrivacyCover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyCover.swift; sourceTree = "<group>"; };
 		A21199A3F49F1C675242B5F8 /* ItemEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemEditorView.swift; sourceTree = "<group>"; };
 		A58FEFC106429A0A9288B74B /* Clipboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Clipboard.swift; sourceTree = "<group>"; };
@@ -307,6 +310,7 @@
 		BE4BF21E77591E5C0601FE8F /* TOTPFieldEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOTPFieldEditor.swift; sourceTree = "<group>"; };
 		C20370FD0411E89E395A6181 /* ItemRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemRoute.swift; sourceTree = "<group>"; };
 		C4AA5665B61F66FAB211A894 /* MacLinkUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacLinkUITests.swift; sourceTree = "<group>"; };
+		C4CD9A85EE720877A3515A83 /* SetupCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupCodeView.swift; sourceTree = "<group>"; };
 		C52BFEB1E95F0A276447A462 /* AutoFill-AdHoc.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "AutoFill-AdHoc.entitlements"; sourceTree = "<group>"; };
 		C98CC5EDFF37146796C51DE2 /* dist-extension */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "dist-extension"; path = "../dist-extension"; sourceTree = SOURCE_ROOT; };
 		C98DFD0E98E4A23EFF290AEC /* JoinAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinAccountView.swift; sourceTree = "<group>"; };
@@ -424,6 +428,7 @@
 				4021FE65B4AA3927B1C56E9A /* NewSecretKey.swift */,
 				8BB343CF8E1CABAC11712E9C /* SecretKeyCard.swift */,
 				4F3528C0245C780F55A24B98 /* SecretKeySheet.swift */,
+				9FDA6B08E4FA1EAFD7417A65 /* SetupCodeScanner.swift */,
 				CE8E2FAD51BA0E1291E69DA4 /* WelcomeView.swift */,
 			);
 			path = Onboarding;
@@ -500,6 +505,7 @@
 		5D09506F7C14F2E78DFD0F1F /* Sync */ = {
 			isa = PBXGroup;
 			children = (
+				C4CD9A85EE720877A3515A83 /* SetupCodeView.swift */,
 				70A17B34A2BAA1F0AEA41B06 /* SyncController.swift */,
 			);
 			path = Sync;
@@ -986,6 +992,8 @@
 				A00241E5F64FDDC7F7325594 /* SecretKeySheet.swift in Sources */,
 				1C7332675654D48D65C7A930 /* SecuritySettingsSection.swift in Sources */,
 				58E8BC260C6C333889C3E48D /* SettingsView.swift in Sources */,
+				DBD6D06C319A8B4D1E0BC420 /* SetupCodeScanner.swift in Sources */,
+				FFA6BAE323D8959FC5649106 /* SetupCodeView.swift in Sources */,
 				DBAF018EAFFC333756C014F3 /* SharedContainer.swift in Sources */,
 				178FA8C08D283F23895A9486 /* SidebarRow.swift in Sources */,
 				946C3302DF9E9BEC65DE5C0D /* SidebarSelection.swift in Sources */,
@@ -1081,6 +1089,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Boltwork;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Boltwork uses the camera to scan a setup code shown by one of your other devices.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Boltwork uses Face ID to unlock your vault without your account password.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Boltwork connects to a sync server on your private network if you set one up.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1157,6 +1166,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Boltwork;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Boltwork uses the camera to scan a setup code shown by one of your other devices.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Boltwork uses Face ID to unlock your vault without your account password.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Boltwork connects to a sync server on your private network if you set one up.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1473,6 +1483,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Boltwork;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Boltwork uses the camera to scan a setup code shown by one of your other devices.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Boltwork uses Face ID to unlock your vault without your account password.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Boltwork connects to a sync server on your private network if you set one up.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

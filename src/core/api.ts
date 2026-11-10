@@ -168,6 +168,8 @@ export interface Api {
   syncDisconnect(deleteAccount: boolean): void;
   /** Sets or clears (null or empty) the server's backup address; it must lead to the same server. */
   syncSetBackup(url: string | null): SyncStatus;
+  /** The text of a setup code (see setupCode.ts) for joining this account from another device. It holds the Secret Key. */
+  syncSetupCode(accountPassword: string): string;
   browserRevoke(id: string): void;
   browserShowExtensionFolder(): void;
   /** Windows passkey provider (Windows 11 with the November 2025 update or later). */

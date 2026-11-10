@@ -88,15 +88,17 @@ final class AppModel {
     }
 
     /// Sets this device up from an existing account on a sync server.
-    func joinAccount(server: String, email: String, password: String, secretKey: String) async throws {
+    /// `backup` is another address for the same server, from a scanned setup code.
+    func joinAccount(server: String, email: String, password: String, secretKey: String, backup: String? = nil) async throws {
         let normalizedKey = try SecretKey.normalize(secretKey)
         let serverURL = try SyncServerURL.normalize(server)
-        var client = SyncClient(serverURL: serverURL)
+        let backupURL = backup.flatMap { try? SyncServerURL.normalize($0) }.flatMap { $0 == serverURL ? nil : $0 }
+        var client = try await SyncClient.reachable([serverURL] + (backupURL.map { [$0] } ?? []))
         let login = try await SyncEngine.signIn(client: &client, email: email, password: password, secretKey: normalizedKey, device: Self.deviceName)
         let keyset = Keyset(kdf: login.kdf, wrappedKey: login.wrappedKey, accountId: login.accountId)
         let key = try await VaultStore.masterKey(fromRemote: keyset, password: password, secretKey: normalizedKey)
         let store = try VaultStore.createFromRemote(at: directory, keyset: keyset, key: key,
-                                                    sync: SyncState(serverUrl: serverURL, email: email, cursor: 0, lastSyncAt: nil))
+                                                    sync: SyncState(serverUrl: serverURL, email: email, cursor: 0, lastSyncAt: nil, backupUrl: backupURL))
         try DeviceSecrets.setSecretKey(normalizedKey, account: store.accountId)
         try DeviceSecrets.setSyncToken(client.token, account: store.accountId)
         didUnlock(store)
