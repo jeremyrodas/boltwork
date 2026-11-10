@@ -89,7 +89,8 @@ test('Windows provider: authenticatorGetInfo matches the shape Microsoft’s sam
   assert.equal(authenticatorInfo().toString('hex'), expected);
 });
 
-test('Windows provider pipe: what the helper sends gets approved, answered and saved', async () => {
+// The provider only starts on Windows (it serves a Windows named pipe).
+test('Windows provider pipe: what the helper sends gets approved, answered and saved', { skip: process.platform !== 'win32' }, async () => {
   const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path'); const net = await import('node:net');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sr-prov-'));
   process.env.LOCALAPPDATA = tmp; // where it writes its launch details

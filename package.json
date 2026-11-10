@@ -1,6 +1,6 @@
 {
   "name": "boltwork",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "description": "Boltwork: a local-first, end-to-end encrypted password manager",
   "main": "dist/main.js",
@@ -8,7 +8,7 @@
     "build": "node scripts/build.mjs",
     "start": "node scripts/build.mjs && electron .",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/build.mjs && node scripts/build.mjs --tests && node --test dist-test/*.test.js",
+    "test": "tsc --noEmit && node scripts/build.mjs && node scripts/build.mjs --tests && node --test dist-test/*.test.js",
     "dist": "node scripts/build.mjs && node scripts/build-passkey-provider.mjs --msix && node scripts/stage-passkeys.mjs && electron-builder --win nsis --publish never && node scripts/copy-release.mjs"
   },
   "license": "MIT",
