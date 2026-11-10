@@ -188,6 +188,24 @@ input[aria-invalid='true'] { border-color: var(--bad); }
 .check { display: flex; gap: 8px; align-items: center; margin: 6px 0; cursor: pointer; }
 .pw-input { display: flex; align-items: center; gap: 4px; position: relative; }
 .pw-input input { flex: 1; }
+/* Secret Key field with "Scan code", its scanned state, and the setup code under Show Secret Key. */
+.sk-input { display: flex; gap: 6px; align-items: stretch; }
+.sk-input input { flex: 1; min-width: 0; }
+.sk-input .menu-trigger > button { height: 100%; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sk-scanned { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border: 1px solid color-mix(in srgb, var(--good, var(--accent)) 45%, var(--line)); background: color-mix(in srgb, var(--good, var(--accent)) 10%, var(--panel-2)); border-radius: 8px; }
+.sk-scanned > svg { color: var(--good, var(--accent)); flex: none; }
+.key-code { display: flex; gap: 18px; align-items: flex-start; margin-top: 12px; }
+.key-code img { flex: none; background: #fff; padding: 6px; border-radius: 10px; border: 1px solid var(--line); image-rendering: pixelated; }
+.key-code-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.key-code-text .secret-key { margin-top: 0; cursor: text; align-self: stretch; overflow-wrap: anywhere; }
+.key-code-text p { margin: 0; line-height: 1.5; }
+@media (max-width: 560px) { .key-code { flex-direction: column; } }
+.qr-camera { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; overflow: hidden; margin: 10px 0; display: grid; place-items: center; }
+.qr-camera[hidden] { display: none; }
+.qr-camera video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.qr-camera.starting video { visibility: hidden; }
+.qr-camera-note { position: absolute; color: #fff; font-size: 13px; opacity: .8; }
+.qr-frame { position: absolute; width: min(56%, 220px); aspect-ratio: 1; border: 2px solid color-mix(in srgb, var(--accent) 85%, #fff); border-radius: 12px; box-shadow: 0 0 0 999px rgb(0 0 0 / .35); pointer-events: none; }
 .unlock-compact { height: 100%; display: grid; place-items: center; }
 .unlock-compact .welcome-card { box-shadow: none; border: 0; width: 100%; }
 

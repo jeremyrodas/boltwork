@@ -140,6 +140,8 @@ export interface Api {
   emergencyKit(password: string): string | null;
   changePassword(oldPassword: string, newPassword: string): void;
   revealSecretKey(accountPassword: string): string;
+  /** The Secret Key, and the text of a setup code (see setupCode.ts) holding it plus the sync details if the vault syncs; needs the account password. */
+  revealSetupCode(accountPassword: string): { secretKey: string; code: string };
 
   largeType(text: string): void;
   getLargeTypeText(): string;

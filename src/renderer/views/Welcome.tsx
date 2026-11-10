@@ -1,8 +1,17 @@
 import { useState } from 'react';
 import { api } from '../api';
+import { CircleCheck } from 'lucide-react';
 import { BrandMark } from '../components/BrandMark';
+import { Ico } from '../components/icons';
+import { SecretKeyInput } from '../components/SecretKeyInput';
+import type { SetupCode } from '../../core/setupCode';
 import { Button, PasswordInput, StrengthMeter, useStrength } from '../components/ui';
 import { useApp } from '../state';
+
+/** Moves focus to a field once the screen has re-rendered (after a setup code is scanned). */
+function focusById(id: string) {
+  setTimeout(() => document.getElementById(id)?.focus(), 0);
+}
 
 function Brand() {
   return <div className="brand"><BrandMark size={28} />Boltwork</div>;
@@ -124,6 +133,7 @@ function PasswordUnlock({ compact, notice }: { compact?: boolean; notice?: strin
   const { app } = useApp();
   const [pw, setPw] = useState('');
   const [sk, setSk] = useState('');
+  const [code, setCode] = useState<SetupCode | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const submit = async () => {
@@ -131,7 +141,7 @@ function PasswordUnlock({ compact, notice }: { compact?: boolean; notice?: strin
     setBusy(true);
     setError('');
     try {
-      await api.unlock(pw, app?.needsSecretKey ? sk : undefined);
+      await api.unlock(pw, app?.needsSecretKey ? (code?.secretKey ?? sk) : undefined);
     } catch (e) {
       setError((e as Error).message);
       setPw('');
@@ -145,8 +155,9 @@ function PasswordUnlock({ compact, notice }: { compact?: boolean; notice?: strin
         <LockHeading compact={compact} busy={busy} />
         {app?.needsSecretKey && (<>
           <label className="lbl" htmlFor="unlock-sk">Secret Key</label>
-          <input id="unlock-sk" className="mono" value={sk} onChange={e => setSk(e.target.value)} placeholder="SR1-XXXXXX-XXXXX-XXXXX-XXXXX-XXXXX" spellCheck={false} />
-          <p className="hint">This device doesn’t have your Secret Key yet. Find it in your Emergency Kit.</p>
+          <SecretKeyInput id="unlock-sk" value={sk} onChange={setSk} scanned={!!code} onUnscan={() => setCode(null)}
+            onScanned={c => { setCode(c); setError(''); focusById('unlock-pw'); }} />
+          {!code && <p className="hint">This device doesn’t have your Secret Key yet. Type it from your Emergency Kit, or choose <b>Scan code</b> and scan the kit’s setup code.</p>}
         </>)}
         {notice && <p className="hint">{notice}</p>}
         <label className="lbl" htmlFor="unlock-pw">Account password</label>
@@ -163,28 +174,46 @@ function SyncSignIn({ onBack, onDone }: { onBack: () => void; onDone: () => void
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [sk, setSk] = useState('');
+  const [code, setCode] = useState<SetupCode | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // A scanned setup code supplies the Secret Key, and the server and email when it has them; none of it is shown.
+  const fromCode = !!(code?.server && code.email);
+  const account = { server: fromCode ? code!.server! : server, email: fromCode ? code!.email! : email, secretKey: code ? code.secretKey : sk };
   const go = async () => {
     setBusy(true); setError('');
     try {
-      await api.syncSignIn(server, email, pw, sk);
+      await api.syncSignIn(account.server, account.email, pw, account.secretKey);
+      if (fromCode && code!.backup) await api.syncSetBackup(code!.backup).catch(() => undefined);
       onDone();
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   };
-  const ready = server && email && pw && sk.replace(/[^A-Za-z0-9]/g, '').length >= 20;
+  const ready = account.server && account.email && pw && account.secretKey.replace(/[^A-Za-z0-9]/g, '').length >= 20;
+  const scanned = (c: SetupCode) => { setCode(c); setError(''); focusById(c.server && c.email ? 'signin-pw' : 'signin-server'); };
   return (<>
     <h1>Sign in to your sync server</h1>
-    <p className="muted">Use the address of your Boltwork server, your email, your account password and the Secret Key from your Emergency Kit. Your vault downloads encrypted and is unlocked only on this device.</p>
-    <label className="lbl">Server address</label>
-    <input value={server} onChange={e => setServer(e.target.value)} placeholder="https://vault.example.com" autoFocus spellCheck={false} />
-    <label className="lbl">Email</label>
-    <input type="email" value={email} onChange={e => setEmail(e.target.value)} spellCheck={false} />
-    <label className="lbl">Account password</label>
-    <PasswordInput value={pw} onChange={setPw} />
-    <label className="lbl">Secret Key</label>
-    <input className="mono" value={sk} onChange={e => setSk(e.target.value)} placeholder="SR1-XXXXXX-XXXXX-XXXXX-XXXXX-XXXXX" spellCheck={false}
-      onKeyDown={e => { if (e.key === 'Enter' && ready && !busy) void go(); }} />
+    {fromCode ? (<>
+      <p className="muted">Your setup code has your server, email and Secret Key. Enter your account password to finish. Your vault downloads encrypted and is unlocked only on this device.</p>
+      <div className="sk-scanned" role="status">
+        <Ico icon={CircleCheck} />
+        <span className="grow">Using your setup code</span>
+        <Button small kind="ghost" onClick={() => setCode(null)}>Enter details instead</Button>
+      </div>
+    </>) : (<>
+      <p className="muted">Use the address of your Boltwork server, your email, your account password and the Secret Key from your Emergency Kit. Your vault downloads encrypted and is unlocked only on this device.</p>
+      {!code && <p className="hint">Have a setup code? Choose <b>Scan code</b> next to the Secret Key. A code from a signed-in device fills in everything except your password.</p>}
+      <label className="lbl" htmlFor="signin-server">Server address</label>
+      <input id="signin-server" value={server} onChange={e => setServer(e.target.value)} placeholder="https://vault.example.com" autoFocus spellCheck={false} />
+      <label className="lbl" htmlFor="signin-email">Email</label>
+      <input id="signin-email" type="email" value={email} onChange={e => setEmail(e.target.value)} spellCheck={false} />
+    </>)}
+    <label className="lbl" htmlFor="signin-pw">Account password</label>
+    <PasswordInput id="signin-pw" value={pw} onChange={setPw} autoFocus={fromCode} onEnter={() => { if (ready && !busy) void go(); }} />
+    {!fromCode && (<>
+      <label className="lbl" htmlFor="signin-sk">Secret Key</label>
+      <SecretKeyInput id="signin-sk" value={sk} onChange={setSk} scanned={!!code} onScanned={scanned} onUnscan={() => setCode(null)}
+        onEnter={() => { if (ready && !busy) void go(); }} />
+    </>)}
     {error && <p className="warn-text">{error}</p>}
     <div className="row gap">
       <Button onClick={onBack}>Back</Button>

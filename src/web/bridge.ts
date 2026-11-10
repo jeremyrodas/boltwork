@@ -296,6 +296,11 @@ const handlers: Handlers = {
     }
   },
   revealSecretKey: async pw => { await reauth(pw); return secretKey!; },
+  revealSetupCode: async pw => {
+    await reauth(pw);
+    const st = syncStatus();
+    return { secretKey: secretKey!, code: setupCodeText({ server: location.origin, email: st.email ?? '', secretKey: secretKey! }) };
+  },
 
   largeType: appsOnly,
   getLargeTypeText: () => '',

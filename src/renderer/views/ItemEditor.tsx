@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import jsQR from 'jsqr';
 import { blankContent, TEMPLATE_BY_CATEGORY } from '../../core/templates';
 import type { Category, Field, FieldType, ItemContent, Section } from '../../core/types';
 import { api } from '../api';
+import { decodeQrFromFile, pickFile } from '../qr';
 import { Dices, Eye, EyeOff, Paperclip, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import { CategoryIcon, Ico } from '../components/icons';
 import { askConfirm, Button, IconButton, ItemIcon, Menu, Modal, StrengthMeter, Toggle, useStrength } from '../components/ui';
@@ -15,17 +15,6 @@ type Draft = ItemContent & { id?: string; vaultId: string };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-async function decodeQrFromFile(file: File): Promise<string | null> {
-  const bmp = await createImageBitmap(file);
-  const canvas = document.createElement('canvas');
-  canvas.width = bmp.width;
-  canvas.height = bmp.height;
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(bmp, 0, 0);
-  const img = ctx.getImageData(0, 0, bmp.width, bmp.height);
-  return jsQR(img.data, img.width, img.height)?.data ?? null;
-}
-
 async function iconFromFile(file: File): Promise<string> {
   const bmp = await createImageBitmap(file);
   const canvas = document.createElement('canvas');
@@ -34,16 +23,6 @@ async function iconFromFile(file: File): Promise<string> {
   const s = Math.min(bmp.width, bmp.height);
   ctx.drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, 96, 96);
   return canvas.toDataURL('image/png');
-}
-
-function pickFile(accept: string): Promise<File | null> {
-  return new Promise(resolve => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = accept;
-    input.onchange = () => resolve(input.files?.[0] ?? null);
-    input.click();
-  });
 }
 
 function TotpEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {

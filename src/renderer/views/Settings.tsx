@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import QRCode from 'qrcode';
 import { SCHEMES, SCHEME_ORDER } from '../../core/schemes';
 import { BrandMark } from '../components/BrandMark';
 import type { ImportPreview } from '../../core/api';
@@ -82,7 +83,7 @@ function SecurityPane() {
   const { settings, updateSettings, run, app } = useApp();
   const web = app?.platform === 'web';
   const [modal, setModal] = useState<'password' | 'reveal' | 'kit' | null>(null);
-  const [secretKey, setSecretKey] = useState('');
+  const [shown, setShown] = useState<{ secretKey: string; qr: string } | null>(null);
   if (!settings) return null;
   return (<>
     <Section title="Security preset">
@@ -120,7 +121,16 @@ function SecurityPane() {
         <Button onClick={() => setModal('reveal')}>Show Secret Key…</Button>
         {!web && <Button onClick={() => setModal('kit')}>Save Emergency Kit…</Button>}
       </div>
-      {secretKey && <div className="secret-key small-key" onClick={() => setSecretKey('')} title="Click to hide">{secretKey}</div>}
+      {shown && (
+        <div className="key-code">
+          <img src={shown.qr} alt="Setup code with your Secret Key" width={160} height={160} />
+          <div className="key-code-text">
+            <div className="secret-key small-key">{shown.secretKey}</div>
+            <p className="muted small">To sign in on another device, scan this setup code there instead of typing the key: <b>Scan code</b> in Boltwork for Windows, or <b>Scan Setup Code</b> on iPhone and iPad. It holds your Secret Key{web ? '' : ', plus your sync server and email if you use sync'}, never your password. Don’t share it or take a picture of it.</p>
+            <Button small onClick={() => setShown(null)}>Hide</Button>
+          </div>
+        </div>
+      )}
     </Section>
     <Section title="Item history">
       <NumberSelect label="Keep previous versions per item" value={settings.historyLimit} onChange={v => updateSettings({ historyLimit: v })}
@@ -130,7 +140,7 @@ function SecurityPane() {
     </Section>
     {modal === 'password' && <ChangePassword onClose={() => setModal(null)} />}
     {modal === 'kit' && <ReauthModal title="Save Emergency Kit" onClose={() => setModal(null)} action={async pw => { if (await api.emergencyKit(pw)) void run(Promise.resolve(), 'Emergency Kit saved'); }} />}
-    {modal === 'reveal' && <ReauthModal title="Show Secret Key" onClose={() => setModal(null)} action={async pw => setSecretKey(await api.revealSecretKey(pw))} />}
+    {modal === 'reveal' && <ReauthModal title="Show Secret Key" onClose={() => setModal(null)} action={async pw => { const r = await api.revealSetupCode(pw); setShown({ secretKey: r.secretKey, qr: await QRCode.toDataURL(r.code, { errorCorrectionLevel: 'M', margin: 2, width: 320 }) }); }} />}
   </>);
 }
 

@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import jsQR from 'jsqr';
+import QRCode from 'qrcode';
 import { setupCodeText } from '../core/setupCode';
 import type { Api, ApiEvents, AppState, ImportPreview, QuickAccessAction } from '../core/api';
 import { generateSecretKey, normalizeSecretKey, ready } from '../core/crypto';
@@ -495,16 +496,30 @@ async function scanQrFromScreen(): Promise<string | null> {
 
 // ---------- Emergency Kit ----------
 
-function emergencyKitHtml(secretKey: string): string {
+/** The setup code for this vault: the Secret Key, plus the sync server, backup address and email when it syncs. */
+function currentSetupCodeText(): string {
+  const st = syncStatus();
+  const sync = st.serverUrl && st.email ? { server: st.serverUrl, backup: st.backupUrl, email: st.email } : {};
+  return setupCodeText({ ...sync, secretKey: currentSecretKey() });
+}
+
+function setupQrSvg(text: string): Promise<string> {
+  return QRCode.toString(text, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#111111', light: '#ffffff' } });
+}
+
+function emergencyKitHtml(secretKey: string, qrSvg: string): string {
   const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
   return `<!doctype html><html><head><meta charset="utf-8"><style>
   body{font-family:Segoe UI,system-ui,sans-serif;margin:48px;color:#111}h1{margin:0 0 4px;font-size:28px}
   .sub{color:#555;margin-bottom:28px}.box{border:2px solid #84621c;border-radius:12px;padding:18px 22px;margin:18px 0}
   .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#84621c;font-weight:700}
   .key{font-family:Consolas,monospace;font-size:24px;letter-spacing:.06em;margin-top:6px}
-  .blank{border-bottom:1px solid #999;height:34px}.small{font-size:13px;color:#444;line-height:1.5}</style></head><body>
+  .blank{border-bottom:1px solid #999;height:34px}.small{font-size:13px;color:#444;line-height:1.5}
+  .keyrow{display:flex;gap:24px;align-items:center}.keyrow .grow{flex:1;min-width:0}.qr{width:132px;height:132px;flex:none}.qr svg{width:100%;height:100%;display:block}</style></head><body>
   <h1>Boltwork Emergency Kit</h1><div class="sub">Created ${esc(new Date().toLocaleString())} on ${esc(os.hostname())}</div>
-  <div class="box"><div class="label">Secret Key</div><div class="key">${esc(secretKey)}</div></div>
+  <div class="box"><div class="keyrow"><div class="grow"><div class="label">Secret Key</div><div class="key">${esc(secretKey)}</div>
+  <div class="small" style="margin-top:10px">Signing in on a new computer or phone? Scan this setup code instead of typing the key: in Boltwork for Windows, choose <b>Scan code</b> next to the Secret Key.
+  Anyone who scans it gets your Secret Key, so keep this page as safe as the key itself.</div></div><div class="qr">${qrSvg}</div></div></div>
   <div class="box"><div class="label">Account password</div><div class="blank"></div>
   <div class="small">Write your account password here by hand, or keep it somewhere else safe.</div></div>
   <div class="small"><p>You need <b>both</b> your account password and your Secret Key to unlock Boltwork on a new device or after reinstalling.
@@ -518,7 +533,7 @@ async function saveEmergencyKit(): Promise<string | null> {
   if (canceled || !filePath) return null;
   const w = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } });
   try {
-    await w.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(emergencyKitHtml(sk))}`);
+    await w.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(emergencyKitHtml(sk, await setupQrSvg(currentSetupCodeText())))}`);
     fs.writeFileSync(filePath, await w.webContents.printToPDF({ pageSize: 'Letter', printBackground: true }));
     return filePath;
   } finally {
@@ -844,6 +859,10 @@ const handlers: Handlers = {
     }
   },
   revealSecretKey: async pw => { await reauth(pw); return currentSecretKey(); },
+  revealSetupCode: async pw => {
+    await reauth(pw);
+    return { secretKey: currentSecretKey(), code: currentSetupCodeText() };
+  },
 
   largeType: text => showLargeType(text),
   getLargeTypeText: () => largeTypeText,
