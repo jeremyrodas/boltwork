@@ -2,6 +2,7 @@
  * Talks to a Boltwork sync server and keeps a VaultStore in step with it.
  * Only sealed records, the wrapped master key and KDF parameters ever leave the device.
  */
+import sodium from 'libsodium-wrappers-sumo';
 import { deriveKek, authKeyFrom, wipe, type KdfParams, type Sealed } from './crypto';
 import type { SealedRecord } from './records';
 import type { VaultStore } from './store';
@@ -10,7 +11,7 @@ export class SyncError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
-const b64u = (u: Uint8Array) => Buffer.from(u).toString('base64url');
+const b64u = (u: Uint8Array) => sodium.to_base64(u, sodium.base64_variants.URLSAFE_NO_PADDING);
 
 /** Turns Node's bare "fetch failed" into something a person can act on. */
 export function unreachable(serverUrl: string, e: unknown): SyncError {
@@ -83,7 +84,28 @@ export class SyncClient {
     return json;
   }
 
-  health() { return this.req<{ ok: boolean; name: string; signups: string }>('GET', '/health'); }
+  health(timeoutMs?: number) { return this.req<{ ok: boolean; name: string; signups: string }>('GET', '/health', undefined, { timeoutMs }); }
+
+  /**
+   * A client for the first of `addresses` (main, then backup) whose server answers. With one address there's
+   * nothing to choose, so it's returned without asking. The main address gets a short wait, since the backup is
+   * there for when it's out of reach; a server error behind a proxy (5xx) counts as out of reach too.
+   */
+  static async reachable(addresses: string[], token = '', probeMs = 5_000): Promise<SyncClient> {
+    if (addresses.length < 2) return new SyncClient(addresses[0] ?? '', token);
+    let first: SyncError | undefined;
+    for (const address of addresses) {
+      const client = new SyncClient(address, token);
+      try {
+        await client.health(probeMs);
+        return client;
+      } catch (e) {
+        if (!(e instanceof SyncError) || (e.status !== 0 && e.status < 500)) throw e;
+        first ??= e;
+      }
+    }
+    throw new SyncError(0, `${first?.message ?? 'Can’t reach the sync server.'} Its backup address didn’t answer either.`);
+  }
   prelogin(email: string) { return this.req<{ kdf: KdfParams }>('POST', '/prelogin', { email }); }
 
   async signup(email: string, authKey: Uint8Array, keyset: { kdf: KdfParams; wrappedKey: Sealed; accountId: string }, device: string) {

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { ready, generateSecretKey, KDF_FAST_FOR_TESTS } from '../src/core/crypto';
-import { VaultStore, WrongPasswordError } from '../src/core/store';
+import { syncAddresses, VaultStore, WrongPasswordError } from '../src/core/store';
 import { blankContent } from '../src/core/templates';
 import { SyncClient, SyncError, signIn, syncOnce, normalizeServerUrl } from '../src/core/sync';
 import { startServer } from '../server/src/server';
@@ -302,4 +302,32 @@ test('a passkey made on one device while the item was edited on another is kept'
       assert.deepEqual(s.getItem(id).passkeys?.map(p => p.credentialId), [pk.credentialId]);
     }
   } finally { await srv.close(); }
+});
+
+test('backup address: used only when the main address is out of reach, and must be the same server', async () => {
+  const down = 'http://127.0.0.1:1';
+  const server = await startServer({ port: 0, dataDir: tmp(), signups: 'open', log: () => {} });
+  try {
+  assert.equal((await SyncClient.reachable([server.url])).serverUrl, server.url, 'one address: no probe');
+  assert.equal((await SyncClient.reachable([server.url, down])).serverUrl, server.url, 'main first when it answers');
+  assert.equal((await SyncClient.reachable([down, server.url], 'tok')).serverUrl, server.url, 'backup when main is down');
+  assert.equal((await SyncClient.reachable([down, server.url], 'tok')).token, 'tok');
+  await assert.rejects(SyncClient.reachable([down, 'http://127.0.0.1:2'], '', 2000), /backup address didn’t answer/);
+
+  // A session from one server is refused by another: that's how a backup address is checked.
+  const sk = generateSecretKey();
+  const a = await VaultStore.create(tmp(), PW, sk, KDF_FAST_FOR_TESTS);
+  const c = new SyncClient(server.url);
+  await c.signup('backup@example.com', await a.authKey(PW, sk), a.keyset(), 'Laptop');
+  assert.equal((await new SyncClient(server.url, c.token).account()).email, 'backup@example.com');
+  const other = await startServer({ port: 0, dataDir: tmp(), signups: 'open', log: () => {} });
+  try {
+    await assert.rejects(new SyncClient(other.url, c.token).account(), (e: unknown) => e instanceof SyncError && e.status === 401);
+  } finally { await other.close(); }
+
+  // Older apps ignore the field, and it survives a save.
+  a.syncState = { serverUrl: server.url, email: 'backup@example.com', cursor: 0, backupUrl: 'http://100.73.181.32:8787' };
+  assert.deepEqual(syncAddresses(a.syncState), [server.url, 'http://100.73.181.32:8787']);
+  assert.deepEqual(await syncOnce(a, await SyncClient.reachable([down, server.url], c.token)), { pulled: 0, pushed: 1, conflicts: 0, filesUp: 0, filesDown: 0 });
+  } finally { await server.close(); }
 });
