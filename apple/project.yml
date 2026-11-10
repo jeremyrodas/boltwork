@@ -6,6 +6,12 @@ options:
     iOS: "27.0"
     macOS: "27.0"
   createIntermediateGroups: true
+# AppStore: a Release build for the App Store. On the Mac it leaves out the browser link, whose access to
+# each browser's folders the Mac App Store doesn't allow (the DMG keeps it).
+configs:
+  Debug: debug
+  Release: release
+  AppStore: release
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -26,6 +32,12 @@ targets:
     sources:
       - path: Boltwork
       - path: Common
+      # The browser extension, so the Mac app can hand it to Chrome, Edge or Brave. Built by
+      # `node scripts/build.mjs` at the repository root (tools/make-dmg.sh runs it).
+      - path: ../dist-extension
+        type: folder
+        buildPhase: resources
+        destinationFilters: [macOS]
     dependencies:
       - package: BoltworkKit
       - target: AutoFill
@@ -73,6 +85,19 @@ targets:
         Debug:
           CODE_SIGN_IDENTITY[sdk=macosx*]: "-"
           CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: Boltwork/Resources/Boltwork-AdHoc.entitlements
+        AppStore:
+          CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: Boltwork/Resources/Boltwork-AppStore.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) APP_STORE"
+          # The script below removes the browser connector, outside what a sandboxed script may touch.
+          ENABLE_USER_SCRIPT_SANDBOXING: NO
+    postBuildScripts:
+      - name: Leave out the browser connector and extension (App Store)
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ "$CONFIGURATION" = AppStore ]; then
+            rm -f "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/boltwork-browser-host"
+            rm -rf "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/dist-extension"
+          fi
     info:
       path: Boltwork/Resources/Info.plist
       properties:
@@ -80,6 +105,11 @@ targets:
         # IP ranges, and its local-networking exception misses VPN ranges like 100.64/10, so it defers to that check.
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
+        # Verification code setup links and QR codes. Handling them lists Boltwork under "Set Up Codes In".
+        CFBundleURLTypes:
+          - CFBundleURLName: app.boltwork.apple.otpauth
+            CFBundleURLSchemes: [otpauth]
+            CFBundleTypeRole: Editor
   AutoFill:
     type: app-extension
     supportedDestinations: [iOS, macOS]
@@ -119,6 +149,7 @@ targets:
             ASCredentialProviderExtensionCapabilities:
               ProvidesPasswords: true
               ProvidesPasskeys: true
+              ProvidesOneTimeCodes: true
               ShowsConfigurationUI: true
   BrowserHost:
     type: tool

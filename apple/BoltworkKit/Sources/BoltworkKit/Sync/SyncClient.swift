@@ -128,6 +128,8 @@ public struct SyncClient: Sendable {
 
     public func logout() async throws { let _: Empty = try await call("POST", "/logout") }
     public func account() async throws -> Account { try await call("GET", "/account") }
+    /// Deletes the account and everything it stored on the server; every device signed in to it stops syncing.
+    public func deleteAccount() async throws { let _: Empty = try await call("DELETE", "/account") }
 
     public func updateKeys(authKey: [UInt8], keyset: Keyset) async throws {
         struct Body: Encodable { let authKey: String; let kdf: KdfParams; let wrappedKey: Sealed }

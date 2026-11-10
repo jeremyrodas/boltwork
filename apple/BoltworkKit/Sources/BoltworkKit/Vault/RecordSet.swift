@@ -90,6 +90,11 @@ struct RecordSet {
         records[id] = r
     }
 
+    /// After sync is turned off: nothing has been sent anywhere, so a later setup uploads everything again.
+    mutating func forgetServerRevisions() {
+        for id in order { records[id]?.rev = 0; records[id]?.dirty = true }
+    }
+
     /// Keeps local changes but bases them on the server's newer revision.
     mutating func adoptRev(id: String, rev: Int) {
         records[id]?.rev = rev

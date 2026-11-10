@@ -2,7 +2,7 @@ import AuthenticationServices
 import BoltworkKit
 
 /// What the system shows in AutoFill suggestions before Boltwork is opened: each login's site and
-/// username, and each passkey's site and account. Never a password or key.
+/// username, each passkey's site and account, and which sites have a verification code. Never a password, key or code.
 enum CredentialIdentities {
     static func identities(for items: [Item]) -> [any ASCredentialIdentity] {
         items.filter { $0.state == .active && $0.category == .login }.flatMap { item -> [any ASCredentialIdentity] in
@@ -16,7 +16,13 @@ enum CredentialIdentities {
                 guard let id = WebAuthn.fromBase64URL(p.credentialId), let handle = WebAuthn.fromBase64URL(p.userHandle) else { return nil }
                 return ASPasskeyCredentialIdentity(relyingPartyIdentifier: p.rpId, userName: p.userName, credentialID: Data(id), userHandle: Data(handle), recordIdentifier: item.id)
             }
-            return passwords + passkeys
+            let codeHosts = (try? item.content.field(for: .totp).map { try TOTP($0.value) }) != nil
+                ? Set(item.content.urls.map { Domain.host(of: $0.url) }.filter { !$0.isEmpty }) : []
+            let codes: [any ASCredentialIdentity] = codeHosts.sorted().map {
+                ASOneTimeCodeCredentialIdentity(serviceIdentifier: ASCredentialServiceIdentifier(identifier: $0, type: .domain),
+                                                label: user.isEmpty ? item.title : user, recordIdentifier: item.id)
+            }
+            return passwords + passkeys + codes
         }
     }
 

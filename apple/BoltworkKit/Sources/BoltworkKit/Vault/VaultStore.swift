@@ -487,6 +487,9 @@ public final class VaultStore {
 
     public func markSynced(id: String, rev: Int, updatedAt: Int64) { records.markSynced(id: id, rev: rev, updatedAt: updatedAt) }
 
+    /// Forgets server revisions after sync is turned off, so a later setup (maybe to another server) uploads everything again.
+    public func forgetServerRevisions() { records.forgetServerRevisions() }
+
     // MARK: - Attachments
 
     private func attachmentURL(_ id: String) -> URL { attachmentsURL.appending(path: id) }

@@ -24,13 +24,15 @@ struct AutoFillView: View {
             switch session.request {
             case .list(let services, let passkey):
                 CredentialPicker(session: session, services: services, passkeyParameters: passkey)
+            case .codes(let services):
+                CodePicker(session: session, services: services)
             case .register(let request):
                 PasskeyRegistrationView(session: session, request: request)
             case .configure:
                 ContentUnavailableView {
                     Label("AutoFill Is On", systemImage: "checkmark.shield")
                 } description: {
-                    Text("Boltwork suggests your logins and passkeys when you sign in to apps and websites.")
+                    Text("Boltwork suggests your logins, passkeys and verification codes when you sign in to apps and websites.")
                 } actions: {
                     Button("Done") { session.done(.configured) }.buttonStyle(.borderedProminent)
                 }

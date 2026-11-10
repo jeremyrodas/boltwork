@@ -12,6 +12,8 @@ final class AutoFillSession {
     enum Request {
         /// The user opened Boltwork from AutoFill to pick a login, or a passkey when `passkey` is set.
         case list([ASCredentialServiceIdentifier], passkey: ASPasskeyCredentialRequestParameters?)
+        /// The user opened Boltwork from AutoFill to pick a verification code.
+        case codes([ASCredentialServiceIdentifier])
         /// The user picked one of Boltwork's suggestions.
         case provide(any ASCredentialRequest)
         case register(ASPasskeyCredentialRequest)
@@ -23,6 +25,7 @@ final class AutoFillSession {
         case password(ASPasswordCredential)
         case assertion(ASPasskeyAssertionCredential)
         case registration(ASPasskeyRegistrationCredential)
+        case code(ASOneTimeCodeCredential)
         case configured
         case cancelled(ASExtensionError.Code)
     }
@@ -82,7 +85,7 @@ final class AutoFillSession {
             provide(credentialRequest, from: store)
         case .configure:
             Task { await CredentialIdentities.replace(with: store.items) }
-        case .list, .register:
+        case .list, .codes, .register:
             break
         }
     }
@@ -116,6 +119,28 @@ final class AutoFillSession {
 
     private func password(of item: Item) -> String { item.content.field(for: .password)?.value ?? "" }
 
+    // MARK: - Verification codes
+
+    var allCodeLogins: [Item] {
+        (store?.items ?? []).filter { $0.state == .active && $0.category == .login && Self.totp(of: $0) != nil }
+            .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+    }
+
+    func codeLogins(matching services: [ASCredentialServiceIdentifier]) -> [Item] {
+        let bases = Set(services.map { Domain.base($0.type == .URL ? Domain.host(of: $0.identifier) : $0.identifier.lowercased()) })
+        return allCodeLogins.filter { item in item.content.urls.contains { bases.contains(Domain.base(Domain.host(of: $0.url))) } }
+    }
+
+    func fillCode(_ item: Item) {
+        guard let totp = Self.totp(of: item) else { return cancel(.credentialIdentityNotFound) }
+        try? store?.markUsed(item.id)
+        done(.code(ASOneTimeCodeCredential(code: totp.code(at: .now))))
+    }
+
+    static func totp(of item: Item) -> TOTP? {
+        item.content.field(for: .totp).flatMap { try? TOTP($0.value) }
+    }
+
     // MARK: - Passkeys
 
     func passkeys(for parameters: ASPasskeyCredentialRequestParameters) -> [(item: Item, passkey: Passkey)] {
@@ -143,6 +168,9 @@ final class AutoFillSession {
                 return cancel(.credentialIdentityNotFound)
             }
             signIn(with: match.passkey, itemId: match.item.id, clientDataHash: passkeyRequest.clientDataHash)
+        } else if credentialRequest.type == .oneTimeCode, let id = credentialRequest.credentialIdentity.recordIdentifier,
+                  let item = store.items.first(where: { $0.id == id && $0.state == .active }) {
+            fillCode(item)
         } else if let id = credentialRequest.credentialIdentity.recordIdentifier,
                   let item = store.items.first(where: { $0.id == id && $0.state == .active }) {
             fill(item)

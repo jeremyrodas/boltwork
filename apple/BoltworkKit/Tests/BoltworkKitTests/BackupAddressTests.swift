@@ -45,3 +45,32 @@ struct BackupAddressLive {
         #expect(try await SyncClient.reachable([server, down]).serverURL == server)
     }
 }
+
+/// Against a running sync server with sign-ups open: `BOLTWORK_TEST_SERVER=http://127.0.0.1:8787 swift test --filter DeleteAccountLive`.
+@MainActor
+struct DeleteAccountLive {
+    let server = ProcessInfo.processInfo.environment["BOLTWORK_TEST_SERVER"]
+
+    @Test func deletesTheAccountAndForgetsRevisions() async throws {
+        guard let server else { return }
+        let dir = FileManager.default.temporaryDirectory.appending(path: "boltwork-delete-\(UUID().uuidString)")
+        let password = "delete test password", secretKey = SecretKey.generate()
+        let email = "delete-\(UUID().uuidString.prefix(8))@example.test"
+        let created = try await VaultStore.create(at: dir, password: password, secretKey: secretKey, cost: VaultCrypto.fastCostForTests)
+        let store = try VaultStore.open(created: created, at: dir)
+        let authKey = try await VaultStore.authKey(keyset: store.keyset, password: password, secretKey: secretKey)
+        var client = SyncClient(serverURL: server)
+        try await client.signup(email: email, authKey: authKey, keyset: store.keyset, device: "delete test")
+        store.syncState = SyncState(serverUrl: server, email: email, cursor: 0, lastSyncAt: nil)
+        try await SyncEngine.syncOnce(store: store, client: client)
+        #expect(store.dirtyRecords.isEmpty)
+
+        try await client.deleteAccount()
+        var again = SyncClient(serverURL: server)
+        await #expect(throws: SyncError.self) { _ = try await again.login(email: email, authKey: authKey, device: "delete test") }
+
+        store.forgetServerRevisions()
+        #expect(!store.dirtyRecords.isEmpty)
+        #expect(store.dirtyRecords.allSatisfy { $0.rev == 0 })
+    }
+}

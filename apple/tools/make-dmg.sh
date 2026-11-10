@@ -27,6 +27,8 @@ if ! security find-identity -v -p codesigning | grep -q "Developer ID Applicatio
 fi
 
 rm -rf "$WORK" && mkdir -p "$WORK" "$ROOT/release"
+echo "→ Building the browser extension"
+(cd "$ROOT" && node scripts/build.mjs >/dev/null)
 cd "$APPLE"
 command -v xcodegen >/dev/null && xcodegen --quiet
 

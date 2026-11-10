@@ -11,4 +11,6 @@ enum AppSettings {
     static let appearance = "appearance"
     static let sshAgent = "sshAgent"
     static let browserLink = "browserLink"
+    /// Boltwork asked once to become the AutoFill provider; it doesn't ask again.
+    static let autoFillOffered = "autoFillOffered"
 }

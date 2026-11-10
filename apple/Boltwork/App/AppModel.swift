@@ -1,3 +1,4 @@
+import AuthenticationServices
 import BoltworkKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -57,7 +58,9 @@ final class AppModel {
         sshAgent.model = self
         if UserDefaults.standard.bool(forKey: AppSettings.sshAgent) { sshAgent.setEnabled(true) }
         browserLink.model = self
+        #if !APP_STORE
         if UserDefaults.standard.bool(forKey: AppSettings.browserLink) { browserLink.setEnabled(true) }
+        #endif
         watchForSleep()
         #endif
     }
@@ -133,6 +136,7 @@ final class AppModel {
         sync.attach(store: store)
         sync.start()
         startIdleWatcher()
+        offerAutoFill()
     }
 
     func lock() {
@@ -155,7 +159,10 @@ final class AppModel {
     func setQuickUnlock(_ enabled: Bool) {
         guard let store else { return }
         if enabled {
-            do { try QuickUnlock.enable(masterKey: try store.masterKeyCopy(), account: store.accountId) } catch { alertMessage = error.localizedDescription }
+            do {
+                try QuickUnlock.enable(masterKey: try store.masterKeyCopy(), account: store.accountId)
+                offerAutoFill()
+            } catch { alertMessage = error.localizedDescription }
         } else {
             QuickUnlock.disable(account: store.accountId)
         }
@@ -226,6 +233,37 @@ final class AppModel {
     @ObservationIgnored private var autoFillUpdate: Task<Void, Never>?
 
     /// Tells the system which sites and accounts Boltwork can fill, a moment after changes settle.
+    /// Asks once to make Boltwork the AutoFill provider, as soon as AutoFill can work (quick unlock is on).
+    private func offerAutoFill() {
+        guard SharedContainer.isAvailable, isQuickUnlockEnabled, !UserDefaults.standard.bool(forKey: AppSettings.autoFillOffered) else { return }
+        Task {
+            guard !(await CredentialIdentities.isEnabled) else { return }
+            UserDefaults.standard.set(true, forKey: AppSettings.autoFillOffered)
+            if (try? await ASSettingsHelper.requestToTurnOnCredentialProviderExtension()) == true { updateAutoFill() }
+        }
+    }
+
+    // MARK: - Verification code setup
+
+    /// A setup link or QR code opened with Boltwork; shown once the vault is unlocked.
+    var codeSetup: CodeSetupLink?
+
+    func open(_ url: URL) {
+        guard url.scheme?.lowercased() == "otpauth" else { return }
+        do { codeSetup = try CodeSetupLink(url) } catch { alertMessage = error.localizedDescription }
+    }
+
+    /// Saves the code on `itemId`, or on a new login when that's nil.
+    @discardableResult
+    func addCode(_ link: CodeSetupLink, to itemId: String?) -> Item? {
+        codeSetup = nil
+        if let item = item(id: itemId) {
+            return saveItem(id: item.id, vaultId: item.vaultId, content: link.adding(to: item.content))
+        }
+        guard let vault = vaults.first else { return nil }
+        return saveItem(id: nil, vaultId: vault.id, content: link.newLogin)
+    }
+
     func updateAutoFill() {
         autoFillUpdate?.cancel()
         let items = items
@@ -372,15 +410,29 @@ final class AppModel {
         sync.addressesChanged()
     }
 
-    func disconnectSync() async {
+    /// Stops syncing this device. With `deleteAccount`, also deletes the account and all its data from the server
+    /// first, and throws (leaving sync on) if the server couldn't be told.
+    func disconnectSync(deleteAccount: Bool = false) async throws {
         guard let store else { return }
         // Stop first, so no round starts (or finishes) while this device signs out.
         sync.stop()
-        if let state = store.syncState, let token = DeviceSecrets.syncToken(account: store.accountId) {
+        if deleteAccount {
+            do {
+                guard let state = store.syncState, let token = DeviceSecrets.syncToken(account: store.accountId) else {
+                    throw SyncError(status: 0, message: "Sign in to sync again before deleting the account.")
+                }
+                try await SyncClient.reachable(state.addresses, token: token).deleteAccount()
+            } catch {
+                sync.attach(store: store)
+                throw error
+            }
+        }
+        if !deleteAccount, let state = store.syncState, let token = DeviceSecrets.syncToken(account: store.accountId) {
             try? await SyncClient.reachable(state.addresses, token: token).logout()
         }
         try? DeviceSecrets.setSyncToken(nil, account: store.accountId)
         store.syncState = nil
+        store.forgetServerRevisions()
         try? store.writeFile()
         sync.attach(store: store)
     }

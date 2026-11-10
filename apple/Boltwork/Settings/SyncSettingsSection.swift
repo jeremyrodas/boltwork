@@ -11,6 +11,7 @@ struct SyncSettingsSection: View {
     @State private var working = false
     @State private var errorMessage: String?
     @State private var confirmingDisconnect = false
+    @State private var confirmingDelete = false
     @State private var editingBackup = false
     @State private var backupDraft = ""
 
@@ -60,9 +61,16 @@ struct SyncSettingsSection: View {
             }
             Button("Stop Syncing This Device…", role: .destructive) { confirmingDisconnect = true }
                 .confirmationDialog("Stop syncing this device?", isPresented: $confirmingDisconnect) {
-                    Button("Stop Syncing", role: .destructive) { Task { await model.disconnectSync() } }
+                    Button("Stop Syncing", role: .destructive) { Task { try? await model.disconnectSync() } }
                 } message: {
                     Text("Your vault stays on this device and on the server. Changes here won’t reach your other devices.")
+                }
+            Button("Delete Account…", role: .destructive) { confirmingDelete = true }
+                .disabled(working)
+                .confirmationDialog("Delete your sync account?", isPresented: $confirmingDelete) {
+                    Button("Delete Account", role: .destructive) { run { try await model.disconnectSync(deleteAccount: true) } }
+                } message: {
+                    Text("This deletes the account and everything it stores from the server, and can’t be undone. Your vault stays on this device. Your other devices stop syncing.")
                 }
             if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
         } header: {

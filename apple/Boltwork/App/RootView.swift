@@ -30,6 +30,10 @@ struct RootView: View {
         .tint(Theme.accent)
         .preferredColorScheme(appearance.colorScheme)
         .animation(.default, value: model.phase)
+        .onOpenURL { model.open($0) }
+        .sheet(item: Binding(get: { model.phase == .unlocked ? model.codeSetup : nil }, set: { model.codeSetup = $0 })) { link in
+            CodeSetupSheet(link: link)
+        }
         .sheet(item: $model.newSecretKey) { key in
             SecretKeySheet(secretKey: key.value)
                 .interactiveDismissDisabled()

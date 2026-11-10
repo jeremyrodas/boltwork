@@ -79,6 +79,25 @@ final class VaultFlowUITests: XCTestCase {
         attach(app, "sync-off")
     }
 
+    /// A verification code setup link (what scanning a QR code with the camera hands over) makes a login with the code.
+    func testCodeSetupLinkAddsALogin() throws {
+        let app = launchWithNewVault()
+        openItemsList(app)
+        app.open(URL(string: "otpauth://totp/Example%20Shop:sam@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Example%20Shop")!)
+        // Coming back from another app locks Boltwork; the code waits until it's unlocked.
+        let unlockField = app.secureTextFields["Account password"]
+        if unlockField.waitForExistence(timeout: 5) {
+            unlockField.tap()
+            unlockField.typeText(password)
+            app.buttons["Unlock"].tap()
+        }
+        let add = app.buttons["New Login for Example Shop"]
+        XCTAssertTrue(add.waitForExistence(timeout: 10), "asks where to save the code")
+        attach(app, "code-setup")
+        add.tap()
+        XCTAssertTrue(app.staticTexts["Example Shop"].firstMatch.waitForExistence(timeout: 10), "the new login is listed")
+    }
+
     #if os(iOS)
     func testSecretKeyAndEmergencyKitNeedPassword() throws {
         let app = launchWithNewVault()

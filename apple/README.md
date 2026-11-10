@@ -73,6 +73,21 @@ It archives the app, exports it with Developer ID, puts it on a disk image next 
 notarizes the image and staples the ticket. `SKIP_NOTARIZE=1` stops after signing; `MACOS_MIN` sets the oldest
 macOS it runs on (default 26.0).
 
+## App Store
+
+`tools/make-app-store.sh` archives the iPhone/iPad and Mac apps with the **AppStore** configuration and exports
+them to `build/app-store/` (`UPLOAD=1` sends them to App Store Connect instead):
+
+```bash
+TEAM_ID=<your team ID> apple/tools/make-app-store.sh
+```
+
+The AppStore configuration is Release, except that the Mac app leaves out the browser link: the Mac App Store
+doesn't allow its access to each browser's folders, so the browser connector and its setting are removed. The
+notarized DMG keeps it. Both apps carry a privacy manifest (`PrivacyInfo.xcprivacy`) that declares no data
+collection or tracking. Sync settings include **Delete Account**, which the App Store requires for apps that create
+accounts.
+
 ## Mac: SSH agent and browser extension
 
 - **SSH agent** (Settings → SSH): serves SSH Key items to ssh and git, and asks before each use. Point ssh at it

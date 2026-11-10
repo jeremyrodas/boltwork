@@ -18,9 +18,11 @@ struct SettingsView: View {
             Tab("Sync", systemImage: "arrow.triangle.2.circlepath") {
                 Form { UnlockedOnly { SyncSettingsSection() } }.formStyle(.grouped)
             }
+            #if !APP_STORE
             Tab("Browser", systemImage: "globe") {
                 Form { BrowserSettingsSection() }.formStyle(.grouped)
             }
+            #endif
             Tab("SSH", systemImage: "terminal") {
                 Form { SSHAgentSettingsSection() }.formStyle(.grouped)
             }

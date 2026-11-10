@@ -58,6 +58,49 @@ struct CredentialPicker: View {
     }
 }
 
+/// Picks a login's verification code for the page or app being filled.
+struct CodePicker: View {
+    let session: AutoFillSession
+    let services: [ASCredentialServiceIdentifier]
+    @State private var query = ""
+
+    var body: some View {
+        List {
+            let suggested = session.codeLogins(matching: services)
+            if query.isEmpty, !suggested.isEmpty {
+                Section("Suggested") { rows(suggested) }
+            }
+            Section(query.isEmpty ? "All Verification Codes" : "Results") { rows(searchResults) }
+        }
+        .searchable(text: $query, prompt: "Search logins")
+        .navigationTitle("Boltwork")
+        .overlay {
+            if !query.isEmpty, searchResults.isEmpty { ContentUnavailableView.search(text: query) }
+            else if query.isEmpty, session.allCodeLogins.isEmpty {
+                ContentUnavailableView("No Verification Codes", systemImage: "clock.badge.checkmark",
+                                       description: Text("Logins with a one-time password show up here."))
+            }
+        }
+    }
+
+    private var searchResults: [Item] {
+        guard !query.isEmpty else { return session.allCodeLogins }
+        return session.allCodeLogins.filter { item in
+            item.title.localizedStandardContains(query) || item.content.urls.contains { $0.url.localizedStandardContains(query) }
+        }
+    }
+
+    private func rows(_ items: [Item]) -> some View {
+        ForEach(items) { item in
+            Button {
+                session.fillCode(item)
+            } label: {
+                CredentialRow(title: item.title, detail: item.content.field(for: .username)?.value ?? "", systemImage: "clock.badge.checkmark")
+            }
+        }
+    }
+}
+
 private struct CredentialRow: View {
     let title: String
     let detail: String

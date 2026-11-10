@@ -31,6 +31,10 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
         session.request = .list(serviceIdentifiers, passkey: requestParameters)
     }
 
+    override func prepareOneTimeCodeCredentialList(for serviceIdentifiers: [ASCredentialServiceIdentifier]) {
+        session.request = .codes(serviceIdentifiers)
+    }
+
     /// The vault is locked whenever the extension starts, so filling always needs Face ID or Touch ID first.
     override func provideCredentialWithoutUserInteraction(for credentialRequest: any ASCredentialRequest) {
         complete(.cancelled(.userInteractionRequired))
@@ -57,6 +61,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
         case .password(let credential): extensionContext.completeRequest(withSelectedCredential: credential, completionHandler: nil)
         case .assertion(let credential): extensionContext.completeAssertionRequest(using: credential, completionHandler: nil)
         case .registration(let credential): extensionContext.completeRegistrationRequest(using: credential, completionHandler: nil)
+        case .code(let credential): extensionContext.completeOneTimeCodeRequest(using: credential, completionHandler: nil)
         case .configured: extensionContext.completeExtensionConfigurationRequest()
         case .cancelled(let code): extensionContext.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code: code.rawValue))
         }
