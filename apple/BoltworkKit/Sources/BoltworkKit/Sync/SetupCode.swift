@@ -1,19 +1,20 @@
 import Foundation
 
 /// What a signed-in device shows (as a QR code) so a new device can join the same account by scanning it:
-/// the sync server's address, the email and the Secret Key. Never the account password, which is still typed
-/// on the new device. Every Boltwork app reads and writes the same text (`src/core/setupCode.ts`).
+/// the Secret Key and, when the vault syncs, the server's address and the email. Never the account password,
+/// which is still typed on the new device. Every Boltwork app reads and writes the same text (`src/core/setupCode.ts`).
 public struct SetupCode: Equatable, Sendable {
     public static let prefix = "boltwork-setup:"
     private static let version = 1
 
-    public var server: String
+    /// Nil when the vault doesn't sync: the code then holds only the Secret Key.
+    public var server: String?
     /// Another address for the same server, if the showing device has one.
     public var backup: String?
-    public var email: String
+    public var email: String?
     public var secretKey: String
 
-    public init(server: String, backup: String? = nil, email: String, secretKey: String) {
+    public init(server: String? = nil, backup: String? = nil, email: String? = nil, secretKey: String) {
         self.server = server
         self.backup = backup
         self.email = email
@@ -29,7 +30,7 @@ public struct SetupCode: Equatable, Sendable {
     }
 
     public var text: String {
-        let payload = Payload(v: Self.version, server: server, backup: backup.flatMap { $0.isEmpty ? nil : $0 }, email: email, secretKey: secretKey)
+        let payload = Payload(v: Self.version, server: Self.filled(server), backup: Self.filled(backup), email: Self.filled(email), secretKey: secretKey)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.withoutEscapingSlashes]
         return Self.prefix + String(decoding: (try? encoder.encode(payload)) ?? Data(), as: UTF8.self)
@@ -43,11 +44,12 @@ public struct SetupCode: Equatable, Sendable {
             throw SetupCodeError.notASetupCode
         }
         guard payload.v == Self.version else { throw SetupCodeError.newerVersion }
-        guard let server = payload.server, !server.isEmpty, let email = payload.email, !email.isEmpty,
-              let secretKey = payload.secretKey, !secretKey.isEmpty else {
-            throw SetupCodeError.notASetupCode
-        }
-        self.init(server: server, backup: payload.backup.flatMap { $0.isEmpty ? nil : $0 }, email: email, secretKey: secretKey)
+        guard let secretKey = payload.secretKey, !secretKey.isEmpty else { throw SetupCodeError.notASetupCode }
+        self.init(server: Self.filled(payload.server), backup: Self.filled(payload.backup), email: Self.filled(payload.email), secretKey: secretKey)
+    }
+
+    private static func filled(_ value: String?) -> String? {
+        value.flatMap { $0.isEmpty ? nil : $0 }
     }
 }
 

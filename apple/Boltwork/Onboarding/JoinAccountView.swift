@@ -16,7 +16,8 @@ struct JoinAccountView: View {
 
     private var canJoin: Bool {
         guard !password.isEmpty, !isWorking else { return false }
-        return scannedCode != nil || (!server.isEmpty && !email.isEmpty && !secretKey.isEmpty)
+        if let scannedCode, scannedCode.server != nil, scannedCode.email != nil { return true }
+        return !server.isEmpty && !email.isEmpty && (scannedCode != nil || !secretKey.isEmpty)
     }
 
     var body: some View {
@@ -36,9 +37,22 @@ struct JoinAccountView: View {
         #endif
     }
 
-    /// After a scan: only the account password. The server, email and Secret Key stay hidden.
+    /// After a scan: only the account password. The server, email and Secret Key stay hidden. A code from a
+    /// vault that doesn't sync holds only the Secret Key, so the server and email are still typed.
     private var passwordOnly: some View {
         Form {
+            if scannedCode?.server == nil || scannedCode?.email == nil {
+                Section("Sync server") {
+                    TextField("Server address", text: $server, prompt: Text("sync.example.com or 192.168.1.20:8787"))
+                        .textContentType(.URL)
+                        .keyboard(.url)
+                        .plainTextEntry()
+                    TextField("Email", text: $email)
+                        .textContentType(.username)
+                        .keyboard(.email)
+                        .plainTextEntry()
+                }
+            }
             Section {
                 SecureField("Account password", text: $password)
                     .textContentType(.password)
@@ -127,7 +141,8 @@ struct JoinAccountView: View {
             defer { isWorking = false }
             do {
                 if let code = scannedCode {
-                    try await model.joinAccount(server: code.server, email: code.email, password: password, secretKey: code.secretKey, backup: code.backup)
+                    try await model.joinAccount(server: code.server ?? server, email: code.email ?? email.trimmingCharacters(in: .whitespaces),
+                                                password: password, secretKey: code.secretKey, backup: code.backup)
                 } else {
                     try await model.joinAccount(server: server, email: email.trimmingCharacters(in: .whitespaces), password: password, secretKey: secretKey)
                 }

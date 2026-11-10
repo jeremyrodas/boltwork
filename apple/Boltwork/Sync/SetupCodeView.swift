@@ -23,8 +23,8 @@ struct SetupCodeView: View {
                     Text("On your new phone or tablet, open Boltwork, choose I Already Use Boltwork, then Scan Setup Code. You’ll still type your account password there.")
                 }
                 Section {
-                    LabeledContent("Server", value: code.server)
-                    LabeledContent("Email", value: code.email)
+                    LabeledContent("Server", value: code.server ?? "")
+                    LabeledContent("Email", value: code.email ?? "")
                 } footer: {
                     Text("This code contains your Secret Key. Don’t share it or take a picture of it.")
                 }

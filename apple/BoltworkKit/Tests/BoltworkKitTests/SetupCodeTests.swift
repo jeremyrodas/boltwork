@@ -18,6 +18,13 @@ struct SetupCodeTests {
         #expect(!plain.text.contains("backup"))
     }
 
+    @Test func canHoldOnlyTheSecretKey() throws {
+        let keyOnly = #"boltwork-setup:{"v":1,"secretKey":"SR1-ABCDEF-GHJKM-NPQRS-TVWXY-Z0123"}"#
+        let parsed = try SetupCode(keyOnly)
+        #expect(parsed == SetupCode(secretKey: code.secretKey))
+        #expect(SetupCode(secretKey: code.secretKey).text == keyOnly)
+    }
+
     @Test func refusesOtherTextNewerVersionsAndMissingParts() {
         #expect(throws: SetupCodeError.notASetupCode) { try SetupCode("otpauth://totp/x?secret=abc") }
         #expect(throws: SetupCodeError.notASetupCode) { try SetupCode("boltwork-setup:nope") }

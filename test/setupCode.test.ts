@@ -13,6 +13,12 @@ test('a setup code round-trips and matches the shared text', () => {
   assert.deepEqual(parseSetupCode(setupCodeText(plain)), plain);
 });
 
+test('a code can hold only the Secret Key', () => {
+  const KEY_ONLY = 'boltwork-setup:{"v":1,"secretKey":"SR1-ABCDEF-GHJKM-NPQRS-TVWXY-Z0123"}';
+  assert.equal(setupCodeText({ secretKey: CODE.secretKey }), KEY_ONLY);
+  assert.deepEqual(parseSetupCode(KEY_ONLY), { secretKey: CODE.secretKey });
+});
+
 test('other text, newer versions and missing parts are refused', () => {
   assert.throws(() => parseSetupCode('otpauth://totp/x?secret=abc'), /isn’t a Boltwork setup code/);
   assert.throws(() => parseSetupCode('boltwork-setup:nope'), /isn’t a Boltwork setup code/);
