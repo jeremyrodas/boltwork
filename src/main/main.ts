@@ -513,12 +513,12 @@ function emergencyKitHtml(secretKey: string, qrSvg: string): string {
   body{font-family:Segoe UI,system-ui,sans-serif;margin:48px;color:#111}h1{margin:0 0 4px;font-size:28px}
   .sub{color:#555;margin-bottom:28px}.box{border:2px solid #84621c;border-radius:12px;padding:18px 22px;margin:18px 0}
   .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#84621c;font-weight:700}
-  .key{font-family:Consolas,monospace;font-size:24px;letter-spacing:.06em;margin-top:6px}
+  .key{font-family:Consolas,monospace;font-size:21px;letter-spacing:.05em;margin-top:6px;white-space:nowrap}
   .blank{border-bottom:1px solid #999;height:34px}.small{font-size:13px;color:#444;line-height:1.5}
   .keyrow{display:flex;gap:24px;align-items:center}.keyrow .grow{flex:1;min-width:0}.qr{width:132px;height:132px;flex:none}.qr svg{width:100%;height:100%;display:block}</style></head><body>
   <h1>Boltwork Emergency Kit</h1><div class="sub">Created ${esc(new Date().toLocaleString())} on ${esc(os.hostname())}</div>
   <div class="box"><div class="keyrow"><div class="grow"><div class="label">Secret Key</div><div class="key">${esc(secretKey)}</div>
-  <div class="small" style="margin-top:10px">Signing in on a new computer or phone? Scan this setup code instead of typing the key: in Boltwork for Windows, choose <b>Scan code</b> next to the Secret Key.
+  <div class="small" style="margin-top:10px">Signing in on a new computer or phone? Scan this setup code instead of typing the key: choose <b>Scan code</b> next to the Secret Key on a computer, or <b>Scan Setup Code</b> on iPhone and iPad.
   Anyone who scans it gets your Secret Key, so keep this page as safe as the key itself.</div></div><div class="qr">${qrSvg}</div></div></div>
   <div class="box"><div class="label">Account password</div><div class="blank"></div>
   <div class="small">Write your account password here by hand, or keep it somewhere else safe.</div></div>

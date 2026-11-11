@@ -126,7 +126,7 @@ function SecurityPane() {
           <img src={shown.qr} alt="Setup code with your Secret Key" width={160} height={160} />
           <div className="key-code-text">
             <div className="secret-key small-key">{shown.secretKey}</div>
-            <p className="muted small">To sign in on another device, scan this setup code there instead of typing the key: <b>Scan code</b> in Boltwork for Windows, or <b>Scan Setup Code</b> on iPhone and iPad. It holds your Secret Key{web ? '' : ', plus your sync server and email if you use sync'}, never your password. Don’t share it or take a picture of it.</p>
+            <p className="muted small">To sign in on another device, scan this setup code there instead of typing the key: <b>Scan code</b> next to the Secret Key on a computer, or <b>Scan Setup Code</b> on iPhone and iPad. It holds your Secret Key{web ? '' : ', plus your sync server and email if you use sync'}, never your password. Don’t share it or take a picture of it.</p>
             <Button small onClick={() => setShown(null)}>Hide</Button>
           </div>
         </div>

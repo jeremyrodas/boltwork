@@ -48,7 +48,8 @@ export function SecretKeyInput({ id, value, onChange, scanned, onScanned, onUnsc
 
 /** "Scan code": with the camera, from the screen or from an image file. */
 export function ScanCodeButton({ onScanned }: { onScanned: (c: SetupCode) => void }) {
-  const { run, toast } = useApp();
+  const { run, toast, app } = useApp();
+  const web = app?.platform === 'web';
   const [camera, setCamera] = useState(false);
   const found = (text: string | null, none: string) => {
     if (text === null) { toast(none, 'error'); return; }
@@ -59,21 +60,22 @@ export function ScanCodeButton({ onScanned }: { onScanned: (c: SetupCode) => voi
   return (<>
     <Menu trigger={<Button type="button" title="Read your Secret Key from a setup code instead of typing it"><Ico icon={ScanQrCode} /> Scan code</Button>} items={[
       { label: 'With the camera…', onClick: () => setCamera(true) },
-      { label: 'On the screen', onClick: async () => {
+      // Reading the screen needs the desktop app; the web vault can't.
+      ...(web ? [] : [{ label: 'On the screen', onClick: async () => {
         const r = await run(api.scanQrFromScreen());
         if (r !== undefined) found(r, 'No QR code found on the screen. Open your Emergency Kit or the setup code so it’s visible, then try again.');
-      } },
+      } }]),
       { label: 'From an image file…', onClick: async () => {
         const f = await pickFile('image/*');
         if (f) found(await decodeQrFromFile(f).catch(() => null), 'No QR code found in that image.');
       } },
     ]} />
-    {camera && <CameraScanner onClose={() => setCamera(false)} onFound={c => { setCamera(false); onScanned(c); }} />}
+    {camera && <CameraScanner web={web} onClose={() => setCamera(false)} onFound={c => { setCamera(false); onScanned(c); }} />}
   </>);
 }
 
 /** Webcam view that reads setup codes. Keeps looking until it finds one or is closed. */
-function CameraScanner({ onFound, onClose }: { onFound: (c: SetupCode) => void; onClose: () => void }) {
+function CameraScanner({ web, onFound, onClose }: { web: boolean; onFound: (c: SetupCode) => void; onClose: () => void }) {
   const video = useRef<HTMLVideoElement>(null);
   const [state, setState] = useState<'starting' | 'scanning' | 'error'>('starting');
   const [message, setMessage] = useState('');
@@ -94,7 +96,11 @@ function CameraScanner({ onFound, onClose }: { onFound: (c: SetupCode) => void; 
       }
       timer = window.setTimeout(tick, 120);
     };
-    navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+    // Browsers offer no camera on plain http pages, so mediaDevices is missing there.
+    const media = navigator.mediaDevices?.getUserMedia
+      ? navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+      : Promise.reject(Object.assign(new Error('no camera API'), { name: 'NoMediaDevices' }));
+    media
       .then(async s => {
         if (stopped) { s.getTracks().forEach(t => t.stop()); return; }
         stream = s;
@@ -106,8 +112,11 @@ function CameraScanner({ onFound, onClose }: { onFound: (c: SetupCode) => void; 
       })
       .catch((e: Error) => {
         setState('error');
-        setMessage(e.name === 'NotFoundError' ? 'No camera was found on this computer. Try “On the screen” or “From an image file” instead.'
-          : e.name === 'NotAllowedError' ? 'Boltwork isn’t allowed to use the camera. In Windows Settings, open Privacy & security → Camera and allow desktop apps.'
+        const instead = web ? 'Try “From an image file” instead.' : 'Try “On the screen” or “From an image file” instead.';
+        setMessage(e.name === 'NoMediaDevices' ? `The camera works only when this page uses https. ${instead}`
+          : e.name === 'NotFoundError' ? `No camera was found on this computer. ${instead}`
+          : e.name === 'NotAllowedError' ? (web ? `Your browser blocked the camera for this page. Allow it in the browser’s site settings, or ${instead.charAt(0).toLowerCase() + instead.slice(1)}`
+            : 'Boltwork isn’t allowed to use the camera. In Windows Settings, open Privacy & security → Camera and allow desktop apps.')
           : `The camera didn’t start: ${e.message}`);
       });
     return () => {
@@ -115,7 +124,7 @@ function CameraScanner({ onFound, onClose }: { onFound: (c: SetupCode) => void; 
       clearTimeout(timer);
       stream?.getTracks().forEach(t => t.stop());
     };
-  }, []);
+  }, [web]);
   return (
     <Modal title="Scan setup code" onClose={onClose}>
       <p className="muted">Hold the setup code up to the camera: the QR code in your Emergency Kit, or the one a signed-in device shows.</p>
