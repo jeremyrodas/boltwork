@@ -37,7 +37,8 @@ const HEADERS = {
   'referrer-policy': 'no-referrer',
   'cross-origin-opener-policy': 'same-origin',
   'cross-origin-resource-policy': 'same-origin',
-  'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+  // The camera is for scanning a setup code on the sign-in screen (Scan code → With the camera); only this page may use it.
+  'permissions-policy': 'camera=(self), microphone=(), geolocation=(), payment=()',
   // Always revalidate, so an updated server never runs next to an old page.
   'cache-control': 'no-cache',
 };

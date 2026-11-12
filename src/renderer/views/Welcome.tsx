@@ -237,19 +237,24 @@ function WebSignIn() {
   const [email, setEmail] = useState(saved.email ?? '');
   const [pw, setPw] = useState('');
   const [sk, setSk] = useState('');
+  const [code, setCode] = useState<SetupCode | null>(null);
   const [keptKey, setKeptKey] = useState(saved.secretKey ?? '');
   const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const key = keptKey || sk;
-  const ready = !!email.trim() && !!pw && key.replace(/[^A-Za-z0-9]/g, '').length >= 20;
+  // A scanned setup code supplies the Secret Key, and the email when it has one; neither is shown. Its server is
+  // ignored: the web vault always signs in to the server it's served from, which may be another address of the same one.
+  const fromCode = !!code?.email;
+  const account = { email: (fromCode ? code!.email! : email).trim(), secretKey: code ? code.secretKey : keptKey || sk };
+  const ready = !!account.email && !!pw && account.secretKey.replace(/[^A-Za-z0-9]/g, '').length >= 20;
+  const scanned = (c: SetupCode) => { setCode(c); setError(''); focusById(c.email || email.trim() ? 'web-pw' : 'web-email'); };
   const submit = async () => {
     if (!ready || busy) return;
     setBusy(true);
     setError('');
     try {
-      await api.syncSignIn(location.origin, email.trim(), pw, key);
-      saveAccount({ email: email.trim(), ...(keptKey || remember ? { secretKey: key } : {}) });
+      await api.syncSignIn(location.origin, account.email, pw, account.secretKey);
+      saveAccount({ email: account.email, ...(keptKey || remember ? { secretKey: account.secretKey } : {}) });
     } catch (e) {
       setError((e as Error).message);
       setPw('');
@@ -264,17 +269,25 @@ function WebSignIn() {
         <BrandMark size={64} turning={busy} className="dial" />
         <h1>Boltwork web vault</h1>
         <p className="muted lock-sub">Your vault downloads encrypted and opens only in this tab. Locking or closing the tab removes it.</p>
-        <label className="lbl" htmlFor="web-email">Email</label>
-        <input id="web-email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" spellCheck={false} autoFocus={!email} />
-        {keptKey ? (
-          <p className="hint">Your Secret Key is saved in this browser. <button className="link" onClick={forgetKey}>Forget it</button></p>
+        {fromCode ? (
+          <div className="sk-scanned" role="status">
+            <Ico icon={CircleCheck} />
+            <span className="grow">Using your setup code</span>
+            <Button small kind="ghost" onClick={() => setCode(null)}>Enter details instead</Button>
+          </div>
         ) : (<>
-          <label className="lbl" htmlFor="web-sk">Secret Key</label>
-          <input id="web-sk" className="mono" value={sk} onChange={e => setSk(e.target.value)} placeholder="SR1-XXXXXX-XXXXX-XXXXX-XXXXX-XXXXX" spellCheck={false} autoComplete="off" />
-          <p className="hint">It’s in your Emergency Kit, or in Settings → Security in a Boltwork app.</p>
+          <label className="lbl" htmlFor="web-email">Email</label>
+          <input id="web-email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" spellCheck={false} autoFocus={!email} />
+          {keptKey ? (
+            <p className="hint">Your Secret Key is saved in this browser. <button className="link" onClick={forgetKey}>Forget it</button></p>
+          ) : (<>
+            <label className="lbl" htmlFor="web-sk">Secret Key</label>
+            <SecretKeyInput id="web-sk" value={sk} onChange={setSk} scanned={!!code} onScanned={scanned} onUnscan={() => setCode(null)} onEnter={submit} />
+            {!code && <p className="hint">It’s in your Emergency Kit, or in Settings → Security in a Boltwork app. Have a setup code? Choose <b>Scan code</b> and you’ll only need your password.</p>}
+          </>)}
         </>)}
         <label className="lbl" htmlFor="web-pw">Account password</label>
-        <PasswordInput id="web-pw" value={pw} onChange={setPw} autoFocus={!!email} onEnter={submit} placeholder="Enter your account password" invalid={!!error} />
+        <PasswordInput id="web-pw" value={pw} onChange={setPw} autoFocus={!!email || fromCode} onEnter={submit} placeholder="Enter your account password" invalid={!!error} />
         {!keptKey && <label className="check"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /> Remember my Secret Key in this browser</label>}
         {error && <p className="error-text" role="alert">{error}</p>}
         <Button kind="primary" disabled={!ready || busy} onClick={submit}>{busy ? 'Unlocking…' : 'Unlock'}</Button>
