@@ -220,10 +220,32 @@ final class AppModel {
     }
 
     #if os(macOS)
-    /// Brings Boltwork forward and waits up to a minute for the user to unlock it (for ssh or the browser).
+    /// Asks the user to unlock, over whatever is in front (for ssh or the browser): the system's Touch ID prompt
+    /// when quick unlock is on, otherwise a small password panel. Boltwork itself comes forward only when its
+    /// window is needed: no vault yet, or this Mac doesn't have the Secret Key.
+    func askToUnlock() {
+        guard phase == .locked, storedSecretKey != nil else { NSApp.activate(); return }
+        guard canQuickUnlock else { UnlockPanel.show(for: self); return }
+        guard !askingForTouchID else { return }
+        askingForTouchID = true
+        Task {
+            defer { askingForTouchID = false }
+            do {
+                try await unlockWithBiometrics()
+            } catch QuickUnlock.Failure.cancelled {
+            } catch {
+                // Touch ID couldn't unlock, so the account password has to.
+                UnlockPanel.show(for: self)
+            }
+        }
+    }
+
+    @ObservationIgnored private var askingForTouchID = false
+
+    /// Asks the user to unlock and waits up to a minute for it (for ssh or the browser).
     func waitForUnlock() async -> Bool {
         if phase == .unlocked { return true }
-        NSApp.activate()
+        askToUnlock()
         for _ in 0..<200 {
             try? await Task.sleep(for: .milliseconds(300))
             if phase == .unlocked { return true }

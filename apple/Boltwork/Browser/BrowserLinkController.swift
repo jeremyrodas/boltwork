@@ -15,6 +15,7 @@ final class BrowserLinkController: BrowserBridgeHost {
 
     @ObservationIgnored weak var model: AppModel?
     @ObservationIgnored private var server: BrowserSocketServer?
+    @ObservationIgnored private var lastPrompt: Task<BrowserPasskeyDecision, Never>?
     @ObservationIgnored private lazy var bridge = BrowserBridge(host: self, pairingsFile: URL.applicationSupportDirectory.appending(path: "Boltwork/browser-pairings.json"))
 
     static let hostName = "com.boltwork.browser"
@@ -86,46 +87,21 @@ final class BrowserLinkController: BrowserBridgeHost {
     }
 
     func approvePasskey(_ prompt: BrowserPasskeyPrompt) async -> BrowserPasskeyDecision {
-        NSApp.activate()
-        let alert = NSAlert()
-        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 300, height: 26), pullsDown: false)
-        switch prompt.kind {
-        case .create:
-            alert.messageText = "Save a passkey for \(prompt.site)?"
-            alert.informativeText = "Account: \(prompt.accounts.first ?? "")"
-            alert.addButton(withTitle: "Save Passkey")
-            if !prompt.targets.isEmpty {
-                popup.addItems(withTitles: prompt.targets.map { $0.userName.isEmpty ? $0.title : "\($0.title) (\($0.userName))" } + ["New Login"])
-                popup.selectItem(at: prompt.targets.firstIndex { $0.itemId == prompt.suggested } ?? prompt.targets.count)
-                alert.accessoryView = popup
-            }
-        case .get:
-            alert.messageText = "Sign in to \(prompt.site) with a passkey?"
-            alert.addButton(withTitle: "Sign In")
-            if prompt.accounts.count > 1 {
-                popup.addItems(withTitles: prompt.accounts)
-                alert.accessoryView = popup
-            } else {
-                alert.informativeText = "Account: \(prompt.accounts.first ?? "")"
-            }
+        // One prompt at a time: a second request waits for the first answer.
+        let earlier = lastPrompt
+        let ask = Task {
+            _ = await earlier?.value
+            return await PasskeyPromptPanel.ask(prompt)
         }
-        alert.addButton(withTitle: "Use Another Device")
-        alert.addButton(withTitle: "Cancel").keyEquivalent = "\u{1b}"
-        switch alert.runModal() {
-        case .alertFirstButtonReturn:
-            let index = max(popup.indexOfSelectedItem, 0)
-            let target = prompt.kind == .create && index < prompt.targets.count ? prompt.targets[index].itemId : nil
-            return .ok(index: prompt.kind == .get ? index : 0, target: target)
-        case .alertSecondButtonReturn:
-            return .fallback
-        default:
-            return .cancel
-        }
+        lastPrompt = ask
+        return await ask.value
     }
 
     func waitForUnlock() async -> Bool { await model?.waitForUnlock() ?? false }
 
-    func showMain(route: String?) { NSApp.activate() }
+    func showMain(route: String?) {
+        if let model, model.phase != .unlocked { model.askToUnlock() } else { NSApp.activate() }
+    }
 
     func changed() { model?.storeChanged() }
 }
