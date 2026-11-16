@@ -14,13 +14,11 @@ struct EmergencyKitButton: View {
                 ShareLink(item: pdfURL) {
                     Label("Save or Print Emergency Kit", systemImage: "square.and.arrow.up")
                 }
+                .onDisappear { try? FileManager.default.removeItem(at: pdfURL) }
             } else {
                 ProgressView()
                     .task { pdfURL = EmergencyKit.render(secretKey: secretKey, server: server, email: email) }
             }
-        }
-        .onDisappear {
-            if let pdfURL { try? FileManager.default.removeItem(at: pdfURL) }
         }
     }
 }

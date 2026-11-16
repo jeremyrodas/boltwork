@@ -131,6 +131,31 @@ final class VaultFlowUITests: XCTestCase {
         XCTAssertTrue(app.secureTextFields["Account password"].waitForExistence(timeout: 5))
     }
 
+    /// The kit's PDF has to still be there when the share sheet reads it: Print shows its one page.
+    func testEmergencyKitPrints() throws {
+        let app = launchWithNewVault()
+        openSettings(app)
+        app.buttons["Secret Key and Emergency Kit"].tap()
+        let field = app.secureTextFields["Account password"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText(password)
+        app.buttons["Continue"].tap()
+        let create = app.buttons["Create Emergency Kit…"]
+        XCTAssertTrue(create.waitForExistence(timeout: 15))
+        create.tap()
+        app.buttons["Create Emergency Kit"].firstMatch.tap()
+        let share = app.buttons["Save or Print Emergency Kit"]
+        XCTAssertTrue(share.waitForExistence(timeout: 10))
+        share.tap()
+
+        XCTAssertTrue(app.cells["Save to Files"].waitForExistence(timeout: 10))
+        attach(app, "emergency-kit-share-sheet")
+        app.cells["Print"].tap()
+        XCTAssertTrue(app.staticTexts["Page 1 of 1"].waitForExistence(timeout: 10), "the print sheet shows the kit's page")
+        attach(app, "emergency-kit-print")
+    }
+
     /// Needs Face ID enrolled on the simulator, and a face match sent while it waits:
     /// `xcrun simctl spawn booted notifyutil -p com.apple.BiometricKit_Sim.pearl.match`.
     func testUnlockWithFaceID() throws {
