@@ -331,3 +331,45 @@ test('backup address: used only when the main address is out of reach, and must 
   assert.deepEqual(await syncOnce(a, await SyncClient.reachable([down, server.url], c.token)), { pulled: 0, pushed: 1, conflicts: 0, filesUp: 0, filesDown: 0 });
   } finally { await server.close(); }
 });
+
+test('server snapshots hold everything needed to restore, and only the newest few are kept', async () => {
+  const dir = tmp();
+  const backupDir = path.join(dir, 'backups');
+  const srv = await startServer({ port: 0, dataDir: dir, signups: 'open', log: () => {}, backupHours: 0, backupKeep: 2 });
+  const sk = generateSecretKey();
+  let snaps: string[];
+  try {
+    const a = await VaultStore.create(tmp(), PW, sk, KDF_FAST_FOR_TESTS);
+    const vaultId = a.snapshot().vaults[0].id;
+    const itemId = a.saveItem({ ...note('Passport', 'P1234567'), vaultId }).id;
+    a.addAttachment(itemId, 'scan.pdf', 'application/pdf', Buffer.from('%PDF scan bytes'));
+    const ca = new SyncClient(srv.url);
+    await ca.signup('me@example.com', await a.authKey(PW, sk), a.keyset(), 'Laptop');
+    a.syncState = { serverUrl: srv.url, email: 'me@example.com', cursor: 0 };
+    await syncOnce(a, ca);
+    snaps = [srv.snapshot(), srv.snapshot(), srv.snapshot()];
+  } finally { await srv.close(); }
+  // Three taken, two kept: the oldest is gone.
+  assert.deepEqual(fs.readdirSync(backupDir).sort(), snaps.slice(1).map(p => path.basename(p)));
+  const latest = snaps[2];
+  assert.ok(fs.existsSync(path.join(latest, 'server-secret')));
+  const bytes = fs.readFileSync(path.join(latest, 'strongroom.db')).toString('latin1');
+  assert.ok(!bytes.includes('P1234567') && !bytes.includes('Passport'), 'a snapshot holds no plaintext');
+
+  // A server started on a snapshot alone serves the account, its items and its files.
+  const restored = await startServer({ port: 0, dataDir: latest, log: () => {}, backupHours: 0 });
+  try {
+    const remote = await signIn(new SyncClient(restored.url), 'me@example.com', PW, sk, 'New laptop');
+    const b = await VaultStore.createFromRemote(tmp(), PW, sk, remote, { serverUrl: restored.url, email: 'me@example.com', cursor: 0 });
+    await syncOnce(b, new SyncClient(restored.url, (remote as { token: string }).token));
+    const item = b.snapshot().items.find(i => i.title === 'Passport')!;
+    assert.equal(item.notes, 'P1234567');
+    assert.equal(Buffer.from(b.readAttachment(item.id, item.attachments[0].id).bytes).toString(), '%PDF scan bytes');
+  } finally { await restored.close(); }
+
+  // Started with snapshots on and none recent, the server takes one straight away.
+  fs.rmSync(backupDir, { recursive: true });
+  const again = await startServer({ port: 0, dataDir: dir, log: () => {}, backupHours: 24 });
+  await again.close();
+  assert.equal(fs.readdirSync(backupDir).length, 1);
+});

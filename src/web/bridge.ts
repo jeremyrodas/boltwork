@@ -282,10 +282,14 @@ const handlers: Handlers = {
     await reauth(accountPassword);
     const { vaults, items } = requireStore().snapshot();
     const name = `Boltwork Export ${new Date().toISOString().slice(0, 10)}.${format === 'csv' ? 'csv' : 'json'}`;
-    if (format === 'csv') return download(name, exportCsv(vaults, items), 'text/csv');
-    if (format === 'json') return download(name, JSON.stringify(buildExport(vaults, items), null, 2), 'application/json');
-    if (!exportPassword || exportPassword.length < 8) throw new Error('Use an export password of at least 8 characters.');
-    return download(name, JSON.stringify(await encryptExport(buildExport(vaults, items), exportPassword)), 'application/json');
+    if (format === 'csv') return { saved: download(name, exportCsv(vaults, items), 'text/csv'), missing: [] };
+    if (format === 'encrypted' && (!exportPassword || exportPassword.length < 8)) throw new Error('Use an export password of at least 8 characters.');
+    const s = requireStore();
+    // The web vault fetches attachment files only when they're opened, so get any it doesn't have yet.
+    if (items.some(i => i.state !== 'deleted' && i.attachments.some(a => !s.hasAttachmentFile(a.id)))) await syncNow();
+    const built = buildExport(vaults, items, (i, a) => (s.hasAttachmentFile(a.id) ? s.readAttachment(i.id, a.id).bytes : null));
+    const text = format === 'json' ? JSON.stringify(built.export, null, 2) : JSON.stringify(await encryptExport(built.export, exportPassword!));
+    return { saved: download(name, text, 'application/json'), missing: built.missing };
   },
   emergencyKit: appsOnly,
   changePassword: async (oldPw, newPw) => {

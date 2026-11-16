@@ -265,21 +265,26 @@ function ImportPane() {
 }
 
 function ExportPane() {
-  const { run } = useApp();
+  const { run, toast } = useApp();
   const [format, setFormat] = useState<'encrypted' | 'json' | 'csv' | null>(null);
   return (<>
     <Section title="Export your data">
       <div className="presets">
-        <button className="preset" onClick={() => setFormat('encrypted')}><b>Encrypted backup (.json)</b><span className="muted small">Everything, protected with a password you choose. Re-import it into Boltwork any time.</span></button>
-        <button className="preset" onClick={() => setFormat('json')}><b>Boltwork JSON</b><span className="muted small">All items and fields, not encrypted.</span></button>
-        <button className="preset" onClick={() => setFormat('csv')}><b>CSV</b><span className="muted small">Title, website, username, password, one-time password, notes. Works with most other apps. Not encrypted.</span></button>
+        <button className="preset" onClick={() => setFormat('encrypted')}><b>Encrypted backup (.json)</b><span className="muted small">Everything, including attachments and passkeys, protected with a password you choose. Re-import it into Boltwork any time.</span></button>
+        <button className="preset" onClick={() => setFormat('json')}><b>Boltwork JSON</b><span className="muted small">Everything, including attachments and passkeys. Not encrypted.</span></button>
+        <button className="preset" onClick={() => setFormat('csv')}><b>CSV</b><span className="muted small">Title, website, username, password, one-time password, notes. Works with most other apps. No attachments or passkeys. Not encrypted.</span></button>
       </div>
-      <p className="hint">Attachments are not included in exports. Back up the vault folder to keep them.</p>
     </Section>
     {format && (
       <ReauthModal title={`Export ${format === 'csv' ? 'CSV' : format === 'json' ? 'JSON' : 'encrypted backup'}`} onClose={() => setFormat(null)}
         extra={format === 'encrypted' ? 'Password for the backup file (8+ characters)' : undefined}
-        action={async (pw, ex) => { const p = await api.exportData(format, pw, ex || undefined); if (p) void run(Promise.resolve(), `Exported to ${p}`); }} />
+        action={async (pw, ex) => {
+          const r = await api.exportData(format, pw, ex || undefined);
+          if (!r) return;
+          if (!r.missing.length) { void run(Promise.resolve(), `Exported to ${r.saved}`); return; }
+          // Not an error: the export is saved, but it's not complete, and the toast says what's left out.
+          toast(`Exported to ${r.saved}, without ${r.missing.length} attachment${r.missing.length === 1 ? '' : 's'} not yet downloaded to this device (${r.missing.slice(0, 3).join('; ')}${r.missing.length > 3 ? '; …' : ''}). Sync, then export again to include ${r.missing.length === 1 ? 'it' : 'them'}.`, 'error');
+        }} />
     )}
   </>);
 }

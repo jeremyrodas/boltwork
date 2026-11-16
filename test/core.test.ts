@@ -227,7 +227,7 @@ test('exports round-trip, including encrypted export', async () => {
   const vaultId = s.snapshot().vaults[0].id;
   s.saveItem({ ...login('Site', 'u', 'p', 'https://site.example'), vaultId });
   const { vaults, items } = s.snapshot();
-  const exp = buildExport(vaults, items);
+  const exp = buildExport(vaults, items).export;
   const enc = JSON.stringify(await encryptExport(exp, 'export pass'));
   assert.ok(!enc.includes('site.example'));
   await assert.rejects(() => importFile('backup.json', strToU8(enc)), NeedsPasswordError);
@@ -235,6 +235,42 @@ test('exports round-trip, including encrypted export', async () => {
   assert.equal((await importFile('backup.json', strToU8(enc), 'export pass')).items[0].title, 'Site');
   const csv = exportCsv(vaults, items);
   assert.equal((await importFile('x.csv', strToU8(csv))).items[0].fields.find(f => f.purpose === 'password')!.value, 'p');
+});
+
+test('a full export carries attachments, passkeys, history and archived items to another vault', async () => {
+  const a = await VaultStore.create(tmp(), 'correct horse battery', generateSecretKey(), KDF_FAST_FOR_TESTS);
+  const vaultId = a.snapshot().vaults[0].id;
+  const item = a.saveItem({ ...login('Bank', 'me', 'old-password-1', 'https://bank.example'), vaultId });
+  const edited = structuredClone(item);
+  edited.fields.find(f => f.purpose === 'password')!.value = 'new-password-2';
+  a.saveItem(edited);
+  a.addAttachment(item.id, 'scan.pdf', 'application/pdf', new Uint8Array([0, 1, 2, 250, 255]));
+  const gone = a.addAttachment(item.id, 'not-here.txt', 'text/plain', new TextEncoder().encode('x'));
+  a.addPasskey({ credentialId: 'Y3JlZA', rpId: 'bank.example', userHandle: 'dXNlcg', userName: 'me', privateKey: 'cGs', algorithm: -7, createdAt: 1 }, vaultId, item.id);
+  const old = a.saveItem({ ...login('Old', 'o', 'o', 'https://old.example'), vaultId });
+  a.archive(old.id);
+
+  const { vaults, items } = a.snapshot();
+  // One file isn't on this device (as when sync hasn't downloaded it yet): it's left out and reported.
+  const built = buildExport(vaults, items, (i, att) => (att.id === gone.id ? null : a.readAttachment(i.id, att.id).bytes));
+  assert.deepEqual(built.missing, ['Bank: not-here.txt']);
+  assert.equal(built.export.version, 2);
+  const enc = JSON.stringify(await encryptExport(built.export, 'export pass'));
+  assert.ok(!enc.includes('scan.pdf'));
+
+  const b = await VaultStore.create(tmp(), 'another password', generateSecretKey(), KDF_FAST_FOR_TESTS);
+  const imported = await importFile('backup.json', strToU8(enc), 'export pass');
+  assert.equal(b.importItems(imported.items, b.snapshot().vaults[0].id), 2);
+  const bank = b.snapshot().items.find(i => i.title === 'Bank')!;
+  assert.equal(bank.fields.find(f => f.purpose === 'password')!.value, 'new-password-2');
+  assert.equal(bank.history[0].content.fields.find(f => f.purpose === 'password')!.value, 'old-password-1');
+  assert.equal(bank.passkeys?.[0].credentialId, 'Y3JlZA');
+  assert.equal(bank.createdAt, item.createdAt);
+  assert.deepEqual(bank.attachments.map(x => x.name), ['scan.pdf']);
+  assert.deepEqual([...b.readAttachment(bank.id, bank.attachments[0].id).bytes], [0, 1, 2, 250, 255]);
+  assert.equal(b.snapshot().items.find(i => i.title === 'Old')!.state, 'archived');
+  // Importing the backup again adds nothing.
+  assert.equal(b.importItems(imported.items, b.snapshot().vaults[0].id), 0);
 });
 
 test('importing the same items twice skips the ones already there', async () => {

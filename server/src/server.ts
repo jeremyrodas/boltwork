@@ -13,6 +13,9 @@
  *   STORAGE_LIMIT_MB     per-account limit for attachment files (default 0: no limit)
  *   WEB_VAULT            on to serve the web vault at / (default off; see web.ts)
  *   WEB_DIR              the web vault's files (default: the web folder next to server.js)
+ *   BACKUP_HOURS         hours between automatic snapshots (default 24; 0 turns them off)
+ *   BACKUP_KEEP          how many snapshots to keep (default 7)
+ *   BACKUP_DIR           where snapshots go (default DATA_DIR/backups)
  *
  * Attachments are stored as files under DATA_DIR/blobs/<account>/<id>, exactly as the apps sealed them.
  */
@@ -29,6 +32,11 @@ export interface ServerOptions {
   storageLimit?: number;
   /** Folder with the web vault's files to serve at /; none by default. */
   webDir?: string;
+  /** Hours between automatic snapshots; 0 for none. */
+  backupHours?: number;
+  /** How many snapshots to keep. */
+  backupKeep?: number;
+  backupDir?: string;
 }
 
 const MAX_BODY = 32 * 1024 * 1024;
@@ -46,7 +54,12 @@ class HttpError extends Error { constructor(public status: number, message: stri
 
 function sameBytes(a: Buffer, b: Buffer) { return a.length === b.length && timingSafeEqual(a, b); }
 
-export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Server; url: string; close: () => Promise<void> }> {
+/** A snapshot folder's name: the time it was taken, as an ISO time with : and . replaced by -. */
+const SNAPSHOT_NAME = /^(\d{4}-\d\d-\d\dT\d\d)-(\d\d)-(\d\d)-(\d+)Z$/;
+/** When a snapshot was taken, from its folder name. */
+const snapshotTime = (name: string) => Date.parse(name.replace(SNAPSHOT_NAME, '$1:$2:$3.$4Z'));
+
+export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Server; url: string; close: () => Promise<void>; snapshot: () => string }> {
   const dataDir = opts.dataDir ?? process.env.DATA_DIR ?? path.resolve('data');
   const signups = opts.signups ?? (process.env.SIGNUPS as ServerOptions['signups']) ?? 'first';
   const trustProxy = opts.trustProxy ?? process.env.TRUST_PROXY === '1';
@@ -57,6 +70,9 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
   if (webDir && !web) throw new Error(`WEB_VAULT is on, but ${webDir} has no index.html. Build it with npm run build (dist-web).`);
   fs.mkdirSync(dataDir, { recursive: true });
   const blobRoot = path.join(dataDir, 'blobs');
+  const backupHours = opts.backupHours ?? Number(process.env.BACKUP_HOURS ?? 24);
+  const backupKeep = Math.max(1, opts.backupKeep ?? Number(process.env.BACKUP_KEEP ?? 7));
+  const backupDir = opts.backupDir ?? process.env.BACKUP_DIR ?? path.join(dataDir, 'backups');
 
   const secretFile = path.join(dataDir, 'server-secret');
   if (!fs.existsSync(secretFile)) fs.writeFileSync(secretFile, randomBytes(32).toString('hex'), { mode: 0o600 });
@@ -416,12 +432,71 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
     });
   });
 
+  // ---- automatic snapshots ----
+  // Everything here is as the apps sealed it, so a snapshot holds no plaintext either.
+
+  /** Snapshot folders, oldest first. Their names are ISO times, so they sort by name. */
+  const snapshots = () => (fs.existsSync(backupDir) ? fs.readdirSync(backupDir).filter(n => SNAPSHOT_NAME.test(n)).sort() : []);
+
+  /** Copies the database, the server secret and the attachment files into a new folder in backupDir. */
+  function snapshot(): string {
+    const dest = path.join(backupDir, new Date().toISOString().replace(/[:.]/g, '-'));
+    const part = `${dest}.partial`;
+    fs.rmSync(part, { recursive: true, force: true });
+    fs.mkdirSync(part, { recursive: true });
+    try {
+      // A consistent copy of the database even while requests keep coming.
+      db.exec(`VACUUM INTO '${path.join(part, 'strongroom.db').replace(/'/g, "''")}'`);
+      fs.copyFileSync(secretFile, path.join(part, 'server-secret'));
+      fs.chmodSync(path.join(part, 'server-secret'), 0o600);
+      // Attachment files are never changed in place (an upload writes a new file and renames it over the old one),
+      // so a hard link is a safe copy that takes no space. Across disks, or where links aren't allowed, it copies.
+      if (fs.existsSync(blobRoot)) {
+        for (const account of fs.readdirSync(blobRoot)) {
+          const from = path.join(blobRoot, account), to = path.join(part, 'blobs', account);
+          if (!fs.statSync(from).isDirectory()) continue;
+          fs.mkdirSync(to, { recursive: true });
+          for (const name of fs.readdirSync(from)) {
+            if (name.endsWith('.part')) continue;
+            try { fs.linkSync(path.join(from, name), path.join(to, name)); } catch { fs.copyFileSync(path.join(from, name), path.join(to, name)); }
+          }
+        }
+      }
+      fs.renameSync(part, dest);
+    } catch (e) {
+      fs.rmSync(part, { recursive: true, force: true });
+      throw e;
+    }
+    for (const old of snapshots().slice(0, -backupKeep)) fs.rmSync(path.join(backupDir, old), { recursive: true, force: true });
+    return dest;
+  }
+
+  /** Takes a snapshot if the newest one is older than BACKUP_HOURS (or there is none). Checked at start and hourly. */
+  function snapshotIfDue() {
+    const newest = snapshots().at(-1);
+    const age = newest ? Date.now() - snapshotTime(newest) : Infinity;
+    if (!(age >= backupHours * 3600_000 - 60_000)) return;
+    // Nothing worth keeping before the first sign-up.
+    if (!Number((db.prepare('SELECT COUNT(*) AS n FROM accounts').get() as Row).n)) return;
+    try { log(`snapshot saved: ${snapshot()}`); } catch (e) { log(`snapshot failed: ${(e as Error).message}`); }
+  }
+  let backupTimer: NodeJS.Timeout | undefined;
+  if (backupHours > 0) {
+    snapshotIfDue();
+    backupTimer = setInterval(snapshotIfDue, Math.min(backupHours * 3600_000, 3600_000));
+    backupTimer.unref();
+  }
+
   const port = opts.port ?? Number(process.env.PORT ?? 8787);
   return new Promise(resolve => server.listen(port, () => {
     const addr = server.address() as { port: number };
     const url = `http://localhost:${addr.port}`;
-    log(`strongroom-server listening on ${addr.port} (sign-ups: ${signups}, data: ${dataDir}${web ? ', web vault: on' : ''})`);
-    resolve({ server, url, close: () => new Promise<void>(r => { server.close(() => { db.close(); r(); }); server.closeAllConnections(); }) });
+    const backups = backupHours > 0 ? `, snapshots: every ${backupHours} h, keeping ${backupKeep}, in ${backupDir}` : ', snapshots: off';
+    log(`strongroom-server listening on ${addr.port} (sign-ups: ${signups}, data: ${dataDir}${web ? ', web vault: on' : ''}${backups})`);
+    resolve({
+      server, url, snapshot,
+      close: () => new Promise<void>(r => { clearInterval(backupTimer); server.close(() => { db.close(); r(); }); server.closeAllConnections(); }),
+    });
   }));
 }
 

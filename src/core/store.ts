@@ -21,6 +21,7 @@ import { allFields, blankContent, fieldByPurpose } from './templates';
 import type { Passkey } from './passkeys';
 import { domainOf as domainOfUrl } from './search';
 import type { Attachment, Collection, Item, ItemContent, Vault, VaultData } from './types';
+import { attachmentBytes, type ImportedItem } from './importexport';
 
 // Internal format labels keep the app's earlier name (Strongroom): changing them would make existing data unreadable.
 const FORMAT = 'strongroom-vault';
@@ -539,8 +540,12 @@ export class VaultStore {
     return new Set(this.data.items.filter(i => i.state !== 'deleted').map(importSignature));
   }
 
-  importItems(items: (ItemContent & { favorite?: boolean })[], vaultId: string): number {
-    this.requireKey();
+  /**
+   * Adds imported items, skipping ones already in the vault. Items from a full Boltwork export keep their
+   * attachments, passkeys, history, archived state and dates; anything else starts fresh.
+   */
+  importItems(items: ImportedItem[], vaultId: string): number {
+    const key = this.requireKey();
     const now = Date.now();
     const seen = this.existingSignatures();
     let added = 0;
@@ -549,10 +554,22 @@ export class VaultStore {
       if (seen.has(k)) continue;
       seen.add(k);
       added++;
+      const { favorite, vaultName: _v, archived, createdAt, passwordChangedAt, history, passkeys, attachments: files, ...content } = c;
+      const attachments: Attachment[] = [];
+      for (const file of files ?? []) {
+        const bytes = attachmentBytes(file);
+        const att: Attachment = { id: randomId(), name: file.name || 'attachment', mime: file.mime || 'application/octet-stream', size: bytes.length, addedAt: file.addedAt ?? now };
+        fs.mkdirSync(path.join(this.dir, 'attachments'), { recursive: true });
+        fs.writeFileSync(this.attachmentPath(att.id), JSON.stringify(seal(key, bytes, aadAttachment(att.id))));
+        attachments.push(att);
+      }
+      const pk = passkeys?.length ? structuredClone(passkeys) : undefined;
       this.data.items.push({
-        ...structuredClone(c), title: c.title || 'Untitled', id: randomId(), vaultId, favorite: !!c.favorite, state: 'active',
-        createdAt: now, updatedAt: now, useCount: 0, attachments: [], history: [], watchtowerIgnore: [],
-        passwordChangedAt: fieldByPurpose(c, 'password') ? now : undefined,
+        ...structuredClone(content), title: c.title || 'Untitled', id: randomId(), vaultId, favorite: !!favorite,
+        state: archived ? 'archived' : 'active', createdAt: createdAt ?? now, updatedAt: now, useCount: 0, attachments,
+        history: history ? structuredClone(history) : [], watchtowerIgnore: [],
+        passwordChangedAt: passwordChangedAt ?? (fieldByPurpose(c, 'password') ? now : undefined),
+        ...(pk ? { passkeys: pk } : {}),
       });
     }
     if (added) this.persist();

@@ -839,13 +839,12 @@ const handlers: Handlers = {
       title: 'Export', defaultPath: `Boltwork Export ${new Date().toISOString().slice(0, 10)}.${ext}`, filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
     });
     if (canceled || !filePath) return null;
-    if (format === 'csv') fs.writeFileSync(filePath, exportCsv(vaults, items));
-    else if (format === 'json') fs.writeFileSync(filePath, JSON.stringify(buildExport(vaults, items), null, 2));
-    else {
-      if (!exportPassword || exportPassword.length < 8) throw new Error('Use an export password of at least 8 characters.');
-      fs.writeFileSync(filePath, JSON.stringify(await encryptExport(buildExport(vaults, items), exportPassword)));
-    }
-    return filePath;
+    if (format === 'csv') { fs.writeFileSync(filePath, exportCsv(vaults, items)); return { saved: filePath, missing: [] }; }
+    if (format === 'encrypted' && (!exportPassword || exportPassword.length < 8)) throw new Error('Use an export password of at least 8 characters.');
+    const s = requireStore();
+    const built = buildExport(vaults, items, (i, a) => (s.hasAttachmentFile(a.id) ? s.readAttachment(i.id, a.id).bytes : null));
+    fs.writeFileSync(filePath, format === 'json' ? JSON.stringify(built.export, null, 2) : JSON.stringify(await encryptExport(built.export, exportPassword!)));
+    return { saved: filePath, missing: built.missing };
   },
 
   emergencyKit: async password => { await reauth(password); return saveEmergencyKit(); },

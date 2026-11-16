@@ -135,7 +135,11 @@ export interface Api {
   importChoose(): ImportPreview | null;
   importPreview(password: string): ImportPreview;
   importCommit(vaultId: string | 'byName'): number;
-  exportData(format: 'csv' | 'json' | 'encrypted', accountPassword: string, exportPassword?: string): string | null;
+  /**
+   * Saves an export; null if the save was canceled. JSON exports include attachments, and `missing` names any
+   * left out because their files haven't reached this device yet.
+   */
+  exportData(format: 'csv' | 'json' | 'encrypted', accountPassword: string, exportPassword?: string): { saved: string; missing: string[] } | null;
   /** Saves the Emergency Kit PDF (it contains the Secret Key); needs the account password. */
   emergencyKit(password: string): string | null;
   changePassword(oldPassword: string, newPassword: string): void;

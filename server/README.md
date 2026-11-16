@@ -70,13 +70,29 @@ DATA_DIR=./data PORT=8787 node dist/server.js
 | `STORAGE_LIMIT_MB` | `0` (no limit) | Attachment storage allowed per account |
 | `WEB_VAULT` | `off` | `on` serves the web vault at `/` (see above) |
 | `WEB_DIR` | `web` next to `server.js` | The web vault's files. Without Docker, build them with `npm run build` and point this at `dist-web`. |
+| `BACKUP_HOURS` | `24` | Hours between automatic snapshots (see Backups). `0` turns them off. |
+| `BACKUP_KEEP` | `7` | How many snapshots to keep; older ones are deleted |
+| `BACKUP_DIR` | `DATA_DIR/backups` | Where snapshots go |
 
 Attachments upload as single requests of up to about 140 MB (a 100 MB file once sealed). If you use a reverse proxy, raise its body size limit, for example `client_max_body_size 150m;` in nginx.
 
 ## Backups
 
-Back up `DATA_DIR` (the volume). The database holds only encrypted data, but you still need your password and Secret Key to restore it into Boltwork,
-and every computer also keeps a full local copy of the vault.
+The server snapshots itself every day (`BACKUP_HOURS`) and keeps the last 7 (`BACKUP_KEEP`). Each snapshot is a folder in
+`DATA_DIR/backups` named by the time it was taken, holding a consistent copy of the database, the server secret and the attachment
+files. Like the rest of `DATA_DIR`, it holds only encrypted data. Attachment files are hard-linked rather than copied when the
+snapshot is on the same disk, so a snapshot costs little more than the database.
+
+Snapshots protect against mistakes, a bad upgrade or a corrupted database, but they live on the same disk as the server. To survive
+losing that disk, copy `DATA_DIR/backups` somewhere else too (another machine, a NAS, cloud storage), or set `BACKUP_DIR` to a
+folder on another disk. Every computer that syncs also keeps a full local copy of the vault.
+
+To restore: stop the server, move `DATA_DIR`'s contents aside (keep them until you've checked the restore), copy the contents of
+a snapshot folder (`strongroom.db`, `server-secret`, `blobs/`) into `DATA_DIR`, and start the server.
+
+Restoring rolls the server back to when the snapshot was taken. A device that synced after that doesn't yet notice the rollback:
+it keeps its own newer copy, but it won't re-send changes the server already had. So restore only when the server's data is lost
+or damaged, and afterwards check that each device's vault looks right.
 
 ## API
 

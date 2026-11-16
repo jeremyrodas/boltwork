@@ -6,12 +6,29 @@
  * JSON: Bitwarden (unencrypted), Boltwork export (plain or encrypted). ZIP: 1Password .1pux.
  */
 import { unzipSync, strFromU8 } from 'fflate';
-import { derivePasswordKey, newKdfParams, openJson, sealJson, type KdfParams, type Sealed } from './crypto';
+import { b64, derivePasswordKey, newKdfParams, openJson, sealJson, unb64, type KdfParams, type Sealed } from './crypto';
+import type { Passkey } from './passkeys';
 import { importSshKey } from './ssh';
 import { blankContent, fieldByPurpose, TEMPLATE_BY_CATEGORY, TEMPLATES } from './templates';
-import type { Category, Field, FieldType, Item, ItemContent, Section, Vault } from './types';
+import type { Attachment, Category, Field, FieldType, Item, ItemContent, ItemVersion, Section, Vault } from './types';
 
-export type ImportedItem = ItemContent & { favorite?: boolean; vaultName?: string };
+/** An attachment carried inside a Boltwork export: the file itself, base64. */
+export interface ExportedAttachment { name: string; mime: string; addedAt?: number; data: string }
+
+/**
+ * An item read from a file. Other apps' exports give only the content; a Boltwork export (version 2) also carries
+ * what makes it a full backup: attachments, passkeys, history and whether the item was archived.
+ */
+export type ImportedItem = ItemContent & {
+  favorite?: boolean;
+  vaultName?: string;
+  archived?: boolean;
+  createdAt?: number;
+  passwordChangedAt?: number;
+  history?: ItemVersion[];
+  passkeys?: Passkey[];
+  attachments?: ExportedAttachment[];
+};
 
 export interface ImportResult {
   source: string;
@@ -248,13 +265,20 @@ function onePux(zip: Uint8Array): ImportResult {
 
 // ---------- Boltwork export ----------
 
+/**
+ * Version 1 had only each item's content. Version 2 adds attachments, passkeys, history, archived items and
+ * dates, so an export is a complete backup. Older Boltwork versions read version 2 as before and skip the rest.
+ */
 export interface BoltworkExport {
   format: 'strongroom-export';
-  version: 1;
+  version: 1 | 2;
   exportedAt: number;
   vaults: { name: string; description: string }[];
   items: (ImportedItem & { vaultName: string })[];
 }
+
+/** Reads an attachment's file for an export; null if this device doesn't have it (not downloaded yet). */
+export type AttachmentReader = (item: Item, attachment: Attachment) => Uint8Array | null;
 
 interface EncryptedExport {
   format: 'strongroom-export-encrypted';
@@ -265,17 +289,37 @@ interface EncryptedExport {
 
 const AAD_EXPORT = 'strongroom:export:v1';
 
-export function buildExport(vaults: Vault[], items: Item[]): BoltworkExport {
+/**
+ * Everything except Recently Deleted. `missing` lists attachments left out because their files aren't on this device.
+ */
+export function buildExport(vaults: Vault[], items: Item[], readAttachment?: AttachmentReader): { export: BoltworkExport; missing: string[] } {
   const vaultName = new Map(vaults.map(v => [v.id, v.name]));
-  return {
-    format: 'strongroom-export', version: 1, exportedAt: Date.now(),
-    vaults: vaults.map(v => ({ name: v.name, description: v.description })),
-    items: items.filter(i => i.state !== 'deleted').map(i => ({
+  const missing: string[] = [];
+  const out = items.filter(i => i.state !== 'deleted').map(i => {
+    const attachments: ExportedAttachment[] = [];
+    for (const a of i.attachments) {
+      const bytes = readAttachment?.(i, a) ?? null;
+      if (bytes) attachments.push({ name: a.name, mime: a.mime, addedAt: a.addedAt, data: b64(bytes) });
+      else missing.push(`${i.title || 'Untitled'}: ${a.name}`);
+    }
+    return {
       category: i.category, title: i.title, urls: i.urls, fields: i.fields, sections: i.sections, notes: i.notes,
-      tags: i.tags, icon: i.icon, favorite: i.favorite, vaultName: vaultName.get(i.vaultId) ?? 'Imported',
-    })),
+      tags: i.tags, icon: i.icon, autosubmit: i.autosubmit, favorite: i.favorite, vaultName: vaultName.get(i.vaultId) ?? 'Imported',
+      ...(i.state === 'archived' ? { archived: true } : {}),
+      createdAt: i.createdAt, passwordChangedAt: i.passwordChangedAt,
+      ...(i.history.length ? { history: i.history } : {}),
+      ...(i.passkeys?.length ? { passkeys: i.passkeys } : {}),
+      ...(attachments.length ? { attachments } : {}),
+    };
+  });
+  return {
+    export: { format: 'strongroom-export', version: 2, exportedAt: Date.now(), vaults: vaults.map(v => ({ name: v.name, description: v.description })), items: out },
+    missing,
   };
 }
+
+/** An exported attachment's bytes. */
+export const attachmentBytes = (a: ExportedAttachment): Uint8Array => unb64(a.data);
 
 export async function encryptExport(exp: BoltworkExport, password: string): Promise<EncryptedExport> {
   const kdf = newKdfParams();
