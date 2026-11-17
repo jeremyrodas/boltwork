@@ -160,6 +160,22 @@ fun SettingsScreen(model: AppModel, onBack: () -> Unit, onSecretKey: () -> Unit,
                 }
             }
 
+            Heading("AutoFill")
+            Card {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val autofill = remember { context.getSystemService(android.view.autofill.AutofillManager::class.java) }
+                var autofillOn by remember { mutableStateOf(autofill?.hasEnabledAutofillServices() == true) }
+                val turnOn = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) {
+                    autofillOn = autofill?.hasEnabledAutofillServices() == true
+                }
+                if (autofillOn) SettingRow("AutoFill is on", "Boltwork offers your logins on sign-in screens in apps and browsers, and offers to save new ones.")
+                else SettingRow("Turn On AutoFill", "Fill logins and one-time codes in other apps and browsers.", onClick = {
+                    runCatching {
+                        turnOn.launch(android.content.Intent(android.provider.Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE, android.net.Uri.parse("package:${context.packageName}")))
+                    }
+                })
+            }
+
             Heading("Security")
             Card {
                 SettingRow("Unlock with fingerprint", "Your account password still works, and is needed after the device’s fingerprints change.") {

@@ -353,3 +353,25 @@ class PasswordChangeTest {
         assertFailsWith<VaultError.WrongPassword> { VaultStore.masterKey(dir, "correct horse battery", secretKey) }
     }
 }
+
+class LoginMatchTest {
+    private fun login(url: String, pw: String = "pw") = Item(
+        "id-$url", "v",
+        ItemTemplate.blankContent(ItemCategory.login).let { c -> c.copy(title = url, urls = listOf(ItemUrl(url = url)), fields = c.fields.map { if (it.purpose == FieldPurpose.password) it.copy(value = pw) else it }) },
+        createdAt = 0,
+    )
+
+    @Test fun websitesAndApps() {
+        val shop = login("https://shop.example.com/login")
+        val other = login("https://example.org")
+        val app = login("androidapp://com.example.app")
+        assertEquals(listOf(shop), LoginMatch("accounts.example.com", "com.android.chrome").logins(listOf(shop, other, app)))
+        assertEquals(listOf(app), LoginMatch(null, "com.example.app").logins(listOf(shop, other, app)))
+        assertEquals(listOf(shop, app).toSet(), LoginMatch(null, "com.example.app").logins(listOf(shop, other, app), guesses = true).toSet())
+        assertTrue(LoginMatch("evil.com", "com.android.chrome").logins(listOf(shop, other, app)).isEmpty())
+        assertTrue(LoginMatch("bbc.co.uk", null).matches(login("news.bbc.co.uk")))
+        assertTrue(!LoginMatch("other.co.uk", null).matches(login("bbc.co.uk")))
+        assertEquals("androidapp://com.example.app", LoginMatch(null, "com.example.app").saveAddress)
+        assertTrue(LoginMatch("example.com", null).logins(listOf(login("example.com", pw = ""))).isEmpty())
+    }
+}

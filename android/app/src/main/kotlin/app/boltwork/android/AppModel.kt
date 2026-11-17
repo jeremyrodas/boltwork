@@ -12,6 +12,10 @@ import android.os.PersistableBundle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import app.boltwork.core.ItemUrl
+import app.boltwork.core.ItemCategory
+import app.boltwork.core.ItemTemplate
+import app.boltwork.core.LoginMatch
 import app.boltwork.core.FieldPurpose
 import app.boltwork.core.Item
 import app.boltwork.core.ItemState
@@ -312,6 +316,11 @@ class AppModel(private val app: Application) {
         leftAt = 0
     }
 
+    /** For AutoFill while the app is in the background: locks if the auto-lock time has passed. */
+    fun lockIfIdle() {
+        if (phase == Phase.Unlocked && leftAt != 0L && System.currentTimeMillis() - leftAt >= autoLockMinutes * 60_000L) lock()
+    }
+
     fun setAutoLock(minutes: Int) {
         autoLockMinutes = minutes
         settings.edit().putInt("autoLockMinutes", minutes).apply()
@@ -330,6 +339,28 @@ class AppModel(private val app: Application) {
     /** Counts a copy or fill, for Recently Used. */
     fun markUsed(id: String) {
         scope.launch { edit { it.markUsed(id) } }
+    }
+
+    /** Saves a login AutoFill offered to keep: updates the matching login with this username, or adds a new one. */
+    suspend fun saveLogin(match: LoginMatch, username: String, password: String): Item? = edit { store ->
+        val existing = match.logins(store.items).firstOrNull { (it.content.field(FieldPurpose.username)?.value ?: "") == username }
+        if (existing != null) {
+            store.saveItem(existing.id, existing.vaultId, existing.content.copy(fields = existing.content.fields.map { if (it.purpose == FieldPurpose.password) it.copy(value = password) else it }))
+        } else {
+            val blank = ItemTemplate.blankContent(ItemCategory.login)
+            val content = blank.copy(
+                title = match.label,
+                urls = listOfNotNull(match.saveAddress?.let { ItemUrl(url = it) }),
+                fields = blank.fields.map {
+                    when (it.purpose) {
+                        FieldPurpose.username -> it.copy(value = username)
+                        FieldPurpose.password -> it.copy(value = password)
+                        else -> it
+                    }
+                },
+            )
+            store.saveItem(null, store.vaults.first().id, content)
+        }
     }
 
     // Attachments

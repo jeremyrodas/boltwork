@@ -202,7 +202,7 @@ fun SignInScreen(model: AppModel, onBack: () -> Unit) {
 }
 
 @Composable
-fun LockScreen(model: AppModel) {
+fun LockScreen(model: AppModel, title: String = "Boltwork is locked", allowSignOut: Boolean = true) {
     val activity = LocalContext.current as? FragmentActivity
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
@@ -247,7 +247,7 @@ fun LockScreen(model: AppModel) {
     ) {
         Spacer(Modifier.height(48.dp))
         Logo()
-        Text("Boltwork is locked", style = MaterialTheme.typography.headlineSmall)
+        Text(title, style = MaterialTheme.typography.headlineSmall)
         model.account?.let { Text(it.email, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         val wide = Modifier.widthIn(max = 480.dp).fillMaxWidth()
         PasswordField(password, { password = it }, "Account password", wide, onDone = ::unlock)
@@ -261,7 +261,7 @@ fun LockScreen(model: AppModel) {
                 Text("  Use Fingerprint")
             }
         }
-        TextButton(onClick = { confirmSignOut = true }, enabled = !busy) { Text(if (model.account != null) "Sign Out of This Device" else "Delete Vault from This Device") }
+        if (allowSignOut) TextButton(onClick = { confirmSignOut = true }, enabled = !busy) { Text(if (model.account != null) "Sign Out of This Device" else "Delete Vault from This Device") }
     }
 
     if (confirmSignOut) SignOutDialog(model.account != null, onConfirm = { confirmSignOut = false; model.signOut() }, onDismiss = { confirmSignOut = false })

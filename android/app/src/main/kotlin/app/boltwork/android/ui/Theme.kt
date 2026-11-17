@@ -60,9 +60,16 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun BoltworkApp(model: AppModel) {
+fun BoltworkTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, content = content)
+    }
+}
+
+@Composable
+fun BoltworkApp(model: AppModel) {
+    BoltworkTheme {
+        run {
             when (model.phase) {
                 Phase.SignedOut -> WelcomeScreen(model)
                 Phase.Locked -> LockScreen(model)
