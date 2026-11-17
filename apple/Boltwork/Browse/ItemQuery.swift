@@ -23,7 +23,7 @@ struct ItemQuery {
         }
         guard item.state == .active else { return false }
         return switch scope {
-        case .allItems, .watchtower: true
+        case .home, .allItems, .watchtower: true
         case .favorites: item.favorite
         case .category(let c): item.category == c
         case .vault(let id): item.vaultId == id

@@ -56,8 +56,8 @@ export function HomeView() {
         </div>
       )}
       {favorites.length > 0 && (<><h2>Favorites</h2><Tiles items={favorites} /></>)}
-      {recent.length > 0 && (<><h2>Recently used</h2><Tiles items={recent} /></>)}
-      {created.length > 0 && (<><h2>Recently added</h2><Tiles items={created} /></>)}
+      {recent.length > 0 && (<><h2>Recently Used</h2><Tiles items={recent} /></>)}
+      {created.length > 0 && (<><h2>Recently Added</h2><Tiles items={created} /></>)}
     </section>
   );
 }

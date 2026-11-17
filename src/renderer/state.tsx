@@ -39,10 +39,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [app, setApp] = useState<AppState | null>(null);
   const [data, setData] = useState<VaultData | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [route, setRoute] = useState('/');
+  const [route, setRoute] = useState('/home');
   const [filter, setFilterState] = useState<ListFilter>({ kind: 'all' });
   const [query, setQuery] = useState('');
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // Unlocking always starts on Home, like opening the app.
+  useEffect(() => { if (app?.locked) setRoute('/home'); }, [app?.locked]);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
 
   const toast = useCallback((text: string, kind?: Toast['kind']) => {

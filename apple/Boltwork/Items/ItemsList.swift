@@ -77,7 +77,7 @@ struct ItemsList: View {
 
     private var title: String {
         switch scope {
-        case .allItems, .watchtower: "All Items"
+        case .home, .allItems, .watchtower: "All Items"
         case .favorites: "Favorites"
         case .archive: "Archive"
         case .recentlyDeleted: "Recently Deleted"

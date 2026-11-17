@@ -23,7 +23,7 @@ struct HomeView: View {
                             items: active.filter(\.favorite).sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending })
                 HomeSection(title: "Recently Used", symbol: "clock.fill", tint: Theme.brass,
                             items: Array(active.filter { $0.lastUsedAt != nil }.sorted { ($0.lastUsedAt ?? 0) > ($1.lastUsedAt ?? 0) }.prefix(6)))
-                HomeSection(title: "Recently Created", symbol: "sparkles", tint: .teal,
+                HomeSection(title: "Recently Added", symbol: "sparkles", tint: .teal,
                             items: Array(active.sorted { $0.createdAt > $1.createdAt }.prefix(6)))
                 SyncStatusFooter()
             }

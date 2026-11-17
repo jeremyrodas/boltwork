@@ -259,7 +259,7 @@ private fun HomeTab(model: AppModel, onOpen: (String) -> Unit, onNew: () -> Unit
                 "Recently Used", Icons.Filled.AccessTime, MaterialTheme.colorScheme.primary,
                 active.filter { it.lastUsedAt != null }.sortedByDescending { it.lastUsedAt }.take(6), onOpen,
             )
-            HomeSection("Recently Created", Icons.Filled.AutoAwesome, Color(0xFF2A9D8F), active.sortedByDescending { it.createdAt }.take(6), onOpen)
+            HomeSection("Recently Added", Icons.Filled.AutoAwesome, Color(0xFF2A9D8F), active.sortedByDescending { it.createdAt }.take(6), onOpen)
             SyncStatusFooter(model)
         }
     }

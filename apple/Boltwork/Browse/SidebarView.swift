@@ -16,6 +16,8 @@ struct SidebarView: View {
     var body: some View {
         List(selection: $selection) {
             Section {
+                SidebarRow(title: "Home", symbol: "house", count: nil)
+                    .tag(SidebarSelection.home)
                 SidebarRow(title: "All Items", symbol: "square.grid.2x2", count: activeItems.count)
                     .tag(SidebarSelection.allItems)
                 SidebarRow(title: "Favorites", symbol: "star", count: activeItems.count { $0.favorite })
