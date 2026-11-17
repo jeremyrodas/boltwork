@@ -9,7 +9,10 @@ import android.os.PersistableBundle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import app.boltwork.core.FieldPurpose
 import app.boltwork.core.Item
+import app.boltwork.core.ItemState
+import app.boltwork.core.Watchtower
 import app.boltwork.core.Keyset
 import app.boltwork.core.SecretKey
 import app.boltwork.core.SyncClient
@@ -61,6 +64,10 @@ class AppModel(private val app: Application) {
     var quickUnlock by mutableStateOf(secrets.hasQuickUnlock)
         private set
     var autoLockMinutes by mutableStateOf(settings.getInt("autoLockMinutes", 5))
+        private set
+    var pwnedCounts by mutableStateOf(emptyMap<String, Int>())
+        private set
+    var checkBreaches by mutableStateOf(settings.getBoolean("checkBreaches", false))
         private set
 
     private var store: VaultStore? = null
@@ -124,6 +131,7 @@ class AppModel(private val app: Application) {
         items = store.items
         vaults = store.vaults
         account = store.syncState
+        pwnedCounts = store.pwnedCounts
     }
 
     fun lock() {
@@ -134,6 +142,7 @@ class AppModel(private val app: Application) {
         store = null
         items = emptyList()
         vaults = emptyList()
+        pwnedCounts = emptyMap()
         phase = Phase.Locked
     }
 
@@ -176,6 +185,34 @@ class AppModel(private val app: Application) {
     // Editing
 
     fun item(id: String): Item? = items.firstOrNull { it.id == id }
+
+    /** Counts a copy or fill, for Recently Used. */
+    fun markUsed(id: String) {
+        scope.launch { edit { it.markUsed(id) } }
+    }
+
+    // Watchtower
+
+    fun changeCheckBreaches(on: Boolean) {
+        checkBreaches = on
+        settings.edit().putBoolean("checkBreaches", on).apply()
+    }
+
+    /** Looks up passwords not checked yet, sending only the first 5 characters of each SHA-1. Stops at the first failure, such as being offline. */
+    suspend fun lookUpBreaches() {
+        val store = store ?: return
+        val known = store.pwnedCounts
+        val hashes = items.filter { it.state == ItemState.active }
+            .mapNotNull { it.content.field(FieldPurpose.password)?.value }.map(Watchtower::sha1Hex).toSet() - known.keys
+        if (hashes.isEmpty()) return
+        val found = withContext(Dispatchers.IO) {
+            val found = HashMap<String, Int>()
+            for (hash in hashes) found[hash] = runCatching { Watchtower.pwnedCount(hash) }.getOrNull() ?: break
+            runCatching { store.recordPwned(found) }
+            found
+        }
+        if (this.store === store && found.isNotEmpty()) pwnedCounts = store.pwnedCounts
+    }
 
     /** Runs a change on the vault off the main thread, then shows the result and syncs it. Returns null if it failed. */
     suspend fun <T> edit(change: (VaultStore) -> T): T? {

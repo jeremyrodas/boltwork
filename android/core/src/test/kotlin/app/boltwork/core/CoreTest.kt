@@ -248,3 +248,38 @@ class SyncTest {
 
     private fun assertFalse(value: Boolean) = assertTrue(!value)
 }
+
+class WatchtowerTest {
+    @Test fun strengthScale() {
+        assertEquals(0, PasswordStrength("").level)
+        assertTrue(PasswordStrength("password").isWeak)
+        assertTrue(PasswordStrength("aaaaaaaa").isWeak)
+        assertTrue(PasswordStrength("qwerty123").isWeak)
+        assertTrue(!PasswordStrength(PasswordGenerator.generate()).isWeak)
+        assertTrue(PasswordStrength(PasswordGenerator.generate()).level >= 6)
+        assertTrue(PasswordStrength("Tr0ub4dor&3-much-longer").level >= 5)
+        assertTrue(PasswordStrength("T").level <= 1)
+    }
+
+    @Test fun findsReusedWeakAndUnsecured() {
+        fun login(id: String, pw: String, url: String): Item {
+            val c = ItemTemplate.blankContent(ItemCategory.login)
+            val fields = c.fields.toMutableList().also { it[1] = it[1].copy(value = pw) }
+            return Item(id, "v", c.copy(title = id, fields = fields, urls = listOf(ItemUrl(url = url))), createdAt = 0)
+        }
+        val report = Watchtower.run(listOf(login("a", "password", "http://example.com"), login("b", "password", "https://b.com"), login("c", "Correct-Horse-Battery-Staple-9", "https://c.com")))
+        assertEquals(2, report.count(WatchtowerCheck.reused))
+        assertEquals(2, report.count(WatchtowerCheck.weak))
+        assertEquals(1, report.count(WatchtowerCheck.unsecured))
+        assertTrue(report.score < 1000)
+    }
+
+    @Test fun expiryFormats() {
+        val endOf2030Jan = java.time.LocalDate.of(2030, 2, 1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli() - 1.0
+        assertEquals(endOf2030Jan, Watchtower.parseExpiry("01/30"))
+        assertEquals(endOf2030Jan, Watchtower.parseExpiry("2030-01"))
+        assertEquals(endOf2030Jan, Watchtower.parseExpiry("2030-01-31"))
+        assertEquals(java.time.LocalDate.of(2031, 1, 1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli() - 1.0, Watchtower.parseExpiry("12/2030"))
+        assertEquals("5BAA61E4C9B93F3F0682250B6CF8331B7EE68FD8", Watchtower.sha1Hex("password"))
+    }
+}

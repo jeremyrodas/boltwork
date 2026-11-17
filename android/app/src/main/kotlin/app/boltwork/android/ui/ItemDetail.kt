@@ -89,6 +89,7 @@ fun ItemDetailScreen(model: AppModel, item: Item, onBack: () -> Unit, onEdit: ()
 
     fun copy(what: String, value: String) {
         model.copy(value)
+        model.markUsed(item.id)
         Toast.makeText(context, "${what.replaceFirstChar { it.uppercase() }} copied", Toast.LENGTH_SHORT).show()
     }
 

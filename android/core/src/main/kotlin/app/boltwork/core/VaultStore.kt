@@ -171,6 +171,15 @@ class VaultStore private constructor(
     @Synchronized fun archive(id: String) = patch(id) { it.copy(state = ItemState.archived) }
     @Synchronized fun trash(id: String) = patch(id) { it.copy(state = ItemState.deleted, deletedAt = now()) }
     @Synchronized fun restore(id: String) = patch(id) { it.copy(state = ItemState.active, deletedAt = null) }
+    /** Breach counts by password SHA-1, kept encrypted on this device only. */
+    val pwnedCounts: Map<String, Int> @Synchronized get() = pwnedCache
+
+    @Synchronized fun recordPwned(counts: Map<String, Int>) {
+        if (counts.isEmpty()) return
+        pwnedCache = pwnedCache + counts
+        writeFile()
+    }
+
     @Synchronized fun markUsed(id: String) = patch(id, touch = false) { it.copy(useCount = it.useCount + 1, lastUsedAt = now()) }
 
     @Synchronized
