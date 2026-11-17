@@ -123,6 +123,11 @@ class SyncClient(val serverUrl: String, @Volatile var token: String = "") {
 
     fun logout() { call(Empty.serializer(), "POST", "/logout") }
     fun account(): Account = call(Account.serializer(), "GET", "/account")
+    /** Deletes the account and everything it stored on the server; every device signed in to it stops syncing. */
+    fun deleteAccount() { call(Empty.serializer(), "DELETE", "/account") }
+    fun updateKeys(authKey: ByteArray, keyset: Keyset) {
+        call(Empty.serializer(), "PUT", "/account/keys", body(KeysBody.serializer(), KeysBody(base64Url(authKey), keyset.kdf, keyset.wrappedKey)))
+    }
 
     /** Waits up to `wait` seconds for the account to change on the server. */
     fun waitForChanges(since: Int, wait: Int = 25): Changes =

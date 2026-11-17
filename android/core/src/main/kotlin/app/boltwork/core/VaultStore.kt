@@ -469,6 +469,20 @@ class VaultStore private constructor(
             }
         }
 
+        /** The master key wrapped with a new password, and the new sign-in key. Checks the old password first. Slow: runs Argon2id twice. */
+        fun rewrap(keyset: Keyset, masterKey: ByteArray, oldPassword: String, newPassword: String, secretKey: String): Pair<Keyset, ByteArray> {
+            unwrap(keyset.wrappedKey, keyset.kdf, oldPassword, secretKey).fill(0)
+            if (newPassword.length < 8) throw VaultError.PasswordTooShort()
+            val kdf = VaultCrypto.newKdfParams(KdfCost(keyset.kdf.ops, keyset.kdf.mem))
+            val kek = VaultCrypto.deriveKek(newPassword, secretKey, kdf)
+            try {
+                val wrapped = VaultCrypto.sealJson(VaultCrypto.keySerializer, masterKey.map { it.toInt() and 255 }, kek, AAD_KEY)
+                return Keyset(kdf, wrapped, keyset.accountId) to VaultCrypto.authKey(kek)
+            } finally {
+                kek.fill(0)
+            }
+        }
+
         /** Derives the sync sign-in key, checking the password first. Slow: runs Argon2id. */
         fun authKey(keyset: Keyset, password: String, secretKey: String): ByteArray {
             val kek = VaultCrypto.deriveKek(password, secretKey, keyset.kdf)

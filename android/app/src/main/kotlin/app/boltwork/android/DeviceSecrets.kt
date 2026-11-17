@@ -57,6 +57,8 @@ class DeviceSecrets(context: Context) {
         null
     }
 
+    fun remove(name: String) { prefs.edit().remove(name).apply() }
+
     /** Forgets everything, for signing out. */
     fun clear() {
         prefs.edit().clear().apply()

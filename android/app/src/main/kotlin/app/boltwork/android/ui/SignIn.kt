@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -68,7 +69,7 @@ import app.boltwork.core.SetupCode
 import kotlinx.coroutines.launch
 
 @Composable
-private fun Logo() {
+fun Logo() {
     Image(painterResource(R.drawable.logo), contentDescription = null, modifier = Modifier.size(84.dp).clip(RoundedCornerShape(20.dp)))
 }
 
@@ -96,7 +97,7 @@ fun PasswordField(
 }
 
 @Composable
-fun SignInScreen(model: AppModel) {
+fun SignInScreen(model: AppModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
@@ -149,7 +150,9 @@ fun SignInScreen(model: AppModel) {
         Modifier.fillMaxSize().safeDrawingPadding().imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth()) {
+            IconButton(onClick = onBack, enabled = !busy) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+        }
         Logo()
         Text("Sign in to Boltwork", style = MaterialTheme.typography.headlineSmall)
         Text(
@@ -192,7 +195,7 @@ fun SignInScreen(model: AppModel) {
             if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text("Sign In")
         }
         Text(
-            "Your password and Secret Key never leave this device. New here? Create your account in Boltwork on a computer or iPhone first.",
+            "Your password and Secret Key never leave this device.",
             wide, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
         )
     }
@@ -258,19 +261,24 @@ fun LockScreen(model: AppModel) {
                 Text("  Use Fingerprint")
             }
         }
-        TextButton(onClick = { confirmSignOut = true }, enabled = !busy) { Text("Sign Out of This Device") }
+        TextButton(onClick = { confirmSignOut = true }, enabled = !busy) { Text(if (model.account != null) "Sign Out of This Device" else "Delete Vault from This Device") }
     }
 
-    if (confirmSignOut) SignOutDialog(onConfirm = { confirmSignOut = false; model.signOut() }, onDismiss = { confirmSignOut = false })
+    if (confirmSignOut) SignOutDialog(model.account != null, onConfirm = { confirmSignOut = false; model.signOut() }, onDismiss = { confirmSignOut = false })
 }
 
 @Composable
-fun SignOutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun SignOutDialog(syncing: Boolean, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Sign out of this device?") },
-        text = { Text("The vault is removed from this device. It stays on your sync server and your other devices. To sign in again you need your Secret Key.") },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Sign Out", color = MaterialTheme.colorScheme.error) } },
+        title = { Text(if (syncing) "Sign out of this device?" else "Delete this vault?") },
+        text = {
+            Text(
+                if (syncing) "The vault is removed from this device. It stays on your sync server and your other devices. To sign in again you need your Secret Key."
+                else "This vault isn’t synced anywhere, so deleting it here deletes every item in it for good. Turn on sync in Settings first if you want to keep it.",
+            )
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(if (syncing) "Sign Out" else "Delete Vault", color = MaterialTheme.colorScheme.error) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

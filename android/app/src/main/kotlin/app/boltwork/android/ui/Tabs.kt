@@ -110,6 +110,8 @@ private sealed interface Screen {
     data class Issues(val check: WatchtowerCheck) : Screen
     data class History(val id: String) : Screen
     data object Settings : Screen
+    data object SecretKey : Screen
+    data object SetupDevice : Screen
 }
 
 enum class Tab(val title: String, val icon: ImageVector) {
@@ -177,7 +179,9 @@ fun VaultScreens(model: AppModel) {
             if (item == null) LaunchedEffect(top) { back() } else ItemHistoryScreen(model, item, onBack = ::back)
         }
         is Screen.Issues -> WatchtowerIssuesScreen(model, top.check, open, onBack = ::back)
-        Screen.Settings -> SettingsScreen(model, onBack = ::back)
+        Screen.Settings -> SettingsScreen(model, onBack = ::back, onSecretKey = { stack.add(Screen.SecretKey) }, onSetupDevice = { stack.add(Screen.SetupDevice) })
+        Screen.SecretKey -> SecretKeySettingsScreen(model, onBack = ::back)
+        Screen.SetupDevice -> SetupDeviceScreen(model, onBack = ::back)
     }
 
     if (choosingKind) NewItemSheet(new, onDismiss = { choosingKind = false })

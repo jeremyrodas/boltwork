@@ -105,6 +105,26 @@ class AppModel(private val app: Application) {
         message(e)
     }
 
+    /** A new Secret Key to show once, after creating a vault. */
+    var newSecretKey by mutableStateOf<String?>(null)
+
+    /** Makes a new vault on this device only, with a new Secret Key. Sync can be turned on later in Settings. */
+    suspend fun createVault(password: String): String? = try {
+        val (store, key) = withContext(Dispatchers.IO) {
+            val key = SecretKey.generate()
+            directory.deleteRecursively()
+            val created = VaultStore.create(directory, password, key)
+            val store = VaultStore.open(created, directory)
+            secrets[DeviceSecrets.SECRET_KEY] = key
+            store to key
+        }
+        newSecretKey = key
+        opened(store)
+        null
+    } catch (e: Exception) {
+        message(e)
+    }
+
     suspend fun unlock(password: String): String? = try {
         val secretKey = secrets[DeviceSecrets.SECRET_KEY] ?: throw IllegalStateException("This device lost its Secret Key. Sign out and sign in again.")
         opened(withContext(Dispatchers.IO) { VaultStore.open(directory, VaultStore.masterKey(directory, password, secretKey)) })
@@ -141,6 +161,7 @@ class AppModel(private val app: Application) {
     fun lock() {
         if (phase != Phase.Unlocked) return
         openedFiles.deleteRecursively()
+        File(app.cacheDir, "kit").deleteRecursively()
         syncLoop?.cancel()
         syncSoon?.cancel()
         store?.lock()
@@ -165,6 +186,121 @@ class AppModel(private val app: Application) {
         account = null
         syncStatus = SyncStatus.Idle
         phase = Phase.SignedOut
+    }
+
+    // Turning sync on and off
+
+    /** Connects this vault to a sync server, making a new account there or using the existing one. Returns what went wrong, or null. */
+    suspend fun connectSync(server: String, email: String, password: String, createAccount: Boolean): String? = try {
+        val store = store ?: throw IllegalStateException("Boltwork is locked.")
+        val secretKey = secrets[DeviceSecrets.SECRET_KEY] ?: throw IllegalStateException("This device lost its Secret Key.")
+        withContext(Dispatchers.IO) {
+            val url = SyncServerURL.normalize(server)
+            val mail = email.trim().lowercase()
+            if (mail.isEmpty() || !mail.contains("@")) throw IllegalArgumentException("Enter your email address.")
+            val auth = VaultStore.authKey(store.keyset, password, secretKey)
+            val client = SyncClient(url)
+            if (createAccount) {
+                client.signup(mail, auth, store.keyset, Build.MODEL ?: "Android")
+            } else {
+                val login = client.login(mail, auth, Build.MODEL ?: "Android")
+                if (login.accountId != store.keyset.accountId) {
+                    runCatching { client.logout() }
+                    throw SyncError(0, "That account on the server holds a different vault. To use it on this device, delete this vault and sign in to that account instead.")
+                }
+            }
+            store.syncState = SyncState(url, mail)
+            store.writeFile()
+            secrets[DeviceSecrets.TOKEN] = client.token
+        }
+        account = store.syncState
+        syncStatus = SyncStatus.Idle
+        startSync()
+        null
+    } catch (e: Exception) {
+        message(e)
+    }
+
+    /** Signs back in after the server ended this device's session. */
+    suspend fun signInToSync(password: String): String? = try {
+        val store = store ?: throw IllegalStateException("Boltwork is locked.")
+        val state = store.syncState ?: throw IllegalStateException("Sync is off.")
+        val secretKey = secrets[DeviceSecrets.SECRET_KEY] ?: throw IllegalStateException("This device lost its Secret Key.")
+        withContext(Dispatchers.IO) {
+            val auth = VaultStore.authKey(store.keyset, password, secretKey)
+            val client = SyncClient.reachable(state.addresses, "")
+            client.login(state.email, auth, Build.MODEL ?: "Android")
+            secrets[DeviceSecrets.TOKEN] = client.token
+        }
+        syncStatus = SyncStatus.Idle
+        startSync()
+        null
+    } catch (e: Exception) {
+        message(e)
+    }
+
+    /** Disconnects this device from the server. The vault stays here and on the server. */
+    fun stopSyncing() {
+        val store = store ?: return
+        val state = store.syncState ?: return
+        val token = secrets[DeviceSecrets.TOKEN]
+        syncLoop?.cancel()
+        syncSoon?.cancel()
+        if (!token.isNullOrEmpty()) scope.launch(Dispatchers.IO) { runCatching { SyncClient.reachable(state.addresses, token).logout() } }
+        store.syncState = null
+        runCatching { store.writeFile() }
+        secrets.remove(DeviceSecrets.TOKEN)
+        account = null
+        syncStatus = SyncStatus.Idle
+    }
+
+    /** Changes the account password. Updates the server first, so if that fails the old password still works everywhere. */
+    suspend fun changePassword(current: String, new: String): String? = try {
+        val store = store ?: throw IllegalStateException("Boltwork is locked.")
+        val secretKey = secrets[DeviceSecrets.SECRET_KEY] ?: throw IllegalStateException("This device lost its Secret Key.")
+        withContext(Dispatchers.IO) {
+            val master = store.masterKeyCopy()
+            val (keyset, auth) = try { VaultStore.rewrap(store.keyset, master, current, new, secretKey) } finally { master.fill(0) }
+            val state = store.syncState
+            val token = secrets[DeviceSecrets.TOKEN]
+            if (state != null && !token.isNullOrEmpty()) SyncClient.reachable(state.addresses, token).updateKeys(auth, keyset)
+            store.adopt(keyset)
+        }
+        null
+    } catch (e: Exception) {
+        message(e)
+    }
+
+    /** Deletes the sync account and everything on the server. The vault stays on this device, with sync off. */
+    suspend fun deleteAccount(): String? = try {
+        val store = store ?: throw IllegalStateException("Boltwork is locked.")
+        val state = store.syncState ?: throw IllegalStateException("Sync is off.")
+        withContext(Dispatchers.IO) { SyncClient.reachable(state.addresses, secrets[DeviceSecrets.TOKEN] ?: "").deleteAccount() }
+        syncLoop?.cancel()
+        syncSoon?.cancel()
+        store.syncState = null
+        withContext(Dispatchers.IO) { store.writeFile() }
+        secrets.remove(DeviceSecrets.TOKEN)
+        account = null
+        syncStatus = SyncStatus.Idle
+        null
+    } catch (e: Exception) {
+        message(e)
+    }
+
+    /** The Secret Key, after checking the account password. Null if the password is wrong. */
+    suspend fun revealSecretKey(password: String): String? {
+        val store = store ?: return null
+        val secretKey = secrets[DeviceSecrets.SECRET_KEY] ?: return null
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val derived = VaultStore.masterKey(store.keyset, password, secretKey)
+                val current = store.masterKeyCopy()
+                val same = derived.contentEquals(current)
+                derived.fill(0); current.fill(0)
+                if (same) secretKey else null
+            }.getOrNull()
+        }
     }
 
     // Leaving and coming back
@@ -286,6 +422,7 @@ class AppModel(private val app: Application) {
     private fun startSync() {
         syncLoop?.cancel()
         val store = store ?: return
+        if (store.syncState == null) return
         syncLoop = scope.launch {
             var due = true
             while (isActive) {
@@ -313,6 +450,7 @@ class AppModel(private val app: Application) {
     /** One sync round. Returns whether it worked. */
     suspend fun syncNow(): Boolean = syncing.withLock {
         val store = store ?: return false
+        if (store.syncState == null) return true
         syncStatus = SyncStatus.Syncing
         try {
             withContext(Dispatchers.IO) { SyncEngine.syncOnce(store, client(store) ?: throw SyncError(0, "Sync is not set up.")) }

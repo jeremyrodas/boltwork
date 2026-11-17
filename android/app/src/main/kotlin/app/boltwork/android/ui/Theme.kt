@@ -64,9 +64,9 @@ fun BoltworkApp(model: AppModel) {
     MaterialTheme(colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             when (model.phase) {
-                Phase.SignedOut -> SignInScreen(model)
+                Phase.SignedOut -> WelcomeScreen(model)
                 Phase.Locked -> LockScreen(model)
-                Phase.Unlocked -> VaultScreens(model)
+                Phase.Unlocked -> model.newSecretKey?.let { NewSecretKeyScreen(it, onDone = { model.newSecretKey = null }) } ?: VaultScreens(model)
             }
         }
     }

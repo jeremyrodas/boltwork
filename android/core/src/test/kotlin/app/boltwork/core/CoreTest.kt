@@ -339,3 +339,17 @@ class SSHKeyTest {
         assertFailsWith<SSHKey.Failure> { SSHKey.parse("not a key") }
     }
 }
+
+class PasswordChangeTest {
+    @Test fun rewrapKeepsTheMasterKey() {
+        val dir = Files.createTempDirectory("boltwork-rewrap").toFile()
+        val secretKey = SecretKey.generate()
+        val store = VaultStore.open(VaultStore.create(dir, "correct horse battery", secretKey, VaultCrypto.fastCostForTests), dir)
+        val master = store.masterKeyCopy()
+        assertFailsWith<VaultError.WrongPassword> { VaultStore.rewrap(store.keyset, master, "wrong password", "new password 123", secretKey) }
+        val (keyset, _) = VaultStore.rewrap(store.keyset, master, "correct horse battery", "new password 123", secretKey)
+        store.adopt(keyset)
+        assertContentEquals(master, VaultStore.masterKey(dir, "new password 123", secretKey))
+        assertFailsWith<VaultError.WrongPassword> { VaultStore.masterKey(dir, "correct horse battery", secretKey) }
+    }
+}

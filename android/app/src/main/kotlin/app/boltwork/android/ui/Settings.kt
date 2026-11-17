@@ -1,5 +1,15 @@
 package app.boltwork.android.ui
 
+import app.boltwork.core.SetupCode
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import android.text.format.DateUtils
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -67,12 +77,15 @@ private fun Line() = HorizontalDivider(Modifier.padding(start = 16.dp), color = 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(model: AppModel, onBack: () -> Unit) {
+fun SettingsScreen(model: AppModel, onBack: () -> Unit, onSecretKey: () -> Unit, onSetupDevice: () -> Unit) {
     val activity = LocalContext.current as? FragmentActivity
     val scope = rememberCoroutineScope()
     var problem by remember { mutableStateOf<String?>(null) }
     var choosingLock by remember { mutableStateOf(false) }
     var confirmSignOut by remember { mutableStateOf(false) }
+    var confirmStopSync by remember { mutableStateOf(false) }
+    var confirmDeleteAccount by remember { mutableStateOf(false) }
+    var changingPassword by remember { mutableStateOf(false) }
 
     fun setFingerprint(on: Boolean) {
         problem = null
@@ -107,27 +120,43 @@ fun SettingsScreen(model: AppModel, onBack: () -> Unit) {
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Heading("Account")
-            Card {
-                SettingRow("Email", model.account?.email)
-                Line()
-                SettingRow("Sync server", model.account?.serverUrl)
-            }
-
-            Heading("Sync")
-            Card {
-                val status = model.syncStatus
-                val detail = when (status) {
-                    SyncStatus.Syncing -> "Syncing…"
-                    is SyncStatus.Failed -> status.message
-                    SyncStatus.SignedOut -> "The server signed this device out. Sign out here, then sign in again."
-                    SyncStatus.Idle -> model.account?.lastSyncAt?.let { "Last synced ${DateUtils.getRelativeTimeSpanString(it)}" } ?: "Not synced yet"
+            val account = model.account
+            if (account == null) {
+                Heading("Sync")
+                ConnectSyncCard(model)
+            } else {
+                Heading("Account")
+                Card {
+                    SettingRow("Email", account.email)
+                    Line()
+                    SettingRow("Sync server", account.serverUrl)
                 }
-                val bad = status is SyncStatus.Failed || status == SyncStatus.SignedOut
-                SettingRow(if (bad) "Sync isn’t working" else "Sync is on", detail, color = if (bad) MaterialTheme.colorScheme.error else Color.Unspecified)
-                Line()
-                SettingRow("Sync Now", onClick = if (status == SyncStatus.Syncing) null else ({ scope.launch { model.syncNow() } })) {
-                    if (status == SyncStatus.Syncing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+
+                Heading("Sync")
+                Card {
+                    val status = model.syncStatus
+                    val detail = when (status) {
+                        SyncStatus.Syncing -> "Syncing…"
+                        is SyncStatus.Failed -> status.message
+                        SyncStatus.SignedOut -> "The server signed this device out. Type your account password to sign in again."
+                        SyncStatus.Idle -> account.lastSyncAt?.let { "Last synced ${DateUtils.getRelativeTimeSpanString(it)}" } ?: "Not synced yet"
+                    }
+                    val bad = status is SyncStatus.Failed || status == SyncStatus.SignedOut
+                    SettingRow(if (bad) "Sync isn’t working" else "Sync is on", detail, color = if (bad) MaterialTheme.colorScheme.error else Color.Unspecified)
+                    Line()
+                    if (status == SyncStatus.SignedOut) {
+                        SignInAgain(model)
+                    } else {
+                        SettingRow("Sync Now", onClick = if (status == SyncStatus.Syncing) null else ({ scope.launch { model.syncNow() } })) {
+                            if (status == SyncStatus.Syncing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        }
+                    }
+                    Line()
+                    SettingRow("Set Up Another Device", "Show a code to scan on your new phone or tablet.", onClick = onSetupDevice)
+                    Line()
+                    SettingRow("Stop Syncing This Device…", color = MaterialTheme.colorScheme.error, onClick = { confirmStopSync = true })
+                    Line()
+                    SettingRow("Delete Account…", "Deletes your account and data from the server.", color = MaterialTheme.colorScheme.error, onClick = { confirmDeleteAccount = true })
                 }
             }
 
@@ -145,16 +174,211 @@ fun SettingsScreen(model: AppModel, onBack: () -> Unit) {
                     }
                 }
                 Line()
+                SettingRow("Secret Key and Emergency Kit", onClick = onSecretKey)
+                Line()
+                SettingRow("Change Account Password…", onClick = { changingPassword = true })
+                Line()
                 SettingRow("Lock Now", onClick = { model.lock() })
             }
 
             Heading("This device")
             Card {
-                SettingRow("Sign Out", "Removes the vault from this device only.", color = MaterialTheme.colorScheme.error, onClick = { confirmSignOut = true })
+                if (model.account != null) SettingRow("Sign Out", "Removes the vault from this device only.", color = MaterialTheme.colorScheme.error, onClick = { confirmSignOut = true })
+                else SettingRow("Delete Vault", "This vault is only on this device.", color = MaterialTheme.colorScheme.error, onClick = { confirmSignOut = true })
             }
             Text("Boltwork ${BuildConfig.VERSION_NAME}", Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 
-    if (confirmSignOut) SignOutDialog(onConfirm = { confirmSignOut = false; model.signOut() }, onDismiss = { confirmSignOut = false })
+    if (changingPassword) ChangePasswordDialog(model, onDismiss = { changingPassword = false })
+    if (confirmDeleteAccount) {
+        var deleteError by remember { mutableStateOf<String?>(null) }
+        AlertDialog(
+            onDismissRequest = { confirmDeleteAccount = false },
+            title = { Text("Delete your sync account?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Everything stored on the server is deleted, and every device signed in to it stops syncing. The vault stays on this device.")
+                    deleteError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        deleteError = model.deleteAccount()
+                        if (deleteError == null) confirmDeleteAccount = false
+                    }
+                }) { Text("Delete Account", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDeleteAccount = false }) { Text("Cancel") } },
+        )
+    }
+    if (confirmStopSync) {
+        AlertDialog(
+            onDismissRequest = { confirmStopSync = false },
+            title = { Text("Stop syncing this device?") },
+            text = { Text("Your vault stays on this device and on the server. Changes here won’t reach your other devices.") },
+            confirmButton = { TextButton(onClick = { confirmStopSync = false; model.stopSyncing() }) { Text("Stop Syncing", color = MaterialTheme.colorScheme.error) } },
+            dismissButton = { TextButton(onClick = { confirmStopSync = false }) { Text("Cancel") } },
+        )
+    }
+    if (confirmSignOut) SignOutDialog(model.account != null, onConfirm = { confirmSignOut = false; model.signOut() }, onDismiss = { confirmSignOut = false })
+}
+
+/** Turns sync on: a new account on a server, or an existing account that holds this same vault. */
+@Composable
+private fun ConnectSyncCard(model: AppModel) {
+    val scope = rememberCoroutineScope()
+    var server by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var createAccount by rememberSaveable { mutableStateOf(true) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    fun connect() {
+        if (busy || server.isBlank() || email.isBlank() || password.isEmpty()) return
+        busy = true
+        error = null
+        scope.launch {
+            error = model.connectSync(server, email, password, createAccount)
+            if (error == null) password = ""
+            busy = false
+        }
+    }
+    Card {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Sync is off. This vault is only on this device.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedTextField(
+                server, { server = it }, Modifier.fillMaxWidth(), label = { Text("Server address") }, placeholder = { Text("vault.example.com") }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false),
+            )
+            OutlinedTextField(
+                email, { email = it }, Modifier.fillMaxWidth(), label = { Text("Email") }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next, autoCorrectEnabled = false),
+            )
+            PasswordField(password, { password = it }, "Account password", Modifier.fillMaxWidth(), onDone = ::connect)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Create a new account")
+                    Text(
+                        if (createAccount) "Makes an account on the server for this vault." else "Uses an account you already made for this vault.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(createAccount, { createAccount = it })
+            }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+            Button(onClick = ::connect, enabled = !busy && server.isNotBlank() && email.isNotBlank() && password.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
+                if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text(if (createAccount) "Create Account and Sync" else "Sign In and Sync")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SignInAgain(model: AppModel) {
+    val scope = rememberCoroutineScope()
+    var password by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    fun go() {
+        if (busy || password.isEmpty()) return
+        busy = true
+        scope.launch {
+            error = model.signInToSync(password)
+            if (error == null) password = ""
+            busy = false
+        }
+    }
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        PasswordField(password, { password = it }, "Account password", Modifier.fillMaxWidth(), onDone = ::go)
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+        Button(onClick = ::go, enabled = !busy && password.isNotEmpty()) { Text("Sign In Again") }
+    }
+}
+
+/** The Secret Key and Emergency Kit. Asks for the account password every time it opens. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SecretKeySettingsScreen(model: AppModel, onBack: () -> Unit) {
+    Scaffold(topBar = { TopAppBar(title = { Text("Secret Key") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }) }) { padding ->
+        Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            PasswordGate(model, "Enter your account password to see your Secret Key and save a new Emergency Kit.") { secretKey ->
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SecretKeyCard(secretKey)
+                    Text(
+                        "You need your account password and this Secret Key to open your vault on a new device. Boltwork can’t recover either one.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    EmergencyKitButtons(secretKey, model.account?.serverUrl, model.account?.email)
+                }
+            }
+        }
+    }
+}
+
+/** A QR code another device scans to join this account. It holds the Secret Key, so it asks for the password first. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SetupDeviceScreen(model: AppModel, onBack: () -> Unit) {
+    Scaffold(topBar = { TopAppBar(title = { Text("Set Up Another Device") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }) }) { padding ->
+        Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            val account = model.account
+            if (account == null) {
+                Text("Turn on sync first.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                return@Column
+            }
+            PasswordGate(model, "Enter your account password to show a setup code for another device.") { secretKey ->
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    QrCode(SetupCode(account.serverUrl, account.backupUrl, account.email, secretKey).text, Modifier.widthIn(max = 300.dp))
+                    Text(
+                        "On your new phone or tablet, open Boltwork, choose I Already Use Boltwork, then scan this code. You’ll still type your account password there.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text("This code contains your Secret Key. Don’t share it or take a picture of it.", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChangePasswordDialog(model: AppModel, onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    var current by remember { mutableStateOf("") }
+    var new by remember { mutableStateOf("") }
+    var confirm by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val ok = current.isNotEmpty() && new.length >= 8 && new == confirm && !busy
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text("Change Account Password") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PasswordField(current, { current = it }, "Current password", Modifier.fillMaxWidth(), imeAction = ImeAction.Next)
+                PasswordField(new, { new = it }, "New password", Modifier.fillMaxWidth(), imeAction = ImeAction.Next)
+                PasswordField(confirm, { confirm = it }, "Confirm new password", Modifier.fillMaxWidth())
+                if (new.isNotEmpty()) StrengthMeter(new, Modifier.fillMaxWidth())
+                Text("Your Secret Key stays the same. If you sync, your other devices will ask for the new password.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = ok, onClick = {
+                busy = true
+                error = null
+                scope.launch {
+                    error = model.changePassword(current, new)
+                    busy = false
+                    if (error == null) {
+                        android.widget.Toast.makeText(context, "Password changed", android.widget.Toast.LENGTH_SHORT).show()
+                        onDismiss()
+                    }
+                }
+            }) { if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text("Change") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Cancel") } },
+    )
 }
