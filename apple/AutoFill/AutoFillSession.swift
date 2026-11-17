@@ -143,6 +143,9 @@ final class AutoFillSession {
 
     // MARK: - Passkeys
 
+    /// How many passkeys the vault has for the site, whichever ones it asked for, to explain when none can be used.
+    func passkeyCount(forSite rpId: String) -> Int { store?.passkeys(for: rpId).count ?? 0 }
+
     func passkeys(for parameters: ASPasskeyCredentialRequestParameters) -> [(item: Item, passkey: Passkey)] {
         let allowed = Set(parameters.allowedCredentials.map { WebAuthn.base64URL([UInt8]($0)) })
         return (store?.passkeys(for: parameters.relyingPartyIdentifier) ?? []).filter { allowed.isEmpty || allowed.contains($0.passkey.credentialId) }

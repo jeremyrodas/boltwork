@@ -13,7 +13,9 @@ struct CredentialPicker: View {
         List {
             if let parameters = passkeyParameters, query.isEmpty {
                 let passkeys = session.passkeys(for: parameters)
-                if !passkeys.isEmpty {
+                if passkeys.isEmpty {
+                    Section { NoPasskeyNotice(site: parameters.relyingPartyIdentifier, others: session.passkeyCount(forSite: parameters.relyingPartyIdentifier)) }
+                } else {
                     Section("Passkeys") {
                         ForEach(passkeys, id: \.passkey.credentialId) { match in
                             Button {
@@ -29,7 +31,7 @@ struct CredentialPicker: View {
             if query.isEmpty, !suggested.isEmpty {
                 Section("Suggested") { rows(suggested) }
             }
-            Section(query.isEmpty ? "All Logins" : "Results") { rows(searchResults) }
+            Section(query.isEmpty ? (passkeyParameters == nil ? "All Logins" : "Or Use a Password") : "Results") { rows(searchResults) }
         }
         .searchable(text: $query, prompt: "Search logins")
         .navigationTitle("Boltwork")
@@ -55,6 +57,25 @@ struct CredentialPicker: View {
                 CredentialRow(title: item.title, detail: item.content.field(for: .username)?.value ?? "", systemImage: "key")
             }
         }
+    }
+}
+
+/// Why a site's passkey request has nothing to pick, instead of silently showing only passwords.
+private struct NoPasskeyNotice: View {
+    let site: String
+    /// Passkeys Boltwork has for the site that the site didn't ask for.
+    let others: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(others == 0 ? "No passkey for \(site)" : "Not the passkey \(site) asked for", systemImage: "person.badge.key")
+                .font(.headline)
+            Text(others == 0
+                 ? "Boltwork doesn’t have a passkey for this site. If you made it with another app, on a security key or on a phone, use that instead. If you saved it in Boltwork on another device, open Boltwork there and let it sync."
+                 : "Boltwork has a passkey for this site, but the site asked for a different one, perhaps a security key or a passkey saved in another app.")
+                .font(.subheadline).foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 4)
     }
 }
 
