@@ -283,3 +283,27 @@ class WatchtowerTest {
         assertEquals("5BAA61E4C9B93F3F0682250B6CF8331B7EE68FD8", Watchtower.sha1Hex("password"))
     }
 }
+
+class ItemToolsTest {
+    @Test fun historyAttachmentsAndDuplicates() {
+        val dir = java.nio.file.Files.createTempDirectory("boltwork-tools").toFile()
+        val store = VaultStore.open(VaultStore.create(dir, "correct horse battery", SecretKey.generate(), VaultCrypto.fastCostForTests), dir)
+        val vault = store.vaults.first().id
+        val first = store.saveItem(null, vault, ItemTemplate.blankContent(ItemCategory.login).copy(title = "One"))
+        val edited = store.saveItem(first.id, vault, first.content.copy(title = "Two"))
+        assertEquals("One", edited.history.first().content.title)
+        val restored = store.restoreVersion(first.id, 0)
+        assertEquals("One", restored.title)
+        assertTrue(restored.history.any { it.content.title == "Two" })
+
+        val att = store.addAttachment(first.id, "a.txt", "text/plain", "hello".toByteArray())
+        assertEquals("hello", String(store.readAttachment(first.id, att.id).second))
+        store.removeAttachment(first.id, att.id)
+        assertTrue(store.item(first.id).attachments.isEmpty())
+        assertTrue(!store.hasAttachmentFile(att.id))
+
+        val copy = store.duplicateItem(first.id)
+        assertEquals("One (copy)", copy.title)
+        assertTrue(copy.id != first.id)
+    }
+}

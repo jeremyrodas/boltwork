@@ -4,7 +4,10 @@ import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
 import android.os.Build
+import android.provider.OpenableColumns
+import androidx.core.content.FileProvider
 import android.os.PersistableBundle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +24,7 @@ import app.boltwork.core.SyncError
 import app.boltwork.core.SyncServerURL
 import app.boltwork.core.SyncState
 import app.boltwork.core.Vault
+import app.boltwork.core.VaultError
 import app.boltwork.core.VaultStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -136,6 +140,7 @@ class AppModel(private val app: Application) {
 
     fun lock() {
         if (phase != Phase.Unlocked) return
+        openedFiles.deleteRecursively()
         syncLoop?.cancel()
         syncSoon?.cancel()
         store?.lock()
@@ -189,6 +194,51 @@ class AppModel(private val app: Application) {
     /** Counts a copy or fill, for Recently Used. */
     fun markUsed(id: String) {
         scope.launch { edit { it.markUsed(id) } }
+    }
+
+    // Attachments
+
+    private val openedFiles get() = File(app.cacheDir, "attachments")
+
+    /** Adds a file the user picked. Returns what went wrong, or null. */
+    suspend fun addAttachment(itemId: String, uri: Uri): String? = try {
+        withContext(Dispatchers.IO) {
+            val resolver = app.contentResolver
+            val name = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            } ?: uri.lastPathSegment ?: "File"
+            val mime = resolver.getType(uri) ?: "application/octet-stream"
+            val bytes = resolver.openInputStream(uri)?.use { input ->
+                val out = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val n = input.read(buffer)
+                    if (n < 0) break
+                    out.write(buffer, 0, n)
+                    if (out.size() > VaultStore.MAX_ATTACHMENT_SIZE) throw VaultError.AttachmentTooLarge()
+                }
+                out.toByteArray()
+            } ?: throw java.io.IOException("That file couldn’t be read.")
+            (store ?: throw IllegalStateException("Boltwork is locked.")).addAttachment(itemId, name, mime, bytes)
+        }
+        edit { }
+        null
+    } catch (e: Exception) {
+        message(e)
+    }
+
+    /** Decrypts an attachment into the cache for another app to show, and returns a link to it. Removed on lock. */
+    suspend fun openAttachment(itemId: String, attachmentId: String): Result<Pair<Uri, String>> = runCatching {
+        val store = store ?: throw IllegalStateException("Boltwork is locked.")
+        withContext(Dispatchers.IO) {
+            val (meta, bytes) = store.readAttachment(itemId, attachmentId)
+            val folder = File(openedFiles, meta.id).apply { deleteRecursively(); mkdirs() }
+            val safeName = meta.name.replace(Regex("[/\\\\:*?\"<>|]"), "_").ifBlank { "file" }
+            val file = File(folder, safeName)
+            file.writeBytes(bytes)
+            bytes.fill(0)
+            FileProvider.getUriForFile(app, "app.boltwork.android.files", file) to meta.mime.ifBlank { "application/octet-stream" }
+        }
     }
 
     // Watchtower

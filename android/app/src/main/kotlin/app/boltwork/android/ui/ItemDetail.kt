@@ -14,6 +14,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AttachFile
@@ -53,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import app.boltwork.android.AppModel
 import app.boltwork.core.Field
 import app.boltwork.core.FieldType
+import app.boltwork.core.Attachment
 import app.boltwork.core.Item
 import app.boltwork.core.ItemState
 import app.boltwork.core.ItemTemplate
@@ -81,11 +87,40 @@ private fun ValueRow(label: String, value: String, mono: Boolean = false, onClic
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ItemDetailScreen(model: AppModel, item: Item, onBack: () -> Unit, onEdit: () -> Unit) {
+fun ItemDetailScreen(model: AppModel, item: Item, onBack: () -> Unit, onEdit: () -> Unit, onHistory: () -> Unit, onOpen: (String) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var menu by remember { mutableStateOf(false) }
+    var moving by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var removing by remember { mutableStateOf<Attachment?>(null) }
+    var busyFile by remember { mutableStateOf<String?>(null) }
+
+    fun toast(text: String) = Toast.makeText(context, text, Toast.LENGTH_LONG).show()
+
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            busyFile = "adding"
+            model.addAttachment(item.id, uri)?.let(::toast)
+            busyFile = null
+        }
+    }
+
+    fun open(attachment: Attachment) {
+        scope.launch {
+            busyFile = attachment.id
+            model.openAttachment(item.id, attachment.id)
+                .onSuccess { (uri, mime) ->
+                    val view = Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    val share = Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    val canView = view.resolveActivity(context.packageManager) != null
+                    runCatching { context.startActivity(Intent.createChooser(if (canView) view else share, attachment.name)) }
+                        .onFailure { toast("No app on this device can open this file.") }
+                }
+                .onFailure { toast(it.message ?: "This file couldn’t be opened.") }
+            busyFile = null
+        }
+    }
 
     fun copy(what: String, value: String) {
         model.copy(value)
@@ -159,6 +194,15 @@ fun ItemDetailScreen(model: AppModel, item: Item, onBack: () -> Unit, onEdit: ()
                             scope.launch { model.edit(change) }
                             if (leave) onBack()
                         }
+                        if (item.state != ItemState.deleted) {
+                            DropdownMenuItem({ Text("Duplicate") }, {
+                                menu = false
+                                scope.launch { model.edit { it.duplicateItem(item.id) }?.let { onOpen(it.id) } }
+                            })
+                            if (model.vaults.size > 1) DropdownMenuItem({ Text("Move to Vault…") }, { menu = false; moving = true })
+                        }
+                        if (item.history.isNotEmpty()) DropdownMenuItem({ Text("Item History") }, { menu = false; onHistory() })
+                        HorizontalDivider()
                         when (item.state) {
                             ItemState.active -> {
                                 DropdownMenuItem({ Text("Archive") }, { act({ it.archive(item.id) }) })
@@ -217,16 +261,43 @@ fun ItemDetailScreen(model: AppModel, item: Item, onBack: () -> Unit, onEdit: ()
             if (item.content.tags.isNotEmpty()) {
                 Card { ValueRow("tags", item.content.tags.joinToString(", "), onClick = {}) }
             }
-            if (item.attachments.isNotEmpty()) {
+            if (item.attachments.isNotEmpty() || item.state != ItemState.deleted) {
+                Text("Attachments", Modifier.padding(start = 16.dp, top = 8.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Card {
-                    for (a in item.attachments) {
-                        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    item.attachments.forEachIndexed { i, a ->
+                        if (i > 0) HorizontalDivider(Modifier.padding(start = 52.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(
+                            Modifier.fillMaxWidth().clickable { open(a) }.padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
                             Icon(Icons.Filled.AttachFile, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Column {
+                            Column(Modifier.weight(1f)) {
                                 Text(a.name)
-                                Text("${fileSize(a.size)} · open it in Boltwork on another device", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(fileSize(a.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
+                            if (busyFile == a.id) CircularProgressIndicator(Modifier.padding(12.dp).size(20.dp), strokeWidth = 2.dp)
+                            if (item.state != ItemState.deleted) IconButton(onClick = { removing = a }) { Icon(Icons.Filled.Delete, "Remove ${a.name}") }
                         }
+                    }
+                    if (item.state != ItemState.deleted) {
+                        if (item.attachments.isNotEmpty()) HorizontalDivider(Modifier.padding(start = 52.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(
+                            Modifier.fillMaxWidth().clickable(enabled = busyFile == null) { pickFile.launch(arrayOf("*/*")) }.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(Icons.Filled.Add, null, tint = MaterialTheme.colorScheme.primary)
+                            Text("Add File…", Modifier.weight(1f), color = MaterialTheme.colorScheme.primary)
+                            if (busyFile == "adding") CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        }
+                    }
+                }
+            }
+            if (item.history.isNotEmpty()) {
+                Card {
+                    Row(Modifier.fillMaxWidth().clickable(onClick = onHistory).padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Icon(Icons.Filled.History, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Item History", Modifier.weight(1f))
+                        Text("${item.history.size}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -235,6 +306,40 @@ fun ItemDetailScreen(model: AppModel, item: Item, onBack: () -> Unit, onEdit: ()
                 Modifier.padding(start = 16.dp, bottom = 24.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+
+    removing?.let { a ->
+        AlertDialog(
+            onDismissRequest = { removing = null },
+            title = { Text("Remove “${a.name}”?") },
+            text = { Text("It’s removed from this item on all your devices.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    removing = null
+                    scope.launch { model.edit { it.removeAttachment(item.id, a.id) } }
+                }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { removing = null }) { Text("Cancel") } },
+        )
+    }
+
+    if (moving) {
+        AlertDialog(
+            onDismissRequest = { moving = false },
+            title = { Text("Move to Vault") },
+            text = {
+                Column {
+                    for (vault in model.vaults.filter { it.id != item.vaultId }) {
+                        Text(vault.name, Modifier.fillMaxWidth().clickable {
+                            moving = false
+                            scope.launch { model.edit { it.move(item.id, vault.id) } }
+                        }.padding(vertical = 12.dp), style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { moving = false }) { Text("Cancel") } },
+        )
     }
 
     if (confirmDelete) {

@@ -108,6 +108,7 @@ private sealed interface Screen {
     data class Detail(val id: String) : Screen
     data class Editor(val id: String?, val category: ItemCategory) : Screen
     data class Issues(val check: WatchtowerCheck) : Screen
+    data class History(val id: String) : Screen
     data object Settings : Screen
 }
 
@@ -162,12 +163,19 @@ fun VaultScreens(model: AppModel) {
         }
         is Screen.Detail -> {
             val item = model.item(top.id)
-            if (item == null) LaunchedEffect(top) { back() } else ItemDetailScreen(model, item, onBack = ::back, onEdit = { stack.add(Screen.Editor(item.id, item.category)) })
+            if (item == null) LaunchedEffect(top) { back() } else ItemDetailScreen(
+                model, item, onBack = ::back, onEdit = { stack.add(Screen.Editor(item.id, item.category)) },
+                onHistory = { stack.add(Screen.History(item.id)) }, onOpen = open,
+            )
         }
         is Screen.Editor -> ItemEditorScreen(model, top.id?.let(model::item), top.category, onDone = { saved ->
             back()
             if (top.id == null && saved != null) stack.add(Screen.Detail(saved.id))
         })
+        is Screen.History -> {
+            val item = model.item(top.id)
+            if (item == null) LaunchedEffect(top) { back() } else ItemHistoryScreen(model, item, onBack = ::back)
+        }
         is Screen.Issues -> WatchtowerIssuesScreen(model, top.check, open, onBack = ::back)
         Screen.Settings -> SettingsScreen(model, onBack = ::back)
     }

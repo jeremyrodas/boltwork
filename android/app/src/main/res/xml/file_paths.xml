@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Opened attachments: decrypted into the cache while being viewed, removed on lock. -->
+<paths>
+    <cache-path name="attachments" path="attachments/" />
+</paths>

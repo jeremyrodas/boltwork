@@ -171,6 +171,19 @@ class VaultStore private constructor(
     @Synchronized fun archive(id: String) = patch(id) { it.copy(state = ItemState.archived) }
     @Synchronized fun trash(id: String) = patch(id) { it.copy(state = ItemState.deleted, deletedAt = now()) }
     @Synchronized fun restore(id: String) = patch(id) { it.copy(state = ItemState.active, deletedAt = null) }
+    /** A copy of an item, titled "(copy)", in the same vault. Attachments and history stay with the original. */
+    @Synchronized fun duplicateItem(id: String): Item {
+        val src = item(id)
+        return saveItem(null, src.vaultId, src.content.copy(title = "${src.title} (copy)"))
+    }
+
+    /** Puts an earlier version back. The current one goes into history, so this can be undone. */
+    @Synchronized fun restoreVersion(itemId: String, index: Int): Item {
+        val item = item(itemId)
+        val version = item.history.getOrNull(index) ?: throw VaultError.NotFound("That version")
+        return saveItem(item.id, item.vaultId, version.content)
+    }
+
     /** Breach counts by password SHA-1, kept encrypted on this device only. */
     val pwnedCounts: Map<String, Int> @Synchronized get() = pwnedCache
 
@@ -313,6 +326,12 @@ class VaultStore private constructor(
         if (!hasAttachmentFile(meta.id)) throw if (syncState != null) VaultError.AttachmentNotDownloaded() else VaultError.NotFound("Attachment file")
         val sealed = json.decodeFromString(Sealed.serializer(), attachmentFile(meta.id).readText())
         return meta to VaultCrypto.open(sealed, key, aadAttachment(meta.id))
+    }
+
+    @Synchronized
+    fun removeAttachment(itemId: String, attachmentId: String) {
+        patch(itemId) { item -> item.copy(attachments = item.attachments.filter { it.id != attachmentId }) }
+        attachmentFile(attachmentId).delete()
     }
 
     private fun removeAttachmentFiles(item: Item) {
