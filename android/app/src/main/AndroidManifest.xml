@@ -59,5 +59,24 @@
             </intent-filter>
             <meta-data android:name="android.autofill" android:resource="@xml/autofill_service" />
         </service>
+        <activity
+            android:name=".passkeys.PasskeyActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:windowSoftInputMode="adjustResize" />
+        <service
+            android:name=".passkeys.BoltworkCredentialService"
+            android:enabled="true"
+            android:exported="true"
+            android:label="Boltwork"
+            android:icon="@mipmap/ic_launcher"
+            android:permission="android.permission.BIND_CREDENTIAL_PROVIDER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.credentials.CredentialProviderService" />
+            </intent-filter>
+            <meta-data android:name="android.credentials.provider" android:resource="@xml/credential_provider" />
+        </service>
     </application>
 </manifest>

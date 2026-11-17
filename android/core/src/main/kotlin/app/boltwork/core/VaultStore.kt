@@ -193,6 +193,64 @@ class VaultStore private constructor(
         writeFile()
     }
 
+    // MARK: - Passkeys
+
+    /** Active items' passkeys for a relying party. */
+    @Synchronized
+    fun passkeys(rpId: String): List<Pair<Item, Passkey>> =
+        items.filter { it.state == ItemState.active }.flatMap { item -> item.passkeys.filter { it.rpId == rpId }.map { item to it } }
+
+    /** Every passkey credential ID in the vault, to honor a site's excludeCredentials. */
+    val passkeyIds: Set<String> @Synchronized get() = items.flatMap { i -> i.passkeys.map { it.credentialId } }.toSet()
+
+    /** Saves a new passkey on the site's login for that account, or a new login. Returns that item. */
+    @Synchronized
+    fun addPasskey(passkey: Passkey, target: String? = null, newLogin: Boolean = false): Item {
+        val candidates = passkeyCandidates(passkey.rpId)
+        val chosen = if (newLogin) null else target?.let { t -> candidates.firstOrNull { it.id == t } ?: throw VaultError.NotFound("That login") }
+            ?: autoTarget(candidates, passkey.userName)
+        if (chosen != null) return patch(chosen.id) { it.withPasskeys(it.passkeys + passkey) }
+        val blank = ItemTemplate.blankContent(ItemCategory.login)
+        val local = passkey.rpId == "localhost" || passkey.rpId.endsWith(".localhost")
+        val content = blank.copy(
+            title = passkey.rpName?.trim()?.takeIf { it.isNotEmpty() } ?: passkey.rpId,
+            urls = listOf(ItemUrl(url = "${if (local) "http" else "https"}://${passkey.rpId}", primary = true)),
+            fields = blank.fields.map { if (it.purpose == FieldPurpose.username) it.copy(value = passkey.userName) else it },
+        )
+        val created = saveItem(null, vaults.first().id, content)
+        return patch(created.id) { it.withPasskeys(listOf(passkey)) }
+    }
+
+    /** Logins a new passkey for this site could go on, and the one it goes on by default (null: a new login). */
+    @Synchronized
+    fun passkeyTargets(rpId: String, userName: String): Pair<List<Item>, String?> {
+        val candidates = passkeyCandidates(rpId)
+        val want = userName.lowercase()
+        val sorted = candidates.sortedByDescending { want.isNotEmpty() && (it.content.field(FieldPurpose.username)?.value ?: "").lowercase() == want }
+        return sorted to autoTarget(candidates, userName)?.id
+    }
+
+    @Synchronized
+    fun markPasskeyUsed(itemId: String, credentialId: String) = patch(itemId, touch = false) { item ->
+        val now = now()
+        item.withPasskeys(item.passkeys.map { if (it.credentialId == credentialId) it.copy(lastUsedAt = now) else it })
+            .copy(useCount = item.useCount + 1, lastUsedAt = now)
+    }
+
+    @Synchronized
+    fun removePasskey(itemId: String, credentialId: String) = patch(itemId) { it.withPasskeys(it.passkeys.filter { p -> p.credentialId != credentialId }) }
+
+    private fun passkeyCandidates(rpId: String) = items.filter { item ->
+        item.state == ItemState.active && item.category == ItemCategory.login &&
+            item.content.urls.any { u -> Domain.host(u.url).let { it == rpId || it.endsWith(".$rpId") } }
+    }
+
+    private fun autoTarget(candidates: List<Item>, userName: String): Item? {
+        fun user(i: Item) = (i.content.field(FieldPurpose.username)?.value ?: "").lowercase()
+        if (userName.isNotEmpty()) candidates.firstOrNull { user(it) == userName.lowercase() }?.let { return it }
+        return if (candidates.size == 1 && user(candidates[0]).isEmpty()) candidates[0] else null
+    }
+
     @Synchronized fun markUsed(id: String) = patch(id, touch = false) { it.copy(useCount = it.useCount + 1, lastUsedAt = now()) }
 
     @Synchronized

@@ -63,6 +63,7 @@ import app.boltwork.core.Item
 import app.boltwork.core.ItemState
 import app.boltwork.core.ItemTemplate
 import app.boltwork.core.Totp
+import app.boltwork.core.passkeys
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -94,6 +95,7 @@ fun ItemDetailScreen(model: AppModel, item: Item, onBack: () -> Unit, onEdit: ()
     var moving by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf<Attachment?>(null) }
+    var removingPasskey by remember { mutableStateOf<app.boltwork.core.Passkey?>(null) }
     var busyFile by remember { mutableStateOf<String?>(null) }
 
     fun toast(text: String) = Toast.makeText(context, text, Toast.LENGTH_LONG).show()
@@ -238,8 +240,21 @@ fun ItemDetailScreen(model: AppModel, item: Item, onBack: () -> Unit, onEdit: ()
             }
 
             FieldCard("", item.content.fields)
-            if (item.passkeyCount > 0) {
-                Card { ValueRow("passkey", "Saved. Use it from Boltwork on your computer, iPhone or iPad.", onClick = {}) }
+            val passkeys = item.passkeys
+            if (passkeys.isNotEmpty()) {
+                Card {
+                    passkeys.forEachIndexed { i, passkey ->
+                        if (i > 0) HorizontalDivider(Modifier.padding(start = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        ValueRow("passkey", listOf(passkey.userName, passkey.rpId).filter { it.isNotEmpty() }.joinToString(" · "), onClick = {}) {
+                            IconButton(onClick = { removingPasskey = passkey }) { Icon(Icons.Filled.Delete, "Remove passkey") }
+                        }
+                    }
+                    Text(
+                        "Boltwork signs in with it in apps and browsers on this device, and on your other devices.",
+                        Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             if (item.content.urls.isNotEmpty()) {
                 Card {
@@ -339,6 +354,21 @@ fun ItemDetailScreen(model: AppModel, item: Item, onBack: () -> Unit, onEdit: ()
             },
             confirmButton = {},
             dismissButton = { TextButton(onClick = { moving = false }) { Text("Cancel") } },
+        )
+    }
+
+    removingPasskey?.let { passkey ->
+        AlertDialog(
+            onDismissRequest = { removingPasskey = null },
+            title = { Text("Remove this passkey?") },
+            text = { Text("You won’t be able to sign in to ${passkey.rpId} with it from any device. Make sure the account has another way to sign in.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    removingPasskey = null
+                    scope.launch { model.edit { it.removePasskey(item.id, passkey.credentialId) } }
+                }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { removingPasskey = null }) { Text("Cancel") } },
         )
     }
 

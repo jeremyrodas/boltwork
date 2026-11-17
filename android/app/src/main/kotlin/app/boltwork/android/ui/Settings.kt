@@ -174,6 +174,12 @@ fun SettingsScreen(model: AppModel, onBack: () -> Unit, onSecretKey: () -> Unit,
                         turnOn.launch(android.content.Intent(android.provider.Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE, android.net.Uri.parse("package:${context.packageName}")))
                     }
                 })
+                if (android.os.Build.VERSION.SDK_INT >= 34) {
+                    Line()
+                    SettingRow("Passkeys", "Turn on Boltwork under Passwords, passkeys and accounts to save and use passkeys in apps and browsers.", onClick = {
+                        runCatching { androidx.credentials.CredentialManager.create(context).createSettingsPendingIntent().send() }
+                    })
+                }
             }
 
             Heading("Security")

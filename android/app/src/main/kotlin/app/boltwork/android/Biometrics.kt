@@ -23,4 +23,15 @@ object Biometrics {
             .build()
         prompt.authenticate(info, BiometricPrompt.CryptoObject(cipher))
     }
+
+    /** Confirms it's the device's owner (fingerprint, face or screen lock) before a passkey is used. True if confirmed or the device has no lock. */
+    fun confirm(activity: FragmentActivity, title: String, subtitle: String, done: (Boolean) -> Unit) {
+        val allowed = BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        if (BiometricManager.from(activity).canAuthenticate(allowed) != BiometricManager.BIOMETRIC_SUCCESS) return done(true)
+        val prompt = BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = done(true)
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) = done(false)
+        })
+        prompt.authenticate(BiometricPrompt.PromptInfo.Builder().setTitle(title).setSubtitle(subtitle).setAllowedAuthenticators(allowed).build())
+    }
 }

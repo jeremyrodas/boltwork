@@ -375,3 +375,88 @@ class LoginMatchTest {
         assertTrue(LoginMatch("example.com", null).logins(listOf(login("example.com", pw = ""))).isEmpty())
     }
 }
+
+class PasskeyTest {
+    private fun verify(spki: ByteArray, message: ByteArray, signature: ByteArray): Boolean {
+        val key = java.security.KeyFactory.getInstance("EC").generatePublic(java.security.spec.X509EncodedKeySpec(spki))
+        return java.security.Signature.getInstance("SHA256withECDSA").run { initVerify(key); update(message); verify(signature) }
+    }
+
+    @Test fun readsKeysMadeOnIPhone() {
+        // A key and signature made by CryptoKit, as the Apple apps make them.
+        val pkcs8 = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgv43PUt25iiYmmdsVwwo6vJ_MeFU5T3WE4ySdnY8s8zihRANCAARux3UsQk7s5gAy2MqarYpXedJbtqvnv8sY4DYbEXLC2RYAokpgMoYHqG3FK08rRFpu12Q6_B9ZzI1A7jPbBnJv"
+        val spki = WebAuthn.unb64url("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbsd1LEJO7OYAMtjKmq2KV3nSW7ar57_LGOA2GxFywtkWAKJKYDKGB6htxStPK0RabtdkOvwfWcyNQO4z2wZybw")
+        assertTrue(verify(spki, "hello from swift".toByteArray(), WebAuthn.unb64url("MEUCIQDMEH5H-WfG9MacNLYlrAkBzQGIb_gDjtZ0tLKh2TYQggIgQTNhQQ_hV2gdzo3IUBwmJ60S4qF4lFHLBFFswV7xBCg")))
+        val passkey = Passkey("AAAAAAAAAAAAAAAAAAAAAA", "example.com", null, "dXNlcg", "user", null, pkcs8, -7, 0)
+        val hash = WebAuthn.sha256("client data".toByteArray())
+        val (authData, sig) = WebAuthn.assert(passkey, "example.com", hash)
+        assertTrue(verify(spki, authData + hash, sig))
+        assertEquals(0x1D, authData[32].toInt())
+    }
+
+    @Test fun createThenSignIn() {
+        val challenge = WebAuthn.b64url(ByteArray(32) { it.toByte() })
+        val create = WebAuthn.parse("""{"rp":{"id":"example.com","name":"Example"},"user":{"id":"${WebAuthn.b64url("user-1".toByteArray())}","name":"alice@example.com","displayName":"Alice"},"challenge":"$challenge","pubKeyCredParams":[{"type":"public-key","alg":-8},{"type":"public-key","alg":-7}],"extensions":{"credProps":true}}""")
+        val rpId = WebAuthn.checkRpId(WebAuthn.createRpId(create)!!, "login.example.com")
+        val (passkey, responseJson) = WebAuthn.create(create, rpId, "https://login.example.com", null)
+        val response = Json.parseToJsonElement(responseJson).jsonObject
+        assertEquals(passkey.credentialId, response["id"]!!.jsonPrimitive.content)
+        val r = response["response"]!!.jsonObject
+        val authData = WebAuthn.unb64url(r["authenticatorData"]!!.jsonPrimitive.content)
+        assertContentEquals(WebAuthn.sha256("example.com".toByteArray()), authData.copyOfRange(0, 32))
+        assertEquals(0x5D, authData[32].toInt())
+        assertContentEquals(WebAuthn.aaguid, authData.copyOfRange(37, 53))
+        val att = WebAuthn.unb64url(r["attestationObject"]!!.jsonPrimitive.content)
+        assertEquals("a363666d74646e6f6e65", att.copyOfRange(0, 10).hex())
+        val clientData = Json.parseToJsonElement(String(WebAuthn.unb64url(r["clientDataJSON"]!!.jsonPrimitive.content))).jsonObject
+        assertEquals(listOf("type", "challenge", "origin", "crossOrigin"), clientData.keys.toList())
+        assertEquals("""{"credProps":{"rk":true}}""", response["clientExtensionResults"].toString())
+        assertEquals("alice@example.com", passkey.userName)
+
+        val get = WebAuthn.parse("""{"rpId":"example.com","challenge":"$challenge","allowCredentials":[]}""")
+        assertEquals(listOf(passkey), WebAuthn.usable(listOf(passkey, passkey.copy(rpId = "other.com")), get, "example.com"))
+        val signed = Json.parseToJsonElement(WebAuthn.get(passkey, get, "example.com", "https://login.example.com", null, null)).jsonObject["response"]!!.jsonObject
+        val signedData = WebAuthn.unb64url(signed["authenticatorData"]!!.jsonPrimitive.content)
+        val hash = WebAuthn.sha256(WebAuthn.unb64url(signed["clientDataJSON"]!!.jsonPrimitive.content))
+        assertTrue(verify(WebAuthn.unb64url(r["publicKey"]!!.jsonPrimitive.content), signedData + hash, WebAuthn.unb64url(signed["signature"]!!.jsonPrimitive.content)))
+        assertEquals(passkey.userHandle, signed["userHandle"]!!.jsonPrimitive.content)
+
+        // For the Swift side to check: a key made here, and a signature by it.
+        val msg = "hello from kotlin".toByteArray()
+        val (ad, sig) = WebAuthn.assert(passkey, "example.com", WebAuthn.sha256(msg))
+        File(System.getProperty("java.io.tmpdir"), "boltwork-kotlin-passkey.txt").writeText("${passkey.privateKey} ${WebAuthn.b64url(ad + WebAuthn.sha256(msg))} ${WebAuthn.b64url(sig)}")
+    }
+
+    @Test fun relyingPartyRules() {
+        assertEquals("example.com", WebAuthn.checkRpId("example.com", "a.b.example.com"))
+        assertFailsWith<WebAuthn.Failure> { WebAuthn.checkRpId("evil.com", "example.com") }
+        assertFailsWith<WebAuthn.Failure> { WebAuthn.checkRpId("com", "example.com") }
+        assertFailsWith<WebAuthn.Failure> { WebAuthn.checkRpId("co.uk", "bbc.co.uk") }
+        assertEquals("bbc.co.uk", WebAuthn.checkRpId("bbc.co.uk", "www.bbc.co.uk"))
+        assertEquals("localhost", WebAuthn.checkRpId("localhost", "localhost"))
+        assertEquals("example.com", WebAuthn.checkRpId("example.com", null))
+    }
+
+    @Test fun storesPasskeysOnLogins() {
+        val dir = Files.createTempDirectory("boltwork-passkeys").toFile()
+        val store = VaultStore.open(VaultStore.create(dir, "correct horse battery", SecretKey.generate(), VaultCrypto.fastCostForTests), dir)
+        val made = WebAuthn.newCredential("example.com", "Example", "u".toByteArray(), "alice", null).passkey
+        val item = store.addPasskey(made)
+        assertEquals("Example", item.title)
+        assertEquals(listOf(made), store.item(item.id).passkeys)
+        // Same account again: joins that login.
+        val second = WebAuthn.newCredential("example.com", "Example", "u".toByteArray(), "alice", null).passkey
+        assertEquals(item.id, store.addPasskey(second).id)
+        assertEquals(2, store.passkeys("example.com").size)
+        assertEquals(setOf(made.credentialId, second.credentialId), store.passkeyIds)
+        store.markPasskeyUsed(item.id, made.credentialId)
+        assertNotNull(store.item(item.id).passkeys.first { it.credentialId == made.credentialId }.lastUsedAt)
+        store.removePasskey(item.id, made.credentialId)
+        assertEquals(listOf(second.credentialId), store.item(item.id).passkeys.map { it.credentialId })
+        // Kept through the record's JSON, in the same shape as the other apps.
+        val saved = store.item(item.id)
+        val text = json.encodeToString(Item.serializer(), saved)
+        assertTrue("\"passkeys\":[{\"credentialId\":" in text)
+        assertEquals(saved.passkeys, json.decodeFromString(Item.serializer(), text).passkeys)
+    }
+}

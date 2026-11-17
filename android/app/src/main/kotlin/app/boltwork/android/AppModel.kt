@@ -147,8 +147,13 @@ class AppModel(private val app: Application) {
         masterKey.fill(0)
     }
 
+    /** When the vault was last unlocked, so a passkey right after unlocking doesn't ask again. */
+    var unlockedAt = 0L
+        private set
+
     private fun opened(store: VaultStore) {
         this.store = store
+        unlockedAt = System.currentTimeMillis()
         refresh()
         phase = Phase.Unlocked
         startSync()
@@ -340,6 +345,12 @@ class AppModel(private val app: Application) {
     fun markUsed(id: String) {
         scope.launch { edit { it.markUsed(id) } }
     }
+
+    /** Every passkey credential ID in the vault. */
+    fun passkeyIds(): Set<String> = store?.passkeyIds ?: emptySet()
+
+    /** Logins a new passkey for this site could go on, and the default one (null: a new login). */
+    fun passkeyTargets(rpId: String, userName: String): Pair<List<Item>, String?> = store?.passkeyTargets(rpId, userName) ?: (emptyList<Item>() to null)
 
     /** Saves a login AutoFill offered to keep: updates the matching login with this username, or adds a new one. */
     suspend fun saveLogin(match: LoginMatch, username: String, password: String): Item? = edit { store ->
