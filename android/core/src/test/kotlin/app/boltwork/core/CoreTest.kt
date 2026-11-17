@@ -307,3 +307,35 @@ class ItemToolsTest {
         assertTrue(copy.id != first.id)
     }
 }
+
+class SSHKeyTest {
+    private fun run(dir: File, vararg args: String): String {
+        val p = ProcessBuilder(*args).directory(dir).redirectErrorStream(true).start()
+        val out = p.inputStream.bufferedReader().readText()
+        p.waitFor()
+        return out
+    }
+
+    /** Keys from ssh-keygen read the same here, and keys written here read back in ssh-keygen. */
+    @Test fun matchesSshKeygen() {
+        if (!File("/usr/bin/ssh-keygen").exists()) return
+        val dir = Files.createTempDirectory("boltwork-ssh").toFile()
+        for ((name, type) in listOf("ed" to "ed25519", "rsa" to "rsa")) {
+            run(dir, "ssh-keygen", "-q", "-t", type, *(if (type == "rsa") arrayOf("-b", "3072") else emptyArray()), "-N", "", "-C", "test@example", "-f", name)
+            val key = SSHKey.parse(File(dir, name).readText())
+            val pub = File(dir, "$name.pub").readText().trim()
+            assertEquals(pub, key.publicKeyLine)
+            assertTrue(run(dir, "ssh-keygen", "-l", "-f", "$name.pub").contains(key.fingerprint))
+            File(dir, "$name-bw").writeText(key.openSSH)
+            File(dir, "$name-bw").setReadable(false, false); File(dir, "$name-bw").setReadable(true, true)
+            assertTrue(run(dir, "ssh-keygen", "-y", "-f", "$name-bw").startsWith(pub.split(" ").take(2).joinToString(" ")))
+        }
+        assertEquals("RSA 3072-bit", SSHKey.parse(File(dir, "rsa").readText()).typeName)
+        val made = SSHKey.generateEd25519("new")
+        assertEquals(made.publicKeyLine, SSHKey.parse(made.openSSH).publicKeyLine)
+        File(dir, "made").writeText(made.openSSH)
+        File(dir, "made").setReadable(false, false); File(dir, "made").setReadable(true, true)
+        assertTrue(run(dir, "ssh-keygen", "-y", "-f", "made").startsWith(made.publicKeyLine.split(" ").take(2).joinToString(" ")))
+        assertFailsWith<SSHKey.Failure> { SSHKey.parse("not a key") }
+    }
+}

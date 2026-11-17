@@ -13,6 +13,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -45,6 +48,7 @@ import app.boltwork.core.Field
 import app.boltwork.core.FieldPurpose
 import app.boltwork.core.FieldType
 import app.boltwork.core.Item
+import app.boltwork.core.SSHKey
 import app.boltwork.core.ItemCategory
 import app.boltwork.core.ItemContent
 import app.boltwork.core.ItemTemplate
@@ -93,6 +97,31 @@ private fun FieldEditor(field: Field, onChange: (Field) -> Unit, onGenerate: () 
             keyboardOptions = if (field.purpose == FieldPurpose.username) keyboard(KeyboardType.Email) else KeyboardOptions.Default,
         )
     }
+}
+
+/** For SSH Key items: makes a new key, and fills in the public key, fingerprint and type from a pasted private key. */
+@Composable
+private fun SshKeyActions(fields: List<Field>, set: (String, String) -> Unit) {
+    fun value(id: String) = fields.firstOrNull { it.id == id }?.value.orEmpty()
+    val privateKey = value("privateKey")
+    var problem by remember { mutableStateOf<String?>(null) }
+    fun fill(key: SSHKey) {
+        if (value("publicKey") != key.publicKeyLine) set("publicKey", key.publicKeyLine)
+        if (value("fingerprint") != key.fingerprint) set("fingerprint", key.fingerprint)
+        if (value("keyType") != key.typeName) set("keyType", key.typeName)
+    }
+    LaunchedEffect(privateKey) {
+        problem = null
+        if (privateKey.isBlank()) return@LaunchedEffect
+        runCatching { SSHKey.parse(privateKey) }.onSuccess(::fill).onFailure { problem = it.message }
+    }
+    if (privateKey.isEmpty()) {
+        OutlinedButton(onClick = { SSHKey.generateEd25519().let { set("privateKey", it.openSSH); fill(it) } }) {
+            Icon(Icons.Filled.Key, null)
+            Text("  Generate New Ed25519 Key")
+        }
+    }
+    problem?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
 }
 
 /** Makes a new item (`item` null) or changes one. `onDone` gets the saved item, or null if the user backed out. */
@@ -157,6 +186,7 @@ fun ItemEditorScreen(model: AppModel, item: Item?, category: ItemCategory, onDon
                 }, Modifier.fillMaxWidth())
             }
             for (field in content.fields) FieldEditor(field, ::setField) { generatingFor = field.id }
+            if (category == ItemCategory.sshKey) SshKeyActions(content.fields) { id, value -> content.fields.firstOrNull { it.id == id }?.let { setField(it.copy(value = value)) } }
 
             if (template.hasUrls || urls.isNotEmpty()) {
                 urls.forEachIndexed { i, url ->
