@@ -148,3 +148,48 @@ struct SyncAgainstServer {
         #expect(store.dirtyRecords.isEmpty)
     }
 }
+
+/// The app and its AutoFill extension each keep the vault open and save it; neither may wipe the other's changes.
+struct TwoProcessTests {
+    @Test func appSaveKeepsPasskeyTheExtensionSaved() async throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "boltwork-two-\(UUID().uuidString)")
+        let created = try await VaultStore.create(at: dir, password: "a long password", secretKey: "SR1-ABCDEF-GHJKM-NPQRS-TVWXY-Z0123", cost: VaultCrypto.fastCostForTests)
+        let app = try VaultStore.open(created: created, at: dir)
+        var content = ItemTemplate.blankContent(.login)
+        content.title = "Example"
+        content.urls = [ItemURL(url: "https://example.com")]
+        if let i = content.fields.firstIndex(where: { $0.purpose == .username }) { content.fields[i].value = "alice" }
+        let login = try app.saveItem(id: nil, vaultId: app.vaults[0].id, content: content)
+        let other = try app.saveItem(id: nil, vaultId: app.vaults[0].id, content: ItemTemplate.blankContent(.secureNote))
+        let key = try app.masterKeyCopy()
+
+        // The extension opens the vault, saves a passkey and a new login.
+        let ext = try VaultStore.open(at: dir, key: key)
+        let made = try WebAuthn.newCredential(rpId: "example.com", rpName: "Example", userHandle: [1, 2, 3], userName: "alice", userDisplayName: nil)
+        try ext.addPasskey(made.passkey)
+        var fresh = ItemTemplate.blankContent(.login)
+        fresh.title = "Saved from AutoFill"
+        let added = try ext.saveItem(id: nil, vaultId: ext.vaults[0].id, content: fresh)
+
+        // The app, still holding its old copy, counts a use, edits another item and deletes nothing.
+        try app.markUsed(login.id)
+        var note = other.content
+        note.title = "Edited in the app"
+        _ = try app.saveItem(id: other.id, vaultId: other.vaultId, content: note)
+
+        let reopened = try VaultStore.open(at: dir, key: key)
+        let saved = try #require(reopened.items.first { $0.id == login.id })
+        #expect(saved.passkeys.map(\.credentialId) == [made.passkey.credentialId])
+        #expect(saved.useCount == 1)
+        #expect(reopened.items.contains { $0.id == added.id })
+        #expect(reopened.items.first { $0.id == other.id }?.title == "Edited in the app")
+        // And the app's own copy has them too.
+        #expect(app.items.first { $0.id == login.id }?.passkeys.count == 1)
+
+        // A purge in the app stays purged even though the extension's older file still has the item.
+        let ext2 = try VaultStore.open(at: dir, key: key)
+        try app.purge(other.id)
+        try ext2.markUsed(added.id)
+        #expect(try VaultStore.open(at: dir, key: key).items.contains { $0.id == other.id } == false)
+    }
+}

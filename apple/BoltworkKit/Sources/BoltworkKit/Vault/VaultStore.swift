@@ -246,6 +246,7 @@ public final class VaultStore {
 
     public func persist() throws {
         let key = try requireKey()
+        try absorbChangesOnDisk(key: key)
         try records.update(key: key, vaults: vaults, collections: collections, items: items, now: Self.now())
         try writeFile()
     }
@@ -253,6 +254,9 @@ public final class VaultStore {
     /// Writes the records atomically, keeping the previous file as `.bak`.
     public func writeFile() throws {
         let key = try requireKey()
+        if try absorbChangesOnDisk(key: key) {
+            try records.update(key: key, vaults: vaults, collections: collections, items: items, now: Self.now())
+        }
         let local = try VaultCrypto.sealJSON(LocalData(pwnedCache: pwnedCache, searchHistory: searchHistory), key: key, aad: Self.aadLocal)
         let file = VaultFile(format: VaultFile.format, version: VaultFile.version, accountId: accountId, kdf: kdf, wrappedKey: wrappedKey,
                              records: records.all, local: local, sync: syncState, savedAt: Self.now())
@@ -266,6 +270,48 @@ public final class VaultStore {
         }
         try data.write(to: vaultURL, options: [.atomic, .completeFileProtection])
         fileDate = Self.modificationDate(directory)
+    }
+
+    // MARK: - Another process's saves
+
+    /// The app and its AutoFill extension both save this vault. If the other one saved since this store last read
+    /// or wrote the file, its changes are folded in first, so neither save wipes the other's (a new passkey, say).
+    /// This store's sync state and record revisions stay as they are; changed items are re-sealed and synced as usual.
+    @discardableResult
+    private func absorbChangesOnDisk(key: [UInt8]) throws -> Bool {
+        guard changedOnDisk, let file = try? Self.readFile(directory), file.version == VaultFile.version,
+              let disk = try? RecordSet.open(key: key, sealed: file.records ?? []) else { return false }
+        fileDate = Self.modificationDate(directory)
+        let theirs = Dictionary(disk.items.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        var merged: [Item] = items.compactMap { mine in
+            if let t = theirs[mine.id] { return combine(mine, t) }
+            // Deleted there after this store's last change to it: gone.
+            if let r = disk.set[mine.id], r.isDeleted, r.updatedAt >= mine.updatedAt { return nil }
+            return mine
+        }
+        // Records this store never knew are new from the other side; ones it knew but dropped, it deleted.
+        let known = Set(items.map(\.id))
+        merged += disk.items.filter { !known.contains($0.id) && records[$0.id] == nil }
+        items = merged
+        vaults += disk.vaults.filter { v in records[v.id] == nil && !vaults.contains { $0.id == v.id } }
+        vaults.sort { $0.createdAt < $1.createdAt }
+        collections += disk.collections.filter { c in records[c.id] == nil && !collections.contains { $0.id == c.id } }
+        return true
+    }
+
+    /// One item as both processes saved it: the newer edit wins, keeping both sides' passkeys, attachments and use.
+    private func combine(_ mine: Item, _ theirs: Item) -> Item {
+        if mine == theirs { return mine }
+        let (winner, loser) = theirs.updatedAt > mine.updatedAt ? (theirs, mine) : (mine, theirs)
+        var w = winner.content == loser.content ? winner : withHistory(winner: winner, loser: loser)
+        let have = Set(w.attachments.map(\.id))
+        w.attachments += loser.attachments.filter { !have.contains($0.id) }
+        let ids = Set(w.passkeys.map(\.credentialId))
+        let extra = loser.passkeys.filter { !ids.contains($0.credentialId) }
+        if !extra.isEmpty { w.passkeys += extra }
+        w.useCount = max(mine.useCount, theirs.useCount)
+        w.lastUsedAt = [mine.lastUsedAt, theirs.lastUsedAt].compactMap { $0 }.max()
+        return w
     }
 
     // MARK: - Vaults and collections
@@ -356,8 +402,9 @@ public final class VaultStore {
         guard let i = items.firstIndex(where: { $0.id == id }) else { throw VaultError.notFound("Item") }
         change(&items[i])
         if touch { items[i].updatedAt = Self.now() }
-        try persist()
-        return items[i]
+        let changed = items[i]
+        try persist() // may fold in another process's saves, which can move items
+        return items.first { $0.id == id } ?? changed
     }
 
     public func setFavorite(_ id: String, _ favorite: Bool) throws { try patch(id, touch: false) { $0.favorite = favorite } }
