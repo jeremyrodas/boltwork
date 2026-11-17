@@ -11,7 +11,13 @@ struct PasskeyRegistrationView: View {
 
     var body: some View {
         if let problem = session.registrationProblem(request) {
-            ContentUnavailableView("Can’t Save Passkey", systemImage: "person.badge.key", description: Text(problem))
+            ContentUnavailableView {
+                Label("Can’t Save Passkey", systemImage: "person.badge.key")
+            } description: {
+                Text(problem)
+            } actions: {
+                Button("Close") { session.cancel(.failed) }.buttonStyle(.borderedProminent)
+            }
         } else if let identity = request.credentialIdentity as? ASPasskeyCredentialIdentity {
             Form {
                 Section {

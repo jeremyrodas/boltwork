@@ -6,12 +6,25 @@ struct AutoFillView: View {
 
     var body: some View {
         NavigationStack {
+            #if os(macOS)
+            // The Mac's AutoFill sheet shows no toolbar, so the way out is a button of its own (Esc works too).
+            VStack(spacing: 0) {
+                content.frame(maxWidth: .infinity, maxHeight: .infinity)
+                Divider()
+                HStack {
+                    Spacer()
+                    Button("Cancel") { session.cancel() }.keyboardShortcut(.cancelAction)
+                }
+                .padding(12)
+            }
+            #else
             content
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { session.cancel() }
                     }
                 }
+            #endif
         }
         .tint(Theme.accent)
         .task { await session.unlock() }

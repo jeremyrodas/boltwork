@@ -66,9 +66,32 @@ func relayReplies(_ fd: Int32) {
     }
 }
 
+/// Passkey requests the person started (not the quiet sign-in suggestions) open Boltwork when it isn't running,
+/// instead of silently falling back to the browser's own dialog. Filling forms never launches it.
+func wantsApp(_ message: [String: Any]) -> Bool {
+    guard let msg = message["msg"] as? [String: Any], let type = msg["type"] as? String else { return false }
+    return type == "passkeyCreate" || (type == "passkeyGet" && (msg["conditional"] as? Bool) != true)
+}
+
+/// Starts Boltwork in the background and waits for its socket. It asks to be unlocked if it needs to.
+func launchApp() -> Int32 {
+    let open = Process()
+    open.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+    open.arguments = ["-g", "-b", "app.boltwork.apple"]
+    guard (try? open.run()) != nil else { return -1 }
+    open.waitUntilExit()
+    for _ in 0..<40 {
+        let fd = connectToApp()
+        if fd >= 0 { return fd }
+        usleep(250_000)
+    }
+    return -1
+}
+
 func relay(_ message: [String: Any]) {
     let id = message["id"] ?? NSNull()
-    let fd = connectToApp()
+    var fd = connectToApp()
+    if fd < 0, wantsApp(message) { fd = launchApp() }
     guard fd >= 0, let line = try? JSONSerialization.data(withJSONObject: ["id": id, "origin": origin, "msg": message["msg"] ?? NSNull()]) else {
         send((try? JSONSerialization.data(withJSONObject: ["id": id, "body": ["error": "not-running"]])) ?? Data())
         return
