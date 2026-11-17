@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -16,8 +18,27 @@ android {
         versionCode = 1
         versionName = "0.4.3"
     }
+    // Release signing comes from a properties file outside the repo, passed as
+    // -Pboltwork.signing=/path/to/signing.properties (storeFile, storePassword, keyAlias, keyPassword).
+    val signingFile = (findProperty("boltwork.signing") as String?)?.let { file(it) }
+    signingConfigs {
+        if (signingFile?.exists() == true) {
+            val props = Properties().also { p -> signingFile.inputStream().use { p.load(it) } }
+            create("release") {
+                storeFile = file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            }
+        }
+    }
     buildTypes {
-        release { isMinifyEnabled = false }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfigs.findByName("release")?.let { signingConfig = it }
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
