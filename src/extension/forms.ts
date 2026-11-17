@@ -22,7 +22,8 @@ export function isOtp(el: unknown): el is HTMLInputElement {
   if (!(el instanceof HTMLInputElement) || !['text', 'tel', 'number', ''].includes(el.type) || !usable(el)) return false;
   if (el.autocomplete === 'one-time-code') return true;
   const h = hintOf(el);
-  return /\b(otp|totp|2fa|mfa|one.?time|verification.?code|security.?code|auth(entication)?.?code|passcode|2-step|two.?factor)\b/.test(h)
+  // otp.?code catches names like Amazon's "otpCode", where \b doesn't split "otp" from "code".
+  return /\b(otp|otp.?code|totp|2fa|mfa|one.?time|verification.?code|security.?code|auth(entication)?.?code|passcode|2-step|two.?factor)\b/.test(h)
     || (/\bcode\b/.test(h) && el.maxLength > 0 && el.maxLength <= 8);
 }
 

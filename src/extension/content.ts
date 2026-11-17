@@ -94,6 +94,9 @@ function placeMenu() {
 
 async function openMenu(field: HTMLInputElement, kind: FieldKind) {
   if (Date.now() < suppressUntil) return;
+  // Already showing for this field: switching back to the browser window sends focusin again, and rebuilding the
+  // menu then would swap it out from under the click that brought the window forward.
+  if (menu?.field === field && menu.host.isConnected) return;
   const res = await getMatches();
   // A site waiting for an autofill passkey sign-in (see webauthn-relay.ts) also gets Boltwork's passkeys here.
   const relay = window === window.top && kind !== 'otp' && kind !== 'password' ? window.__boltworkPasskeys : undefined;
@@ -158,6 +161,11 @@ function init() {
   document.addEventListener('input', e => { if (menu && e.target === menu.field && e.isTrusted) closeMenu(); }, true);
   window.addEventListener('resize', placeMenu);
   window.addEventListener('scroll', placeMenu, true);
+  // This script loads once the page has finished loading. A field focused before then (autofocus, or a sign-in
+  // step like Amazon's one-time code page that focuses the box as it loads) sent its focusin too early, so offer it now.
+  const focused = document.activeElement;
+  const focusedKind = kindOf(focused);
+  if (focusedKind && focused instanceof HTMLInputElement) void openMenu(focused, focusedKind);
 
   // Save prompts: catch the moment a login is submitted.
   document.addEventListener('submit', e => { if (e.target instanceof HTMLFormElement) captureSoon(e.target); }, true);
