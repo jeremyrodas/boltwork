@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Eye, EyeOff, X, type LucideIcon } from 'lucide-react';
-import { domainOf } from '../../core/search';
 import { CategoryIcon, Ico } from './icons';
 import type { Item, Strength } from '../../core/types';
 import { api } from '../api';
@@ -134,15 +133,10 @@ export function ColoredPassword({ value }: { value: string }) {
   );
 }
 
+/** The item's icon: one the user chose or the website's saved logo (see renderer/siteIcon.ts), else its category's. */
 export function ItemIcon({ item, size = 32 }: { item: Pick<Item, 'category' | 'icon' | 'urls'>; size?: number }) {
-  const { settings } = useApp();
-  const [failed, setFailed] = useState(false);
-  const host = item.urls[0] ? domainOf(item.urls[0].url) : '';
   const style = { width: size, height: size };
   if (item.icon) return <img className="item-icon" style={style} src={item.icon} alt="" />;
-  if (settings?.downloadIcons && host && !failed) {
-    return <img className="item-icon" style={style} src={`https://icons.duckduckgo.com/ip3/${encodeURIComponent(host)}.ico`} alt="" onError={() => setFailed(true)} />;
-  }
   return <span className="item-icon" style={style}><CategoryIcon category={item.category} size={Math.round(size * 0.5)} /></span>;
 }
 

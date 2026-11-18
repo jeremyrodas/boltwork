@@ -22,7 +22,7 @@ const CSP = [
   "script-src 'self' 'wasm-unsafe-eval'",
   "worker-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://icons.duckduckgo.com",
+  "img-src 'self' data: blob:",
   "font-src 'self'",
   "connect-src 'self' https://api.pwnedpasswords.com https://haveibeenpwned.com https://api.2fa.directory",
   "base-uri 'none'",

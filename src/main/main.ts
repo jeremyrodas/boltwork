@@ -21,6 +21,7 @@ import { currentTotp } from '../core/totp';
 import type { Settings, VaultData, WatchtowerReport } from '../core/types';
 import { Worker } from 'node:worker_threads';
 import { makeIcon } from './icon';
+import { fetchSiteIcon } from './siteIcon';
 import { initSshAgent, setSshAgentEnabled, sshAgentLocked, sshAgentStatus } from './sshAgentHost';
 import { browserHostStatus, getBridge, registerNativeHost, startBrowserHost, stopBrowserHost } from './browserHost';
 import type { AppPrompt, PasskeyDecision, PasskeyPrompt } from '../core/browserBridge';
@@ -790,6 +791,8 @@ const handlers: Handlers = {
   },
   removeAttachment: (itemId, attId) => { requireStore().removeAttachment(itemId, attId); changed(); },
   removePasskey: (itemId, credentialId) => { requireStore().removePasskey(itemId, credentialId); changed(); },
+  fetchSiteIcon: url => (settings.downloadIcons ? fetchSiteIcon(url) : null),
+  setSiteIcon: (itemId, host, icon) => { if (requireStore().setSiteIcon(itemId, host, icon)) changed(); },
 
   generate: options => { const password = generatePassword(options); return { password, strength: rateStrength(password) }; },
   rateStrength: pw => rateStrength(pw),

@@ -334,3 +334,56 @@ test('color schemes: the app icon is drawn in each metal, and unknown settings f
   assert.equal(mergeSettings({ colorScheme: 'verdigris' }).colorScheme, 'verdigris');
   assert.equal(mergeSettings(null).colorScheme, 'brass');
 });
+
+test('website logos: icon links are ranked, resolved and fall back to /favicon.ico', async () => {
+  const { iconCandidates, siteHome } = await import('../src/core/siteIcon');
+  assert.equal(siteHome('netflix.com/login')?.href, 'https://netflix.com/');
+  assert.equal(siteHome('http://router.local:8080/admin')?.href, 'http://router.local:8080/');
+  assert.equal(siteHome('javascript:alert(1)'), null);
+  assert.equal(siteHome('not a site'), null);
+  const html = `<html><head>
+    <link rel="icon" href="/favicon-16.png" sizes="16x16">
+    <link rel="mask-icon" href="/mask.svg" color="#000">
+    <link rel='icon' type='image/png' href='https://cdn.example.net/icon-96.png' sizes='96x96'>
+    <link href="/apple-touch-icon.png?v=2&amp;x=1" rel="apple-touch-icon" sizes="180x180">
+    <link rel="stylesheet" href="/site.css">
+  </head></html>`;
+  assert.deepEqual(iconCandidates(html, 'https://www.example.com/'), [
+    'https://www.example.com/apple-touch-icon.png?v=2&x=1',
+    'https://cdn.example.net/icon-96.png',
+    'https://www.example.com/favicon-16.png',
+    'https://www.example.com/favicon.ico',
+  ]);
+  // A scalable icon wins; <base href> moves relative links; scripts and other schemes are ignored.
+  assert.deepEqual(iconCandidates('<base href="https://static.example.com/a/"><link rel="icon" href="logo.svg"><link rel="icon" href="javascript:x">', 'https://example.com/'),
+    ['https://static.example.com/a/logo.svg', 'https://example.com/favicon.ico']);
+  assert.deepEqual(iconCandidates('<p>no icons</p>', 'https://example.com/'), ['https://example.com/favicon.ico']);
+});
+
+test('website logos: known service names fill in the website', async () => {
+  const { websiteForName } = await import('../src/core/knownSites');
+  assert.equal(websiteForName('Netflix'), 'netflix.com');
+  assert.equal(websiteForName('  bank of AMERICA '), 'bankofamerica.com');
+  assert.equal(websiteForName('Chase (checking)'), 'chase.com');
+  assert.equal(websiteForName('Amazon account'), 'amazon.com');
+  assert.equal(websiteForName('GitHub - work'), 'github.com');
+  assert.equal(websiteForName('Grandma’s wifi'), null);
+  assert.equal(websiteForName(''), null);
+});
+
+test('website logos: saved on the item without history, never over an icon the user chose', async () => {
+  const s = await VaultStore.create(tmp(), 'correct horse battery', generateSecretKey(), KDF_FAST_FOR_TESTS);
+  const vaultId = s.snapshot().vaults[0].id;
+  const png = 'data:image/png;base64,iVBORw0KGgo=';
+  const item = s.saveItem({ ...login('Netflix', 'me', 'pw', 'https://www.netflix.com/login'), vaultId });
+  assert.equal(s.setSiteIcon(item.id, 'other.com', png), null, 'only for the item’s own website');
+  assert.equal(s.setSiteIcon(item.id, 'netflix.com', png)!.iconHost, 'netflix.com');
+  assert.equal(s.getItem(item.id).history.length, 0);
+  assert.throws(() => s.setSiteIcon(s.saveItem({ ...login('A', 'a', 'a', 'https://a.example'), vaultId }).id, 'a.example', 'data:text/html,<script>'));
+  // The user picks their own icon: it isn't replaced, and saving drops the logo's host.
+  const own = s.saveItem({ ...s.getItem(item.id), icon: 'data:image/png;base64,AAAA', iconHost: undefined, vaultId });
+  assert.equal(own.iconHost, undefined);
+  assert.equal(s.setSiteIcon(item.id, 'netflix.com', png), null);
+  // Saving with no icon never keeps a stray host.
+  assert.equal(s.saveItem({ ...s.getItem(item.id), icon: undefined, iconHost: 'netflix.com', vaultId }).iconHost, undefined);
+});

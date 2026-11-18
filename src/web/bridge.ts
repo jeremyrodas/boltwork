@@ -231,6 +231,9 @@ const handlers: Handlers = {
     return true;
   },
   removeAttachment: (itemId, attId) => { requireStore().removeAttachment(itemId, attId); changed(); },
+  // A page can't read other sites (their servers don't allow it), so the web vault shows logos the apps saved but fetches none.
+  fetchSiteIcon: () => null,
+  setSiteIcon: (itemId, host, icon) => { if (requireStore().setSiteIcon(itemId, host, icon)) changed(); },
   removePasskey: (itemId, credentialId) => { requireStore().removePasskey(itemId, credentialId); changed(); },
 
   generate: options => { const password = generatePassword(options); return { password, strength: rateStrength(password) }; },

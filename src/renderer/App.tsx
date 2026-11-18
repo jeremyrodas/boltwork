@@ -8,6 +8,7 @@ import { BrandMark } from './components/BrandMark';
 import { ConfirmHost, copiedMessage, Toasts } from './components/ui';
 import { Ico } from './components/icons';
 import { useApp } from './state';
+import { useSiteIconBackfill } from './siteIcon';
 import { GeneratorView } from './views/Generator';
 import { HomeView } from './views/Home';
 import { ItemDetail } from './views/ItemDetail';
@@ -49,6 +50,7 @@ function useTheme() {
 
 function MainWindow() {
   const { app, data, route, navigate, run, settings, filter } = useApp();
+  useSiteIconBackfill();
   const [picker, setPicker] = useState(false);
   /** On phones the sidebar slides in over the content; this says whether it's out. */
   const [navOpen, setNavOpen] = useState(false);

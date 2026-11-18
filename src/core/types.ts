@@ -87,6 +87,11 @@ export interface ItemContent {
   notes: string;
   tags: string[];
   icon?: string;
+  /**
+   * Set when `icon` is the website's own logo, fetched automatically for this host (see renderer/siteIcon.ts).
+   * Without it, `icon` is one the user chose, which is never replaced automatically.
+   */
+  iconHost?: string;
   autosubmit?: boolean;
 }
 

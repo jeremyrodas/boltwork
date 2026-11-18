@@ -120,6 +120,10 @@ export interface Api {
   saveAttachment(itemId: string, attachmentId: string): boolean;
   removeAttachment(itemId: string, attachmentId: string): void;
   removePasskey(itemId: string, credentialId: string): void;
+  /** A website's logo, fetched from the site itself (only when Settings → Website logos is on); null if there's none. */
+  fetchSiteIcon(url: string): { mime: string; bytes: Uint8Array } | null;
+  /** Saves a fetched logo (a small PNG data URL) on an item; see VaultStore.setSiteIcon. */
+  setSiteIcon(itemId: string, host: string, icon: string): void;
 
   generate(options: GeneratorOptions): { password: string; strength: Strength };
   rateStrength(password: string): Strength;

@@ -363,7 +363,7 @@ export function SettingsView({ pane = 'general' }: { pane?: string }) {
             <Toggle label="Check for sites that support two-factor authentication" hint="Downloads the public 2fa.directory list. A built-in list is always used offline." checked={settings.check2faSites} onChange={v => updateSettings({ check2faSites: v })} />
           </Section>
           <Section title="Display">
-            <Toggle label="Download website icons" hint="Asks DuckDuckGo’s icon service for each website’s icon, which reveals the sites you have saved to that service." checked={settings.downloadIcons} onChange={v => updateSettings({ downloadIcons: v })} />
+            <Toggle label="Website logos" hint="Gets each login’s logo from its own website and saves it with the login, so it syncs and shows offline. Each website sees one request from this computer when Boltwork fetches its logo; no other service is involved." checked={settings.downloadIcons} onChange={v => updateSettings({ downloadIcons: v })} />
             <Toggle label="Privacy Mode" hint="Hides usernames, websites, notes and revealed passwords on screen." checked={settings.privacyMode} onChange={v => updateSettings({ privacyMode: v })} />
           </Section>
           <Section title="Search">

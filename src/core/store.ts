@@ -101,8 +101,8 @@ function emptyData(): VaultData {
 }
 
 function contentOf(item: Item): ItemContent {
-  const { category, title, urls, fields, sections, notes, tags, icon, autosubmit } = item;
-  return structuredClone({ category, title, urls, fields, sections, notes, tags, icon, autosubmit });
+  const { category, title, urls, fields, sections, notes, tags, icon, iconHost, autosubmit } = item;
+  return structuredClone({ category, title, urls, fields, sections, notes, tags, icon, iconHost, autosubmit });
 }
 
 export class VaultStore {
@@ -444,7 +444,7 @@ export class VaultStore {
     const content: ItemContent = {
       category: input.category, title: input.title.trim() || 'Untitled', urls: input.urls, fields: input.fields,
       sections: input.sections, notes: input.notes, tags: [...new Set(input.tags.map(t => t.trim()).filter(Boolean))],
-      icon: input.icon, autosubmit: input.autosubmit,
+      icon: input.icon, iconHost: input.icon ? input.iconHost : undefined, autosubmit: input.autosubmit,
     };
     const existing = input.id ? this.data.items.find(i => i.id === input.id) : undefined;
     if (!existing) {
@@ -497,6 +497,17 @@ export class VaultStore {
     if (!this.data.vaults.some(v => v.id === vaultId)) throw new Error('Vault not found.');
     return this.patch(id, i => { i.vaultId = vaultId; });
   }
+  /**
+   * Saves a website's logo, fetched in the background, on an item whose first website is on `host`. Leaves an icon
+   * the user chose alone, and adds no history version: the logo isn't something the user changed.
+   */
+  setSiteIcon(id: string, host: string, icon: string): Item | null {
+    const item = this.getItem(id);
+    if ((item.icon && !item.iconHost) || item.iconHost === host || !item.urls[0] || domainOfUrl(item.urls[0].url) !== host) return null;
+    if (!icon.startsWith('data:image/png;base64,') || icon.length > 64 * 1024) throw new Error('Not a website logo.');
+    return this.patch(id, i => { i.icon = icon; i.iconHost = host; });
+  }
+
   setWatchtowerIgnore(id: string, ignore: Item['watchtowerIgnore']) { return this.patch(id, i => { i.watchtowerIgnore = ignore; }, false); }
 
   /** Permanently deletes an item and its attachments. */

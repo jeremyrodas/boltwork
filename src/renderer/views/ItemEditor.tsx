@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { websiteForName } from '../../core/knownSites';
 import { blankContent, TEMPLATE_BY_CATEGORY } from '../../core/templates';
 import type { Category, Field, FieldType, ItemContent, Section } from '../../core/types';
 import { api } from '../api';
@@ -6,6 +7,7 @@ import { decodeQrFromFile, pickFile } from '../qr';
 import { Dices, Eye, EyeOff, Paperclip, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import { CategoryIcon, Ico } from '../components/icons';
 import { askConfirm, Button, IconButton, ItemIcon, Menu, Modal, StrengthMeter, Toggle, useStrength } from '../components/ui';
+import { iconHostOf, siteIconFor } from '../siteIcon';
 import { useApp } from '../state';
 import { GeneratorPanel } from './Generator';
 import { useTotp } from './ItemDetail';
@@ -116,7 +118,7 @@ const ADDABLE: { type: FieldType; label: string }[] = [
 ];
 
 export function ItemEditor({ id, category }: { id?: string; category?: Category }) {
-  const { data, navigate, run, filter, toast } = useApp();
+  const { data, navigate, run, filter, toast, settings } = useApp();
   const existing = id ? data?.items.find(i => i.id === id) : undefined;
   const defaultVault = filter.kind === 'vault' ? filter.vaultId : data?.vaults[0]?.id ?? '';
   const initial = useMemo<Draft | null>(() => {
@@ -132,6 +134,28 @@ export function ItemEditor({ id, category }: { id?: string; category?: Category 
   const [draft, setDraft] = useState<Draft | null>(initial);
   const [tagInput, setTagInput] = useState('');
   useEffect(() => setDraft(initial), [initial]);
+
+  // The website's logo, fetched as its address is entered or changed. An icon the user chose (no iconHost) stays;
+  // so does no icon at all once they've removed the logo for this site.
+  const [logoRemovedFor, setLogoRemovedFor] = useState('');
+  const iconHost = draft ? iconHostOf(draft) : '';
+  const customIcon = !!draft?.icon && !draft.iconHost;
+  const wantLogo = !!settings?.downloadIcons && !!iconHost && !customIcon && draft?.iconHost !== iconHost && logoRemovedFor !== iconHost;
+  useEffect(() => {
+    if (!wantLogo) return;
+    let live = true;
+    const timer = setTimeout(async () => {
+      const icon = await siteIconFor(`https://${iconHost}`);
+      if (!live) return;
+      setDraft(d => {
+        if (!d || iconHostOf(d) !== iconHost || (d.icon && !d.iconHost)) return d;
+        return icon ? { ...d, icon, iconHost } : { ...d, icon: undefined, iconHost: undefined };
+      });
+    }, 700);
+    return () => { live = false; clearTimeout(timer); };
+  }, [wantLogo, iconHost]);
+  // No website any more: a logo fetched for the old one goes too.
+  useEffect(() => { if (!iconHost) setDraft(d => (d?.iconHost ? { ...d, icon: undefined, iconHost: undefined } : d)); }, [iconHost]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -159,6 +183,12 @@ export function ItemEditor({ id, category }: { id?: string; category?: Category 
     const last = sections[sections.length - 1];
     set({ sections: sections.map(s => (s === last ? { ...s, fields: [...s.fields, { id: uid(), label: label.toLowerCase(), type, value: '' }] } : s)) });
   };
+  // A known service's name ("Netflix") fills in its website when none is entered yet.
+  const fillWebsite = () => {
+    if (!t.hasUrls || draft.urls.some(u => u.url.trim())) return;
+    const site = websiteForName(draft.title);
+    if (site) set({ urls: [{ label: 'website', url: `https://${site}`, primary: true }] });
+  };
   const addTag = (tag: string) => { const v = tag.trim().replace(/^#/, ''); if (v && !draft.tags.includes(v)) set({ tags: [...draft.tags, v] }); setTagInput(''); };
 
   async function save() {
@@ -182,17 +212,17 @@ export function ItemEditor({ id, category }: { id?: string; category?: Category 
       </div>
       <div className="detail-scroll">
         <div className="detail-head">
-          <button className="icon-pick" title="Change icon" onClick={async () => { const f = await pickFile('image/*'); if (f) set({ icon: await iconFromFile(f) }); }}>
+          <button className="icon-pick" title="Change icon" onClick={async () => { const f = await pickFile('image/*'); if (f) set({ icon: await iconFromFile(f), iconHost: undefined }); }}>
             <ItemIcon item={draft} size={56} />
           </button>
           <div className="grow">
-            <input className="title-input" autoFocus={!draft.id} placeholder={`${t.name} title`} value={draft.title} onChange={e => set({ title: e.target.value })} />
+            <input className="title-input" autoFocus={!draft.id} placeholder={`${t.name} title`} value={draft.title} onChange={e => set({ title: e.target.value })} onBlur={fillWebsite} />
             <div className="row gap">
               <span className="muted with-icon"><CategoryIcon category={draft.category} size={14} />{t.name} in</span>
               <select value={draft.vaultId} onChange={e => set({ vaultId: e.target.value })}>
                 {data.vaults.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
               </select>
-              {draft.icon && <button className="link" onClick={() => set({ icon: undefined })}>Remove icon</button>}
+              {draft.icon && <button className="link" onClick={() => { set({ icon: undefined, iconHost: undefined }); if (draft.iconHost) setLogoRemovedFor(draft.iconHost); }}>Remove icon</button>}
             </div>
           </div>
         </div>
