@@ -118,7 +118,7 @@ function watchtower(): Promise<WatchtowerReport> {
       }
       if (m.type === 'done') { emit('watchtowerUpdated', m.report); resolve(m.report); } else reject(new Error(m.message));
     };
-    w.onerror = e => reject(new Error(e.message || 'Watchtower stopped.'));
+    w.onerror = e => reject(new Error(e.message || 'Lookout stopped.'));
     w.postMessage({
       data: s.snapshot(), now: Date.now(),
       enabled: { vulnerable: settings.checkVulnerable, compromised: settings.checkCompromisedSites, twoFactor: settings.check2faSites },

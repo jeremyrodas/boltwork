@@ -43,7 +43,7 @@ final class ScreenshotTour: XCTestCase {
         XCTAssertTrue(app.staticTexts["arivera"].waitForExistence(timeout: 5))
         shot(app, "4-items-detail")
 
-        app.tabBars.buttons["Watchtower"].firstMatch.exists ? app.tabBars.buttons["Watchtower"].tap() : app.buttons["Watchtower"].firstMatch.tap()
+        app.tabBars.buttons["Lookout"].firstMatch.exists ? app.tabBars.buttons["Lookout"].tap() : app.buttons["Lookout"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["Overall Password Strength"].waitForExistence(timeout: 10))
         shot(app, "5-watchtower")
 

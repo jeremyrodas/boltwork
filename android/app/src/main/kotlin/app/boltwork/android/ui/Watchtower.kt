@@ -104,14 +104,14 @@ fun WatchtowerTab(model: AppModel, onIssues: (WatchtowerCheck) -> Unit, accountM
         try { model.lookUpBreaches() } finally { checking = false }
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Watchtower") }, navigationIcon = accountMenu) }, contentWindowInsets = TabInsets) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Lookout") }, navigationIcon = accountMenu) }, contentWindowInsets = TabInsets) { padding ->
         Column(
             Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             ScoreGauge(report.score, report.scoreLabel)
             Text(
-                "Watchtower looks for weak, reused and exposed passwords and other risks. Fix the flagged items to raise your score.",
+                "Lookout looks for weak, reused and exposed passwords and other risks. Fix the flagged items to raise your score.",
                 Modifier.widthIn(max = 480.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
             )
             StrengthBreakdown(passwords)
@@ -120,7 +120,7 @@ fun WatchtowerTab(model: AppModel, onIssues: (WatchtowerCheck) -> Unit, accountM
                 Card {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Icon(Icons.Filled.VerifiedUser, null, tint = Good)
-                        Text("All clear. Watchtower found nothing to fix.", color = Good)
+                        Text("All clear. Lookout found nothing to fix.", color = Good)
                     }
                 }
             } else {

@@ -39,7 +39,7 @@ export function HomeView() {
       <div className="home-grid">
         <button className="card padded home-stat" onClick={() => navigate('/watchtower')}>
           <span className="stat-icon"><Ico icon={ShieldCheck} size={20} /></span>
-          <span><b>Watchtower</b><span className="muted">{report ? `Score ${report.score} · ${report.issues.length} issue${report.issues.length === 1 ? '' : 's'}` : 'Checking…'}</span></span>
+          <span><b>Lookout</b><span className="muted">{report ? `Score ${report.score} · ${report.issues.length} issue${report.issues.length === 1 ? '' : 's'}` : 'Checking…'}</span></span>
         </button>
         <button className="card padded home-stat" onClick={() => setFilter({ kind: 'all' })}>
           <span className="stat-icon"><Ico icon={Layers} size={20} /></span><span><b>{active.length} items</b><span className="muted">in {ids ? ids.size : data.vaults.length} vault{data.vaults.length === 1 ? '' : 's'}</span></span>

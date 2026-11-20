@@ -194,7 +194,7 @@ export function ItemDetail({ id }: { id: string }) {
           ...ignorable.map(x => {
             const ignored = item.watchtowerIgnore.includes(x.check);
             return {
-              label: ignored ? `Watchtower: check ${x.label} again` : `Watchtower: ignore ${x.label}`,
+              label: ignored ? `Lookout: check ${x.label} again` : `Lookout: ignore ${x.label}`,
               onClick: () => run(api.setWatchtowerIgnore(item.id, ignored ? item.watchtowerIgnore.filter(c => c !== x.check) : [...item.watchtowerIgnore, x.check])),
             };
           }),

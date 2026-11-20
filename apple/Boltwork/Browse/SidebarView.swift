@@ -22,7 +22,7 @@ struct SidebarView: View {
                     .tag(SidebarSelection.allItems)
                 SidebarRow(title: "Favorites", symbol: "star", count: activeItems.count { $0.favorite })
                     .tag(SidebarSelection.favorites)
-                SidebarRow(title: "Watchtower", symbol: "shield.lefthalf.filled", count: nil)
+                SidebarRow(title: "Lookout", symbol: "shield.lefthalf.filled", count: nil)
                     .tag(SidebarSelection.watchtower)
             }
             if !categories.isEmpty {

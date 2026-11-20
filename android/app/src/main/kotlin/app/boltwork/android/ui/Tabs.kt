@@ -117,7 +117,7 @@ private sealed interface Screen {
 enum class Tab(val title: String, val icon: ImageVector) {
     Home("Home", Icons.Filled.Home),
     Items("Items", Icons.AutoMirrored.Filled.ViewList),
-    Watchtower("Watchtower", Icons.Filled.Shield),
+    Watchtower("Lookout", Icons.Filled.Shield),
     Search("Search", Icons.Filled.Search),
 }
 

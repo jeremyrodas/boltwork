@@ -18,7 +18,7 @@ struct WatchtowerDashboard: View {
             VStack(spacing: 20) {
                 if let report {
                     ScoreGauge(score: report.score, label: report.scoreLabel)
-                    Text("Watchtower looks for weak, reused and exposed passwords and other risks. Fix the flagged items to raise your score.")
+                    Text("Lookout looks for weak, reused and exposed passwords and other risks. Fix the flagged items to raise your score.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -26,7 +26,7 @@ struct WatchtowerDashboard: View {
                     StrengthBreakdown(passwords: passwords)
                     let checks = WatchtowerCheck.allCases.filter { report.count($0) > 0 }
                     if checks.isEmpty {
-                        Label("All clear. Watchtower found nothing to fix.", systemImage: "checkmark.shield.fill")
+                        Label("All clear. Lookout found nothing to fix.", systemImage: "checkmark.shield.fill")
                             .foregroundStyle(Theme.good)
                             .padding(16)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -58,7 +58,7 @@ struct WatchtowerDashboard: View {
             .frame(maxWidth: .infinity)
         }
         .background(Theme.background)
-        .navigationTitle("Watchtower")
+        .navigationTitle("Lookout")
         .navigationDestination(for: WatchtowerCheck.self) { check in
             WatchtowerIssuesList(check: check, issues: report?.issues.filter { $0.check == check } ?? [])
         }

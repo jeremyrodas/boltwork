@@ -2,7 +2,7 @@
 
 A native SwiftUI app that opens the same `vault.json` as the desktop app and syncs with the same server.
 
-- `BoltworkKit/` — the vault format, crypto (Argon2id, BLAKE2b, XChaCha20-Poly1305), items, generator, Watchtower and sync client, as a Swift package.
+- `BoltworkKit/` — the vault format, crypto (Argon2id, BLAKE2b, XChaCha20-Poly1305), items, generator, Lookout (security checks) and sync client, as a Swift package.
 - `Boltwork/` — the app: one target for iOS and macOS.
 - `AutoFill/` — the AutoFill extension: fills passwords and passkeys, and saves new passkeys, in apps and websites.
 - `Common/` — what the app and the extension share: the vault's location in the app group, the Keychain and quick unlock.

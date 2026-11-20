@@ -31,7 +31,7 @@ The Windows app is built with Electron, React and TypeScript. The Mac, iPhone an
 **Passwords and sign-in codes**
 - Generator: random, memorable (EFF wordlist) or PIN, with a 7-level strength meter (zxcvbn)
 - One-time codes (TOTP) from setup keys, `otpauth://` links, a QR code on screen or in an image
-- **Watchtower** flags breached, weak, reused and insecure-HTTP logins, sites where you could turn on two-factor sign-in, and expiring items, and gives you a security score. Breach checks use k-anonymity and run in the background without freezing the app
+- **Lookout** flags breached, weak, reused and insecure-HTTP logins, sites where you could turn on two-factor sign-in, and expiring items, and gives you a security score. Breach checks use k-anonymity and run in the background without freezing the app
 
 **Browser extension** (Chrome, Edge, Brave; Manifest V3)
 - A menu under login fields fills a username, password or one-time code. Ctrl+Shift+L fills the best match
@@ -59,7 +59,7 @@ The Windows app is built with Electron, React and TypeScript. The Mac, iPhone an
 - Opens the same vault as the Windows app and syncs through the same server, so items, passkeys and attachments go everywhere
 - AutoFill for passwords and passkeys in Safari and other apps. Save new passkeys straight into Boltwork
 - Quick unlock with Face ID or Touch ID, auto-lock, and an account password field that never offers to AutoFill itself
-- Watchtower, the password generator, one-time codes, multiple vaults, and the Secret Key and Emergency Kit behind your password
+- Lookout, the password generator, one-time codes, multiple vaults, and the Secret Key and Emergency Kit behind your password
 - Sync with a **backup address**: when the main server address can't be reached, the app tries the backup (for example a VPN address for the same server)
 - On the Mac: an SSH agent for `ssh` and `git`, and a link to the same browser extension the Windows app uses
 
@@ -222,7 +222,7 @@ Your vault lives in `%APPDATA%\Boltwork\vault\` on Windows, and in the app's con
 
 | Path | What |
 |---|---|
-| `src/core/` | Vault, crypto, sync client, passkeys, Watchtower, import/export. No Electron |
+| `src/core/` | Vault, crypto, sync client, passkeys, Lookout (security checks), import/export. No Electron |
 | `src/main/` | Electron main process: windows, tray, SSH agent, browser bridge, passkey provider host |
 | `src/renderer/` | The React UI |
 | `src/extension/`, `extension/` | The browser extension |
@@ -230,7 +230,7 @@ Your vault lives in `%APPDATA%\Boltwork\vault\` on Windows, and in the app's con
 | `native/passkey-provider/` | Windows passkey provider helper (C#, packaged as MSIX) |
 | `src/web/` | The web vault: the same React UI running in the browser |
 | `server/` | Self-hosted sync server (Node.js + SQLite, Docker), which can also serve the web vault |
-| `apple/BoltworkKit/` | Swift package: vault format, crypto, items, generator, Watchtower and sync client |
+| `apple/BoltworkKit/` | Swift package: vault format, crypto, items, generator, Lookout (security checks) and sync client |
 | `apple/Boltwork/` | The SwiftUI app, one target for Mac, iPhone and iPad |
 | `apple/AutoFill/` | AutoFill extension for passwords and passkeys |
 | `apple/BrowserHost/` | The Mac's native messaging host for the browser extension |

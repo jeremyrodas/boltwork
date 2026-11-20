@@ -80,7 +80,7 @@ export function WatchtowerView() {
   return (
     <section className="page">
       <div className="row between">
-        <h1>Watchtower</h1>
+        <h1>Lookout</h1>
         <Button small onClick={refresh} disabled={busy}>{progress ? `Checking ${progress.phase === 'strength' ? 'strength' : 'breaches'} ${progress.done} of ${progress.total}…` : busy ? 'Checking…' : 'Check again'}</Button>
       </div>
       {report && (
@@ -103,7 +103,7 @@ export function WatchtowerView() {
           <div className="grow">
             <h3>Turn on online checks to find breached passwords</h3>
             <p>
-              {offCount === 1 ? 'One check is off' : `${offCount === 2 ? 'Two' : offCount} checks are off`}, so Watchtower can’t warn you about{' '}
+              {offCount === 1 ? 'One check is off' : `${offCount === 2 ? 'Two' : offCount} checks are off`}, so Lookout can’t warn you about{' '}
               {[...offChecks].sort((a, b) => (a.check === 'vulnerable' ? -1 : b.check === 'vulnerable' ? 1 : 0)).map((c, i) => <span key={c.check}>{i > 0 && ' or '}<b>{ONLINE_WHAT[c.check]}</b></span>)}.
             </p>
             <p className="hint">Private by design: only the first 5 characters of each password’s SHA-1 hash go to a public breach database, never the password. The lists of breached sites and 2FA sites are downloaded whole and compared on this computer.</p>

@@ -87,7 +87,7 @@ export function Sidebar() {
         <Nav to="/home" icon={<Ico icon={NAV_ICONS.home} />} label="Home" />
         <Entry f={{ kind: 'all' }} icon={<Ico icon={NAV_ICONS.all} />} label="All Items" n={active.length} />
         <Entry f={{ kind: 'favorites' }} icon={<Ico icon={NAV_ICONS.favorites} />} label="Favorites" n={count(i => i.favorite)} />
-        <Nav to="/watchtower" icon={<Ico icon={NAV_ICONS.watchtower} />} label="Watchtower" />
+        <Nav to="/watchtower" icon={<Ico icon={NAV_ICONS.watchtower} />} label="Lookout" />
         {settings.sidebarShowCategories && (<>
           <div className="side-heading">Categories</div>
           {TEMPLATES.filter(t => count(i => i.category === t.category) > 0).map(t => (

@@ -31,13 +31,13 @@ struct WatchtowerView: View {
                     }
                 }
                 if report.issues.isEmpty {
-                    ContentUnavailableView("All Clear", systemImage: "checkmark.shield", description: Text("Watchtower found nothing to fix."))
+                    ContentUnavailableView("All Clear", systemImage: "checkmark.shield", description: Text("Lookout found nothing to fix."))
                 }
             } else {
                 ProgressView()
             }
         }
-        .navigationTitle("Watchtower")
+        .navigationTitle("Lookout")
         .task(id: model.items) {
             report = Watchtower.run(items: model.items, pwnedCounts: model.pwnedCounts)
         }

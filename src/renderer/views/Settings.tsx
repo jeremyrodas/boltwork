@@ -357,7 +357,7 @@ export function SettingsView({ pane = 'general' }: { pane?: string }) {
         </>)}
         {pane === 'security' && <SecurityPane />}
         {pane === 'privacy' && (<>
-          <Section title="Watchtower online checks">
+          <Section title="Lookout online checks">
             <Toggle label="Check for vulnerable passwords" hint="Uses a public breach database. Only the first 5 characters of each password’s SHA-1 hash are sent." checked={settings.checkVulnerable} onChange={v => updateSettings({ checkVulnerable: v })} />
             <Toggle label="Check for compromised websites" hint="Downloads the public list of breached sites and compares it on this device." checked={settings.checkCompromisedSites} onChange={v => updateSettings({ checkCompromisedSites: v })} />
             <Toggle label="Check for sites that support two-factor authentication" hint="Downloads the public 2fa.directory list. A built-in list is always used offline." checked={settings.check2faSites} onChange={v => updateSettings({ check2faSites: v })} />

@@ -148,7 +148,7 @@ function watchtowerWorker(): Worker {
     const w = new Worker(path.join(unpackedRoot, 'dist', 'watchtowerWorker.js'));
     w.unref();
     w.on('exit', () => { if (wtWorker === w) wtWorker = null; });
-    w.on('error', e => console.error('Watchtower worker failed', e));
+    w.on('error', e => console.error('Lookout worker failed', e));
     wtWorker = w;
   }
   return wtWorker;
@@ -414,7 +414,7 @@ function buildMenu() {
     { role: 'editMenu' },
     { label: 'View', submenu: [
       { label: 'Quick Access', accelerator: settings.quickAccessShortcut, click: toggleQuickAccess },
-      { label: 'Watchtower', click: () => showMain('/watchtower') },
+      { label: 'Lookout', click: () => showMain('/watchtower') },
       { label: 'Password Generator', accelerator: 'CommandOrControl+G', click: () => showMain('/generator') },
       { type: 'separator' },
       { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' },
