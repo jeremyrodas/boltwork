@@ -16,7 +16,7 @@ struct WatchtowerView: View {
                     WatchtowerScore(report: report)
                     Toggle("Check for breached passwords", isOn: $checkBreaches)
                 } footer: {
-                    Text("Looks up each password in Have I Been Pwned by sending only the first five characters of its SHA-1 hash. The password never leaves this device.")
+                    Text("Looks up each password in a public breach database by sending only the first five characters of its SHA-1 hash. The password never leaves this device.")
                 }
                 ForEach(WatchtowerCheck.allCases.filter { report.count($0) > 0 }, id: \.self) { check in
                     Section {

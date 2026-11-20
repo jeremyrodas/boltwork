@@ -43,7 +43,7 @@ struct WatchtowerDashboard: View {
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Toggle("Check for breached passwords", isOn: $checkBreaches)
-                        Text("Sends only the first five characters of each password’s SHA-1 hash to Have I Been Pwned. Your passwords never leave this device.")
+                        Text("Sends only the first five characters of each password’s SHA-1 hash to a public breach database. Your passwords never leave this device.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }

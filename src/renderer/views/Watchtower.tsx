@@ -106,7 +106,7 @@ export function WatchtowerView() {
               {offCount === 1 ? 'One check is off' : `${offCount === 2 ? 'Two' : offCount} checks are off`}, so Watchtower can’t warn you about{' '}
               {[...offChecks].sort((a, b) => (a.check === 'vulnerable' ? -1 : b.check === 'vulnerable' ? 1 : 0)).map((c, i) => <span key={c.check}>{i > 0 && ' or '}<b>{ONLINE_WHAT[c.check]}</b></span>)}.
             </p>
-            <p className="hint">Private by design: only the first 5 characters of each password’s SHA-1 hash go to Have I Been Pwned, never the password. The lists of breached sites and 2FA sites are downloaded whole and compared on this computer.</p>
+            <p className="hint">Private by design: only the first 5 characters of each password’s SHA-1 hash go to a public breach database, never the password. The lists of breached sites and 2FA sites are downloaded whole and compared on this computer.</p>
           </div>
           <Button kind="primary" onClick={turnOnAll}>Turn on online checks</Button>
         </div>
