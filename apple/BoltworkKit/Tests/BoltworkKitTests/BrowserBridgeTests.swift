@@ -108,6 +108,25 @@ struct BrowserBridgeTests {
         // Another site sees nothing.
         let elsewhere: JSONValue = ["type": "passkeyGet", "token": token, "url": "https://example.org/", "request": ["challenge": challenge]]
         #expect(await bridge.handle(elsewhere, origin: Self.origin)["fallback"] == true)
+
+        // The extension's passkey card: list the site's passkeys, then sign in with the one clicked, with no second prompt.
+        let listed = await bridge.handle(["type": "passkeyList", "token": token, "url": "https://login.example.com/", "rpId": "example.com"], origin: Self.origin)
+        let card = try #require(listed["passkeys"]?.arrayValue)
+        #expect(card.count == 1)
+        #expect(card.first?["title"] == "Example")
+        #expect(card.first?["userName"] == "ana")
+        #expect(card.first?["credentialId"] == response["id"])
+        let otherList = await bridge.handle(["type": "passkeyList", "token": token, "url": "https://example.org/"], origin: Self.origin)
+        #expect(otherList["passkeys"]?.arrayValue?.isEmpty == true, "another site's card lists nothing")
+        let promptsBefore = host.prompts.count
+        let picked: JSONValue = ["type": "passkeyGet", "token": token, "url": "https://login.example.com/", "conditional": true,
+                                 "credentialId": response["id"]!, "request": ["rpId": "example.com", "challenge": challenge]]
+        let pickedReply = await bridge.handle(picked, origin: Self.origin)
+        #expect(pickedReply["response"]?["response"]?["userHandle"] == "AQID")
+        #expect(host.prompts.count == promptsBefore, "a passkey picked on the card doesn't ask again")
+        let forged: JSONValue = ["type": "passkeyGet", "token": token, "url": "https://login.example.com/", "conditional": true,
+                                 "credentialId": "not-a-passkey", "request": ["rpId": "example.com", "challenge": challenge]]
+        #expect(await bridge.handle(forged, origin: Self.origin)["response"] == nil)
     }
 }
 
