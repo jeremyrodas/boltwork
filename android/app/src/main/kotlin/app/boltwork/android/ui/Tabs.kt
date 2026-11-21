@@ -129,7 +129,7 @@ fun VaultScreens(model: AppModel) {
     val context = LocalContext.current
     val stack = remember { mutableStateListOf<Screen>() }
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
-    var filter by remember { mutableStateOf<Filter>(Filter.All) }
+    var filter by remember { mutableStateOf<Filter?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var choosingKind by remember { mutableStateOf(false) }
     var generating by remember { mutableStateOf(false) }
@@ -148,7 +148,11 @@ fun VaultScreens(model: AppModel) {
             bottomBar = {
                 NavigationBar {
                     for (t in Tab.entries) {
-                        NavigationBarItem(selected = tab == t, onClick = { tab = t }, icon = { Icon(t.icon, null) }, label = { Text(t.title) })
+                        NavigationBarItem(selected = tab == t, onClick = {
+                            // Tapping Items again goes back to its list of categories.
+                            if (t == Tab.Items && tab == Tab.Items) { filter = null; query = "" }
+                            tab = t
+                        }, icon = { Icon(t.icon, null) }, label = { Text(t.title) })
                     }
                 }
             },
