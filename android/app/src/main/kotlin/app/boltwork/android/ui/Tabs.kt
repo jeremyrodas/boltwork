@@ -44,7 +44,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material3.Badge
@@ -117,7 +116,7 @@ private sealed interface Screen {
 enum class Tab(val title: String, val icon: ImageVector) {
     Home("Home", Icons.Filled.Home),
     Items("Items", Icons.AutoMirrored.Filled.ViewList),
-    Watchtower("Lookout", Icons.Filled.Shield),
+    Watchtower("Lookout", Binoculars),
     Search("Search", Icons.Filled.Search),
 }
 

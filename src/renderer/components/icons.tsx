@@ -5,7 +5,7 @@
 import {
   Archive, Braces, Car, CreditCard, Database, Dices, FileText, Fingerprint, FolderClosed, Folders, Gift, HeartPulse, House, IdCard,
   Download, Info, Keyboard, KeyRound, Landmark, Layers, Lock, Mail, BadgeCheck, BookUser, Palette, Puzzle, RefreshCw, ScrollText,
-  Server, Settings, ShieldCheck, Star, StickyNote, Tag, Terminal, Trash2, Trees, Upload, Wallet, Wifi, Zap, EyeOff,
+  Server, Settings, ShieldCheck, Binoculars, Star, StickyNote, Tag, Terminal, Trash2, Trees, Upload, Wallet, Wifi, Zap, EyeOff,
   ShieldAlert, Repeat2, Unlock, Hourglass, CopyPlus, Smartphone,
   Briefcase, Users, PiggyBank, Plane, Gamepad2, FlaskConical, Globe, GraduationCap, ShoppingBag, Code, Building2, Music, Camera,
   type LucideIcon, type LucideProps,
@@ -22,7 +22,7 @@ export const CATEGORY_ICONS: Record<Category, LucideIcon> = {
 };
 
 export const NAV_ICONS = {
-  home: House, all: Layers, favorites: Star, watchtower: ShieldCheck, archive: Archive, deleted: Trash2, generator: Dices,
+  home: House, all: Layers, favorites: Star, watchtower: Binoculars, archive: Archive, deleted: Trash2, generator: Dices,
   settings: Settings, lock: Lock, tag: Tag, vault: FolderClosed,
 } satisfies Record<string, LucideIcon>;
 

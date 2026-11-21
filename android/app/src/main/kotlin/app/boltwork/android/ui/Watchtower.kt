@@ -57,7 +57,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -68,6 +71,29 @@ import app.boltwork.core.ItemState
 import app.boltwork.core.PasswordStrength
 import app.boltwork.core.Watchtower
 import app.boltwork.core.WatchtowerCheck
+
+/**
+ * Binoculars for the Lookout tab, which Material icons don't have. Drawn from Lucide's "binoculars"
+ * (ISC license, Copyright (c) Lucide Contributors), the same icon the desktop app uses.
+ */
+val Binoculars: ImageVector by lazy {
+    ImageVector.Builder("Binoculars", 24.dp, 24.dp, 24f, 24f).apply {
+        listOf(
+            "M10 10h4",
+            "M19 7V4a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v3",
+            "M20 21a2 2 0 0 0 2-2v-3.851c0-1.39-2-2.962-2-4.829V8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v11a2 2 0 0 0 2 2z",
+            "M22 16L2 16",
+            "M4 21a2 2 0 0 1-2-2v-3.851c0-1.39 2-2.962 2-4.829V8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v11a2 2 0 0 1-2 2z",
+            "M9 7V4a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v3",
+        ).forEach { d ->
+            addPath(
+                PathParser().parsePathString(d).toNodes(),
+                stroke = SolidColor(Color.Black), strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
+            )
+        }
+    }.build()
+}
 
 private val Good = Color(0xFF2E9E5B)
 private val Warn = Color(0xFFE0A800)

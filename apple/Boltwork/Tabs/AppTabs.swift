@@ -21,7 +21,7 @@ struct AppTabs: View {
             Tab("Items", systemImage: "list.bullet.rectangle.portrait", value: AppTab.items) {
                 ItemsBrowser(selection: $selectedItemID, sheet: $sheet)
             }
-            Tab("Lookout", systemImage: "shield.lefthalf.filled", value: AppTab.watchtower) {
+            Tab("Lookout", systemImage: "binoculars.fill", value: AppTab.watchtower) {
                 NavigationStack {
                     WatchtowerDashboard(sheet: $sheet)
                         .itemDestinations(sheet: $sheet)

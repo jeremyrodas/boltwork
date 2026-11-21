@@ -1,4 +1,4 @@
-import { Download, Layers, ShieldCheck } from 'lucide-react';
+import { Binoculars, Download, Layers } from 'lucide-react';
 import { subtitleOf } from '../../core/templates';
 import { Ico } from '../components/icons';
 import type { Item } from '../../core/types';
@@ -38,7 +38,7 @@ export function HomeView() {
       <h1>{hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'}</h1>
       <div className="home-grid">
         <button className="card padded home-stat" onClick={() => navigate('/watchtower')}>
-          <span className="stat-icon"><Ico icon={ShieldCheck} size={20} /></span>
+          <span className="stat-icon"><Ico icon={Binoculars} size={20} /></span>
           <span><b>Lookout</b><span className="muted">{report ? `Score ${report.score} · ${report.issues.length} issue${report.issues.length === 1 ? '' : 's'}` : 'Checking…'}</span></span>
         </button>
         <button className="card padded home-stat" onClick={() => setFilter({ kind: 'all' })}>
