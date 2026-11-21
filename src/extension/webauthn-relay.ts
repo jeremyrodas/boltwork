@@ -15,6 +15,8 @@ export interface PasskeyRelay {
   pending(): Pending | null;
   list(): Promise<{ credentialId: string; userName: string; title: string }[]>;
   pick(credentialId: string): Promise<void>;
+  /** Calls `cb` whenever an autofill request arrives or goes (answered, or withdrawn by the page). */
+  onChange(cb: () => void): void;
 }
 
 declare global { interface Window { __boltworkPasskeys?: PasskeyRelay } }
@@ -31,15 +33,17 @@ if (window === window.top && !window.__boltworkPasskeys) {
     r?.response ? r : r && isDomError(r.error) ? r : { fallback: true };
   const reply = (id: string, result: unknown) => window.postMessage({ __boltworkPk: 'res', id, result }, '*');
   const conditional = new Map<string, Pending>();
+  const listeners = new Set<() => void>();
+  const changed = () => { for (const cb of listeners) { try { cb(); } catch { /* one listener can't stop the rest */ } } };
 
   window.addEventListener('message', e => {
     const d = e.data as { __boltworkPk?: string; id?: string; kind?: string; payload?: unknown } | null;
     if (e.source !== window || !d || typeof d.id !== 'string') return;
-    if (d.__boltworkPk === 'cancel') { conditional.delete(d.id); return; }
+    if (d.__boltworkPk === 'cancel') { if (conditional.delete(d.id)) changed(); return; }
     if (d.__boltworkPk !== 'req') return;
     const id = d.id;
     window.postMessage({ __boltworkPk: 'ack', id }, '*');
-    if (d.kind === 'get-conditional') { conditional.set(id, { id, request: d.payload as Pending['request'] }); return; }
+    if (d.kind === 'get-conditional') { conditional.set(id, { id, request: d.payload as Pending['request'] }); changed(); return; }
     const m: ExtMessage = d.kind === 'create'
       ? { type: 'passkeyCreate', request: d.payload as never }
       : { type: 'passkeyGet', request: d.payload as never };
@@ -61,8 +65,10 @@ if (window === window.top && !window.__boltworkPasskeys) {
       const p = [...conditional.values()].at(-1);
       if (!p) return;
       conditional.delete(p.id);
+      changed();
       const r = await send<Record<string, unknown>>({ type: 'passkeyGet', request: p.request as never, conditional: true, credentialId });
       reply(p.id, settle(r));
     },
+    onChange: cb => { listeners.add(cb); },
   };
 }
