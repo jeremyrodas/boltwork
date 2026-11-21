@@ -215,6 +215,9 @@ final class VaultFlowUITests: XCTestCase {
         #if os(iOS)
         let tab = app.tabBars.buttons["Items"].exists ? app.tabBars.buttons["Items"] : app.buttons["Items"].firstMatch
         if tab.waitForExistence(timeout: 5) { tab.tap() }
+        // The tab opens on its list of categories on iPhone.
+        let all = app.staticTexts["All Items"].firstMatch
+        if all.waitForExistence(timeout: 2), !app.navigationBars["All Items"].exists { all.tap() }
         #endif
     }
 

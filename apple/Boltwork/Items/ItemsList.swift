@@ -1,7 +1,7 @@
 import BoltworkKit
 import SwiftUI
 
-/// Items under letter or month headings. The title is a menu for choosing a category, vault or tag.
+/// Items under letter or month headings, in the category, vault or tag chosen on the Items tab's first page.
 struct ItemsList: View {
     @Environment(AppModel.self) private var model
     @Binding var scope: SidebarSelection
@@ -49,7 +49,6 @@ struct ItemsList: View {
         .navigationTitle(title)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarTitleMenu { ItemScopePicker(scope: $scope) }
         #endif
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -81,7 +80,7 @@ struct ItemsList: View {
         case .favorites: "Favorites"
         case .archive: "Archive"
         case .recentlyDeleted: "Recently Deleted"
-        case .category(let c): c.displayName
+        case .category(let c): c.pluralName
         case .vault(let id): model.vault(id: id)?.name ?? "Vault"
         case .tag(let tag): tag
         }

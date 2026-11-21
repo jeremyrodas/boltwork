@@ -76,7 +76,7 @@ struct ItemListView: View {
         case .favorites: "Favorites"
         case .archive: "Archive"
         case .recentlyDeleted: "Recently Deleted"
-        case .category(let c): c.displayName
+        case .category(let c): c.pluralName
         case .vault(let id): model.vault(id: id)?.name ?? "Vault"
         case .tag(let tag): tag
         }

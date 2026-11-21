@@ -28,7 +28,7 @@ struct SidebarView: View {
             if !categories.isEmpty {
                 Section("Categories") {
                     ForEach(categories) { category in
-                        SidebarRow(title: category.displayName, symbol: category.symbol, count: activeItems.count { $0.category == category })
+                        SidebarRow(title: category.pluralName, symbol: category.symbol, count: activeItems.count { $0.category == category })
                             .tag(SidebarSelection.category(category))
                     }
                 }

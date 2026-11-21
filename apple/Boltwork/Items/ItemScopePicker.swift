@@ -1,40 +1,66 @@
 import BoltworkKit
 import SwiftUI
 
-/// Everything the Items list can show: all items, favorites, a category, vault or tag, archive or trash.
-struct ItemScopePicker: View {
+/// The Items tab's first page: All Items, Favorites, each category, vaults, tags, Archive and Recently Deleted,
+/// with how many items each holds. Picking one shows its items.
+struct ItemScopesList: View {
     @Environment(AppModel.self) private var model
-    @Binding var scope: SidebarSelection
+    @Binding var scope: SidebarSelection?
 
+    private var activeItems: [Item] { model.items.filter { $0.state == .active } }
     private var categories: [ItemCategory] {
-        let used = Set(model.items.filter { $0.state == .active }.map(\.category))
+        let used = Set(activeItems.map(\.category))
         return ItemCategory.allCases.filter(used.contains)
     }
 
     var body: some View {
-        Picker("Show", selection: $scope) {
-            Label("All Items", systemImage: "square.grid.2x2").tag(SidebarSelection.allItems)
-            Label("Favorites", systemImage: "star").tag(SidebarSelection.favorites)
+        List(selection: $scope) {
+            Section {
+                SidebarRow(title: "All Items", symbol: "square.grid.2x2", count: activeItems.count)
+                    .tag(SidebarSelection.allItems)
+                SidebarRow(title: "Favorites", symbol: "star", count: activeItems.count { $0.favorite })
+                    .tag(SidebarSelection.favorites)
+            }
             if !categories.isEmpty {
                 Section("Categories") {
-                    ForEach(categories) { Label($0.displayName, systemImage: $0.symbol).tag(SidebarSelection.category($0)) }
+                    ForEach(categories) { category in
+                        SidebarRow(title: category.pluralName, symbol: category.symbol, count: activeItems.count { $0.category == category })
+                            .tag(SidebarSelection.category(category))
+                    }
                 }
             }
             if model.vaults.count > 1 {
                 Section("Vaults") {
-                    ForEach(model.vaults) { Label($0.name, systemImage: "lock.square.stack").tag(SidebarSelection.vault($0.id)) }
+                    ForEach(model.vaults) { vault in
+                        SidebarRow(title: vault.name, symbol: "lock.square.stack", count: activeItems.count { $0.vaultId == vault.id })
+                            .tag(SidebarSelection.vault(vault.id))
+                    }
                 }
             }
             if !model.allTags.isEmpty {
                 Section("Tags") {
-                    ForEach(model.allTags, id: \.self) { Label($0, systemImage: "tag").tag(SidebarSelection.tag($0)) }
+                    ForEach(model.allTags, id: \.self) { tag in
+                        SidebarRow(title: tag, symbol: "tag", count: nil)
+                            .tag(SidebarSelection.tag(tag))
+                    }
                 }
             }
             Section {
-                Label("Archive", systemImage: "archivebox").tag(SidebarSelection.archive)
-                Label("Recently Deleted", systemImage: "trash").tag(SidebarSelection.recentlyDeleted)
+                SidebarRow(title: "Archive", symbol: "archivebox", count: model.items.count { $0.state == .archived })
+                    .tag(SidebarSelection.archive)
+                SidebarRow(title: "Recently Deleted", symbol: "trash", count: model.items.count { $0.state == .deleted })
+                    .tag(SidebarSelection.recentlyDeleted)
             }
         }
-        .pickerStyle(.inline)
+        .navigationTitle("Items")
+    }
+}
+
+extension ItemCategory {
+    /// The category's name as a list heading: "Logins", "Identities", "SSH Keys".
+    var pluralName: String {
+        let name = displayName
+        guard name.hasSuffix("y"), let before = name.dropLast().last, !"aeiouAEIOU".contains(before) else { return name + "s" }
+        return name.dropLast() + "ies"
     }
 }

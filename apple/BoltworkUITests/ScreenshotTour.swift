@@ -37,6 +37,9 @@ final class ScreenshotTour: XCTestCase {
         app.navigationBars.buttons.firstMatch.tap()
 
         app.tabBars.buttons["Items"].firstMatch.exists ? app.tabBars.buttons["Items"].tap() : app.buttons["Items"].firstMatch.tap()
+        if app.staticTexts["All Items"].firstMatch.waitForExistence(timeout: 2), !app.navigationBars["All Items"].exists {
+            app.staticTexts["All Items"].firstMatch.tap()
+        }
         XCTAssertTrue(app.staticTexts["Code Forge"].waitForExistence(timeout: 5))
         shot(app, "3-items")
         app.staticTexts["Code Forge"].tap()
