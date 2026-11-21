@@ -37,6 +37,14 @@ const CSS = `
   .bar { padding: 10px 14px 12px; }
   .bar p { margin: 0 0 4px; }
   .btns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .x { all: unset; cursor: pointer; margin-left: auto; padding: 0 2px; font-size: 16px; line-height: 1; color: #a3a3b8; }
+  .x:hover, .x:focus-visible { color: #e7e7ee; }
+  .acct { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 14px; }
+  .acct .who { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .more { all: unset; cursor: pointer; display: block; width: 100%; box-sizing: border-box; padding: 6px 14px 8px; font-size: 12px; color: #a3a3b8; border-top: 1px solid #2c2c3a; }
+  .more:hover, .more:focus-visible { color: #e7e7ee; }
+  .others { border-top: 1px solid #2c2c3a; }
+  .others button.row { padding-left: 14px; }
   .btn { all: unset; cursor: pointer; padding: 6px 12px; border-radius: 7px; background: #2c2c3a; font-weight: 600; font-size: 12px; }
   .btn.primary { background: #c9a45c; color: #1c1709; }
   .btn:hover { filter: brightness(1.15); }
@@ -155,7 +163,11 @@ function init() {
     if (e.key === 'Escape') closeMenu();
     if (e.key === 'Enter' && e.isTrusted && e.target instanceof HTMLInputElement) captureSoon(e.target.form ?? document);
   }, true);
-  document.addEventListener('input', e => { if (menu && e.target === menu.field && e.isTrusted) closeMenu(); }, true);
+  document.addEventListener('input', e => {
+    if (menu && e.target === menu.field && e.isTrusted) closeMenu();
+    // Typing a password means signing in that way: the passkey card steps aside for this page.
+    if (card && e.isTrusted && e.target instanceof HTMLInputElement && e.target.type === 'password') { cardClosed = true; removeCard(); }
+  }, true);
   window.addEventListener('resize', placeMenu);
   window.addEventListener('scroll', placeMenu, true);
 
@@ -175,6 +187,10 @@ function init() {
 
   if (window === window.top) {
     void send<PublicPendingSave | null>({ type: 'pendingSave' }).then(p => { if (p) showSaveBar(p); });
+    // The site may have asked for a passkey before this script loaded, so check now as well as on each change.
+    // (After this script has finished loading: init runs before the card's state further down is set up.)
+    window.__boltworkPasskeys?.onChange(() => void updatePasskeyCard());
+    setTimeout(() => void updatePasskeyCard(), 0);
   }
 }
 
@@ -251,4 +267,82 @@ function showSaveBar(p: PublicPendingSave) {
   root.append(box);
   document.documentElement.append(host);
   bar = host;
+}
+
+// ---------- passkey card ----------
+// When a sign-in page quietly asks for a passkey (an autofill request, see webauthn-relay.ts) and Boltwork has one
+// for the site, offer it in a card at the top of the page, without waiting for a click in the username field.
+// As in the field menu, only a real click on the card can pick a passkey; the page can't.
+
+let card: HTMLElement | null = null;
+let cardFor = '';
+let cardClosed = false;
+let cardRun = 0;
+
+function removeCard() { card?.remove(); card = null; cardFor = ''; }
+
+async function updatePasskeyCard() {
+  const relay = window.__boltworkPasskeys;
+  const request = relay?.pending();
+  if (!relay || !request || cardClosed) { removeCard(); return; }
+  if (card && cardFor === request.id) return;
+  const run = ++cardRun;
+  const passkeys = await relay.list();
+  // Superseded while asking, answered meanwhile, or closed: leave it to the newer call.
+  if (run !== cardRun || relay.pending()?.id !== request.id || cardClosed) return;
+  removeCard();
+  if (!passkeys.length) return;
+
+  const { host, root } = shadowHost();
+  host.style.cssText = 'position: fixed; z-index: 2147483647; top: 16px; right: 16px;';
+  const box = el('div', 'box');
+  box.style.width = '320px';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'Sign in with a passkey from Boltwork');
+  const head = el('div', 'head');
+  const close = el('button', 'x', '×');
+  close.setAttribute('aria-label', 'Close');
+  close.addEventListener('click', e => { if (!e.isTrusted) return; cardClosed = true; removeCard(); });
+  head.append(el('span', 'logo'), el('span', '', `Passkey for ${location.hostname.replace(/^www./, '')}`), close);
+
+  const use = (credentialId: string) => (e: Event) => {
+    if (!e.isTrusted) return;
+    e.preventDefault();
+    cardClosed = true;
+    removeCard();
+    closeMenu();
+    void relay.pick(credentialId);
+  };
+  const [first, ...rest] = passkeys;
+  const acct = el('div', 'acct');
+  const who = el('div', 'who');
+  who.append(el('span', 't', first.title), el('span', 's', first.userName || 'No username'));
+  const go = el('button', 'btn primary', 'Use passkey');
+  go.addEventListener('click', use(first.credentialId));
+  acct.append(who, go);
+  box.append(head, acct);
+
+  if (rest.length) {
+    const more = el('button', 'more', `Other passkeys (${rest.length}) ▾`);
+    more.setAttribute('aria-expanded', 'false');
+    const others = el('div', 'others');
+    others.hidden = true;
+    for (const pk of rest.slice(0, 5)) {
+      const b = el('button', 'row');
+      b.append(el('span', 't', pk.userName || pk.title), el('span', 's', pk.title));
+      b.addEventListener('click', use(pk.credentialId));
+      others.append(b);
+    }
+    more.addEventListener('click', e => {
+      if (!e.isTrusted) return;
+      others.hidden = !others.hidden;
+      more.setAttribute('aria-expanded', String(!others.hidden));
+      more.textContent = `Other passkeys (${rest.length}) ${others.hidden ? '▾' : '▴'}`;
+    });
+    box.append(more, others);
+  }
+  root.append(box);
+  document.documentElement.append(host);
+  card = host;
+  cardFor = request.id;
 }
