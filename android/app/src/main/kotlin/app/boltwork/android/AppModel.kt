@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.biometric.BiometricManager
 import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
@@ -103,7 +104,7 @@ class AppModel(private val app: Application) {
             secrets[DeviceSecrets.TOKEN] = client.token
             store
         }
-        opened(store)
+        opened(store, withPassword = true)
         null
     } catch (e: Exception) {
         message(e)
@@ -123,7 +124,7 @@ class AppModel(private val app: Application) {
             store to key
         }
         newSecretKey = key
-        opened(store)
+        opened(store, withPassword = true)
         null
     } catch (e: Exception) {
         message(e)
@@ -131,7 +132,7 @@ class AppModel(private val app: Application) {
 
     suspend fun unlock(password: String): String? = try {
         val secretKey = secrets[DeviceSecrets.SECRET_KEY] ?: throw IllegalStateException("This device lost its Secret Key. Sign out and sign in again.")
-        opened(withContext(Dispatchers.IO) { VaultStore.open(directory, VaultStore.masterKey(directory, password, secretKey)) })
+        opened(withContext(Dispatchers.IO) { VaultStore.open(directory, VaultStore.masterKey(directory, password, secretKey)) }, withPassword = true)
         null
     } catch (e: Exception) {
         message(e)
@@ -151,12 +152,50 @@ class AppModel(private val app: Application) {
     var unlockedAt = 0L
         private set
 
-    private fun opened(store: VaultStore) {
+    private fun opened(store: VaultStore, withPassword: Boolean = false) {
         this.store = store
         unlockedAt = System.currentTimeMillis()
         refresh()
         phase = Phase.Unlocked
         startSync()
+        if (withPassword) offerQuickUnlock()
+    }
+
+    // Offering fingerprint unlock after a password unlock
+
+    /** Set after a password unlock when fingerprint unlock is off and could be on; the vault screens ask. */
+    var quickUnlockOffer by mutableStateOf<QuickUnlockOffer?>(null)
+        private set
+    private var quickUnlockWasReset = false
+
+    /** Fingerprint unlock turned itself off because the device's fingerprints changed; offer it again after the password. */
+    fun quickUnlockLost() { quickUnlockWasReset = true }
+
+    /** "Not now" is remembered: it asks once more two weeks later, then leaves it to Settings. */
+    private fun offerQuickUnlock() {
+        val reset = quickUnlockWasReset
+        quickUnlockWasReset = false
+        quickUnlockChanged()
+        if (quickUnlock) return
+        val strong = BiometricManager.Authenticators.BIOMETRIC_STRONG
+        if (BiometricManager.from(app).canAuthenticate(strong) != BiometricManager.BIOMETRIC_SUCCESS) return
+        if (!reset) {
+            val declines = settings.getInt("quickUnlockOfferDeclines", 0)
+            val last = settings.getLong("quickUnlockOfferDeclinedAt", 0)
+            if (declines >= 2 || (declines == 1 && System.currentTimeMillis() - last < 14 * 86_400_000L)) return
+        }
+        quickUnlockOffer = QuickUnlockOffer(afterReset = reset)
+    }
+
+    /** Clears the offer; the screen that showed it turns fingerprint unlock on. */
+    fun acceptQuickUnlockOffer() { quickUnlockOffer = null }
+
+    fun declineQuickUnlockOffer() {
+        quickUnlockOffer = null
+        settings.edit()
+            .putInt("quickUnlockOfferDeclines", settings.getInt("quickUnlockOfferDeclines", 0) + 1)
+            .putLong("quickUnlockOfferDeclinedAt", System.currentTimeMillis())
+            .apply()
     }
 
     private fun refresh() {
@@ -178,6 +217,7 @@ class AppModel(private val app: Application) {
         items = emptyList()
         vaults = emptyList()
         pwnedCounts = emptyMap()
+        quickUnlockOffer = null
         phase = Phase.Locked
     }
 
@@ -191,6 +231,7 @@ class AppModel(private val app: Application) {
         }
         directory.deleteRecursively()
         secrets.clear()
+        settings.edit().remove("quickUnlockOfferDeclines").remove("quickUnlockOfferDeclinedAt").apply()
         quickUnlock = false
         account = null
         syncStatus = SyncStatus.Idle
@@ -529,4 +570,12 @@ class AppModel(private val app: Application) {
             }
         }
     }
+}
+
+/** The question asked after a password unlock: unlock with a fingerprint next time? */
+data class QuickUnlockOffer(val afterReset: Boolean) {
+    val title get() = if (afterReset) "Turn fingerprint unlock back on?" else "Unlock with your fingerprint next time?"
+    val message get() = if (afterReset)
+        "Fingerprint unlock was turned off because this device’s fingerprints changed. Turn it back on so you don’t have to type your password each time."
+    else "Use your fingerprint or face instead of typing your password each time you open Boltwork. You can change this in Settings."
 }

@@ -13,4 +13,7 @@ enum AppSettings {
     static let browserLink = "browserLink"
     /// Boltwork asked once to become the AutoFill provider; it doesn't ask again.
     static let autoFillOffered = "autoFillOffered"
+    /// How many times, and when last, someone said "Not now" to quick unlock after a password unlock.
+    static func quickUnlockDeclines(_ account: String) -> String { "quickUnlockOfferDeclines.\(account)" }
+    static func quickUnlockDeclinedAt(_ account: String) -> String { "quickUnlockOfferDeclinedAt.\(account)" }
 }

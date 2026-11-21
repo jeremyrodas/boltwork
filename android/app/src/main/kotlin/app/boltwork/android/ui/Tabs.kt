@@ -83,6 +83,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.fragment.app.FragmentActivity
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -188,6 +192,21 @@ fun VaultScreens(model: AppModel) {
     }
 
     if (choosingKind) NewItemSheet(new, onDismiss = { choosingKind = false })
+    model.quickUnlockOffer?.let { offer ->
+        AlertDialog(
+            onDismissRequest = model::declineQuickUnlockOffer,
+            icon = { Icon(Icons.Filled.Fingerprint, null) },
+            title = { Text(offer.title) },
+            text = { Text(offer.message) },
+            confirmButton = {
+                TextButton(onClick = {
+                    model.acceptQuickUnlockOffer()
+                    turnOnFingerprintUnlock(context as? FragmentActivity, model) { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+                }) { Text("Turn On") }
+            },
+            dismissButton = { TextButton(onClick = model::declineQuickUnlockOffer) { Text("Not Now") } },
+        )
+    }
     if (generating) {
         GeneratorDialog(
             onUse = {

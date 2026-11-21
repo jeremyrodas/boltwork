@@ -38,6 +38,16 @@ struct RootView: View {
             SecretKeySheet(secretKey: key.value)
                 .interactiveDismissDisabled()
         }
+        // Waits until a new account's Secret Key has been saved.
+        .alert(model.quickUnlockOffer?.title ?? "", isPresented: Binding(
+            get: { model.phase == .unlocked && model.newSecretKey == nil && model.quickUnlockOffer != nil },
+            set: { if !$0, model.quickUnlockOffer != nil { model.declineQuickUnlockOffer() } }
+        ), presenting: model.quickUnlockOffer) { offer in
+            Button("Turn On \(offer.biometry)") { model.acceptQuickUnlockOffer() }
+            Button("Not Now", role: .cancel) { model.declineQuickUnlockOffer() }
+        } message: { offer in
+            Text(offer.message)
+        }
         .alert("Something went wrong", item: $model.alertMessage) { _ in
         } message: { message in
             Text(message)

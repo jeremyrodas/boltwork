@@ -25,6 +25,8 @@ final class AppModel {
     var newSecretKey: NewSecretKey?
     /// An error to show in an alert.
     var alertMessage: String?
+    /// After a password unlock, an offer to unlock with Face ID, Touch ID or Optic ID next time.
+    var quickUnlockOffer: QuickUnlockOffer?
 
     let sync = SyncController()
     #if os(macOS)
@@ -117,7 +119,14 @@ final class AppModel {
 
     func unlockWithBiometrics() async throws {
         guard let accountId else { return }
-        let key = try await QuickUnlock.masterKey(account: accountId, reason: "Unlock your Boltwork vault")
+        let key: [UInt8]
+        do {
+            key = try await QuickUnlock.masterKey(account: accountId, reason: "Unlock your Boltwork vault")
+        } catch QuickUnlock.Failure.missing {
+            // The biometrics changed, so quick unlock turned itself off: offer it again after the password.
+            quickUnlockWasReset = true
+            throw QuickUnlock.Failure.missing
+        }
         do {
             didUnlock(try VaultStore.open(at: directory, key: key))
         } catch {
@@ -139,10 +148,41 @@ final class AppModel {
         sync.start()
         startIdleWatcher()
         offerAutoFill()
+        offerQuickUnlock()
+    }
+
+    @ObservationIgnored private var quickUnlockWasReset = false
+
+    /// Offers quick unlock right after a password unlock, when the device has an enrolled biometric and it's off.
+    /// "Not now" is remembered per account: it asks once more two weeks later, then leaves it to Settings.
+    private func offerQuickUnlock() {
+        guard let accountId, !isQuickUnlockEnabled, let name = QuickUnlock.biometryName else { return }
+        let reset = quickUnlockWasReset
+        quickUnlockWasReset = false
+        if !reset {
+            let declines = UserDefaults.standard.integer(forKey: AppSettings.quickUnlockDeclines(accountId))
+            let last = UserDefaults.standard.double(forKey: AppSettings.quickUnlockDeclinedAt(accountId))
+            if declines >= 2 || (declines == 1 && Date().timeIntervalSince1970 - last < 14 * 86_400) { return }
+        }
+        quickUnlockOffer = QuickUnlockOffer(biometry: name, afterReset: reset)
+    }
+
+    func acceptQuickUnlockOffer() {
+        quickUnlockOffer = nil
+        setQuickUnlock(true)
+    }
+
+    func declineQuickUnlockOffer() {
+        quickUnlockOffer = nil
+        guard let accountId else { return }
+        let key = AppSettings.quickUnlockDeclines(accountId)
+        UserDefaults.standard.set(UserDefaults.standard.integer(forKey: key) + 1, forKey: key)
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: AppSettings.quickUnlockDeclinedAt(accountId))
     }
 
     func lock() {
         guard phase == .unlocked else { return }
+        quickUnlockOffer = nil
         sync.detach()
         store?.lock()
         store = nil
@@ -541,3 +581,18 @@ private final class ScreenLockObserver: NSObject {
     @objc private func screenLocked() { onLock() }
 }
 #endif
+
+/// The question asked after a password unlock: unlock with the device's biometric next time?
+struct QuickUnlockOffer: Identifiable, Equatable {
+    let biometry: String
+    /// Quick unlock was on until the device's biometrics changed.
+    let afterReset: Bool
+    var id: String { biometry }
+
+    var title: String { "Unlock with \(biometry) next time?" }
+    var message: String {
+        afterReset
+            ? "\(biometry) unlock was turned off because this device’s \(biometry) settings changed. Turn it back on so you don’t have to type your password each time."
+            : "Use \(biometry) instead of typing your password each time you open Boltwork. You can change this in Settings."
+    }
+}

@@ -75,6 +75,21 @@ private fun Heading(text: String) {
 @Composable
 private fun Line() = HorizontalDivider(Modifier.padding(start = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
+/** Asks for a fingerprint, then keeps the vault key behind it. Reports a problem through `onProblem`. */
+fun turnOnFingerprintUnlock(activity: FragmentActivity?, model: AppModel, onProblem: (String) -> Unit) {
+    val noFingerprint = "Set up a fingerprint or face unlock in this device’s settings first."
+    if (activity == null || !Biometrics.available(activity)) return onProblem(noFingerprint)
+    val cipher = runCatching { model.secrets.cipherForSaving() }.getOrNull() ?: return onProblem(noFingerprint)
+    Biometrics.unlock(activity, "Turn on fingerprint unlock", cipher) { unlocked ->
+        val key = model.masterKeyCopy()
+        if (unlocked != null && key != null) {
+            runCatching { model.secrets.saveQuickUnlock(unlocked, key) }.onFailure { onProblem("Fingerprint unlock couldn’t be turned on.") }
+        }
+        key?.fill(0)
+        model.quickUnlockChanged()
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(model: AppModel, onBack: () -> Unit, onSecretKey: () -> Unit, onSetupDevice: () -> Unit) {
@@ -94,24 +109,7 @@ fun SettingsScreen(model: AppModel, onBack: () -> Unit, onSecretKey: () -> Unit,
             model.quickUnlockChanged()
             return
         }
-        val noFingerprint = "Set up a fingerprint or face unlock in this device’s settings first."
-        if (activity == null || !Biometrics.available(activity)) {
-            problem = noFingerprint
-            return
-        }
-        val cipher = runCatching { model.secrets.cipherForSaving() }.getOrNull()
-        if (cipher == null) {
-            problem = noFingerprint
-            return
-        }
-        Biometrics.unlock(activity, "Turn on fingerprint unlock", cipher) { unlocked ->
-            val key = model.masterKeyCopy()
-            if (unlocked != null && key != null) {
-                runCatching { model.secrets.saveQuickUnlock(unlocked, key) }.onFailure { problem = "Fingerprint unlock couldn’t be turned on." }
-            }
-            key?.fill(0)
-            model.quickUnlockChanged()
-        }
+        turnOnFingerprintUnlock(activity, model) { problem = it }
     }
 
     Scaffold(

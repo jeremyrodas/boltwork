@@ -226,7 +226,8 @@ fun LockScreen(model: AppModel, title: String = "Boltwork is locked", allowSignO
         val cipher = model.secrets.cipherForOpening()
         model.quickUnlockChanged()
         if (activity == null || cipher == null) {
-            error = "Fingerprint unlock was turned off because this device’s fingerprints changed. Unlock with your password, then turn it on again in Settings."
+            model.quickUnlockLost()
+            error = "Fingerprint unlock was turned off because this device’s fingerprints changed. Unlock with your password to turn it back on."
             return
         }
         Biometrics.unlock(activity, "Unlock Boltwork", cipher) { unlocked ->
