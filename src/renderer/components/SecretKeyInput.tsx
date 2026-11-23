@@ -88,6 +88,8 @@ function CameraScanner({ web, onFound, onClose }: { web: boolean; onFound: (c: S
   const video = useRef<HTMLVideoElement>(null);
   const [state, setState] = useState<'starting' | 'scanning' | 'error'>('starting');
   const [message, setMessage] = useState('');
+  /** A camera pointing away from you (a phone's rear camera) isn't mirrored. */
+  const [rear, setRear] = useState(false);
   const done = useRef(onFound);
   done.current = onFound;
   useEffect(() => {
@@ -107,12 +109,14 @@ function CameraScanner({ web, onFound, onClose }: { web: boolean; onFound: (c: S
     };
     // Browsers offer no camera on plain http pages, so mediaDevices is missing there.
     const media = navigator.mediaDevices?.getUserMedia
-      ? navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+      // On phones, the rear camera (browsers otherwise pick the front one); computers use whichever camera they have.
+      ? navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
       : Promise.reject(Object.assign(new Error('no camera API'), { name: 'NoMediaDevices' }));
     media
       .then(async s => {
         if (stopped) { s.getTracks().forEach(t => t.stop()); return; }
         stream = s;
+        setRear(s.getVideoTracks()[0]?.getSettings().facingMode === 'environment');
         const v = video.current!;
         v.srcObject = s;
         await v.play();
@@ -137,7 +141,7 @@ function CameraScanner({ web, onFound, onClose }: { web: boolean; onFound: (c: S
   return (
     <Modal title="Scan setup code" onClose={onClose}>
       <p className="muted">Hold the setup code up to the camera: the QR code in your Emergency Kit, or the one a signed-in device shows.</p>
-      <div className={`qr-camera ${state}`} hidden={state === 'error'}>
+      <div className={`qr-camera ${state}${rear ? ' rear' : ''}`} hidden={state === 'error'}>
         <video ref={video} muted playsInline aria-label="Camera view" />
         {state === 'scanning' && <div className="qr-frame" aria-hidden="true" />}
         {state === 'starting' && <span className="qr-camera-note">Starting the camera…</span>}

@@ -203,6 +203,7 @@ input[aria-invalid='true'] { border-color: var(--bad); }
 .qr-camera { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; overflow: hidden; margin: 10px 0; display: grid; place-items: center; }
 .qr-camera[hidden] { display: none; }
 .qr-camera video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.qr-camera.rear video { transform: none; }
 .qr-camera.starting video { visibility: hidden; }
 .qr-camera-note { position: absolute; color: #fff; font-size: 13px; opacity: .8; }
 .qr-frame { position: absolute; width: min(56%, 220px); aspect-ratio: 1; border: 2px solid color-mix(in srgb, var(--accent) 85%, #fff); border-radius: 12px; box-shadow: 0 0 0 999px rgb(0 0 0 / .35); pointer-events: none; }
