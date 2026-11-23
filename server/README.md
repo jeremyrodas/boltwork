@@ -12,7 +12,7 @@ docker compose up -d
 ```
 
 This builds the image (from the repository root, so the whole source checkout is needed) and starts it on `127.0.0.1:8787`,
-with data in the `strongroom-data` volume. To build the image by hand, run `docker build -f server/Dockerfile -t boltwork-server .` from the repository root.
+as the `boltwork-server` container, with data in the `boltwork-data` volume (a server set up before the rename needs its data moved once: see [Updating](../README.md#docker)). To build the image by hand, run `docker build -f server/Dockerfile -t boltwork-server .` from the repository root.
 On a home network you can connect over plain http, for example `http://192.168.1.20:8787`: the app allows http for
 `localhost`, private addresses (10.x, 172.16–31.x, 192.168.x) and `.local` names. To reach it from other computers, change the
 port mapping in `docker-compose.yml` from `127.0.0.1:8787:8787` to `8787:8787`. Your vault stays end-to-end encrypted over http,

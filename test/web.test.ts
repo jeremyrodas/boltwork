@@ -87,6 +87,6 @@ test('the server serves the web vault only when it’s turned on', async () => {
       assert.ok(r.status >= 400 && /json/.test(r.headers.get('content-type')!), `${method} ${p} isn’t served`);
     }
     const health = await (await fetch(`${on.url}/api/v1/health`)).json() as { name: string };
-    assert.equal(health.name, 'strongroom-server');
+    assert.equal(health.name, 'boltwork-server');
   } finally { await on.close(); }
 });

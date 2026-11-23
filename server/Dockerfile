@@ -12,6 +12,10 @@ COPY server/src ./server/src
 RUN node scripts/build.mjs --server
 
 FROM node:24-alpine
+LABEL org.opencontainers.image.title="Boltwork sync server" \
+      org.opencontainers.image.description="Boltwork end-to-end encrypted sync server and optional web vault" \
+      org.opencontainers.image.source="https://github.com/jeremyrodas/boltwork" \
+      org.opencontainers.image.licenses="AGPL-3.0-or-later"
 WORKDIR /app
 COPY --from=build /src/server/dist/server.js ./server.js
 COPY --from=build /src/dist-web ./web

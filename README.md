@@ -107,7 +107,7 @@ cd boltwork/server
 docker compose up -d
 ```
 
-The image is built from the repository root, because it also bundles the web vault. Data lives in the `strongroom-data` volume (the name is kept so existing servers keep their data). By default the server listens on `127.0.0.1:8787` only.
+The image is built from the repository root, because it also bundles the web vault. It runs as the `boltwork-server` container, with data in the `boltwork-data` volume. By default the server listens on `127.0.0.1:8787` only.
 
 **Settings** go under `environment:` in [`server/docker-compose.yml`](server/docker-compose.yml):
 
@@ -132,10 +132,22 @@ cd server
 docker compose up -d --build
 ```
 
-**Backups.** Back up the data volume. Compose names it after the project folder, so it's usually `server_strongroom-data` (`docker volume ls` shows the exact name):
+**Updating a server set up before the rename** (its volume is `server_strongroom-data`). Move the data into the new volume once, before you start the new container, or the server starts empty:
 
 ```bash
-docker run --rm -v server_strongroom-data:/data -v "$PWD":/backup alpine tar czf /backup/boltwork-data.tgz -C /data .
+cd server
+docker compose -p server down
+docker volume create boltwork-data
+docker run --rm -v server_strongroom-data:/from:ro -v boltwork-data:/to alpine cp -a /from/. /to/
+docker compose up -d --build
+```
+
+Once your apps sync again, you can remove the old volume with `docker volume rm server_strongroom-data`.
+
+**Backups.** Back up the `boltwork-data` volume:
+
+```bash
+docker run --rm -v boltwork-data:/data -v "$PWD":/backup alpine tar czf /backup/boltwork-data.tgz -C /data .
 ```
 
 It holds only encrypted data, so you still need your password and Secret Key to use it.
@@ -253,7 +265,7 @@ Boltwork was called Strongroom until version 0.4.0. Boltwork's name matches its 
 - **The old app** installs separately (it had a different app ID). Uninstall Strongroom from Windows Settings → Apps.
 - **Browser extension:** reload it from the extension page and approve the browser again if asked.
 - **Windows passkeys:** remove the old Strongroom passkeys package, install the Boltwork one, and turn Boltwork on in Windows Settings → Accounts → Passkeys → Advanced options. Your passkeys are in the vault, so none are lost.
-- **Unchanged on purpose:** the internal format labels (such as `strongroom:record:v2`), so existing vaults, backups and synced copies open as before; the sync server's protocol name and data, so an existing server keeps working; and the signing certificate's name (`CN=Strongroom`), so it doesn't need trusting again. `strongroom://` item links still open.
+- **Unchanged on purpose:** the internal format labels (such as `strongroom:record:v2`), so existing vaults, backups and synced copies open as before; the sync server's protocol and data, so an existing server keeps working (the apps accept a server that still reports the old name); and the signing certificate's name (`CN=Strongroom`), so it doesn't need trusting again. `strongroom://` item links still open.
 
 ## License
 

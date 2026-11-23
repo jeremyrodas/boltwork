@@ -198,7 +198,7 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
   // ---- routes ----
   async function route(req: http.IncomingMessage, url: URL, body: Row, ip: string): Promise<unknown> {
     const r = `${req.method} ${url.pathname}`;
-    if (r === `GET ${API}/health` || r === 'GET /health') return { ok: true, name: 'strongroom-server', signups: signups === 'first' ? (Number((q.accountCount.get() as Row).n) === 0 ? 'open' : 'closed') : signups };
+    if (r === `GET ${API}/health` || r === 'GET /health') return { ok: true, name: 'boltwork-server', signups: signups === 'first' ? (Number((q.accountCount.get() as Row).n) === 0 ? 'open' : 'closed') : signups };
 
     if (r === `POST ${API}/accounts`) {
       limit(`signup:${ip}`, 10, 3600_000);
@@ -420,7 +420,7 @@ export function startServer(opts: ServerOptions = {}): Promise<{ server: http.Se
   return new Promise(resolve => server.listen(port, () => {
     const addr = server.address() as { port: number };
     const url = `http://localhost:${addr.port}`;
-    log(`strongroom-server listening on ${addr.port} (sign-ups: ${signups}, data: ${dataDir}${web ? ', web vault: on' : ''})`);
+    log(`boltwork-server listening on ${addr.port} (sign-ups: ${signups}, data: ${dataDir}${web ? ', web vault: on' : ''})`);
     resolve({ server, url, close: () => new Promise<void>(r => { server.close(() => { db.close(); r(); }); server.closeAllConnections(); }) });
   }));
 }

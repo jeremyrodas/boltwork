@@ -1,10 +1,12 @@
 # docker compose up -d   (then put it behind HTTPS, see README)
+name: boltwork
 services:
   boltwork:
     build:
       context: ..                # the repository root: the image also builds the web vault
       dockerfile: server/Dockerfile
     image: boltwork-server:latest
+    container_name: boltwork-server
     restart: unless-stopped
     ports:
       - "127.0.0.1:8787:8787"   # only reachable from this machine; expose it through your HTTPS reverse proxy
@@ -13,6 +15,7 @@ services:
       TRUST_PROXY: "1"           # rate-limit by the client IP your proxy forwards
       WEB_VAULT: "off"           # on: open your vault in a browser at the server's address (see README)
     volumes:
-      - strongroom-data:/data
+      - boltwork-data:/data
 volumes:
-  strongroom-data:
+  boltwork-data:
+    name: boltwork-data

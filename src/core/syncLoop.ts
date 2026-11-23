@@ -135,7 +135,8 @@ function watchForChanges() {
 export async function checkServer(url: string) {
   const serverUrl = normalizeServerUrl(url);
   const h = await new SyncClient(serverUrl).health();
-  if (h.name !== 'strongroom-server') throw new Error('That address isn’t a Boltwork sync server.');
+  // Servers from before the rename still say strongroom-server.
+  if (h.name !== 'boltwork-server' && h.name !== 'strongroom-server') throw new Error('That address isn’t a Boltwork sync server.');
   return { serverUrl, signups: h.signups };
 }
 
