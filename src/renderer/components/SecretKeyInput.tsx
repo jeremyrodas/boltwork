@@ -57,9 +57,18 @@ export function ScanCodeButton({ onScanned }: { onScanned: (c: SetupCode) => voi
     if (typeof c === 'string') { toast(c, 'error'); return; }
     onScanned(c);
   };
+  // Browsers only give a page a live camera over https (or on localhost). On a plain http page, ask for a photo
+  // instead: phones open their camera app for it, and the photo never leaves the tab.
+  const liveCamera = !web || (window.isSecureContext && !!navigator.mediaDevices?.getUserMedia);
+  const takePhoto = async () => {
+    const f = await pickFile('image/*', 'environment');
+    if (f) found(await decodeQrFromFile(f).catch(() => null), 'No QR code found in that photo. Take it again with the code filling most of the picture, in focus.');
+  };
   return (<>
     <Menu trigger={<Button type="button" title="Read your Secret Key from a setup code instead of typing it"><Ico icon={ScanQrCode} /> Scan code</Button>} items={[
-      { label: 'With the camera…', onClick: () => setCamera(true) },
+      ...(liveCamera ? [{ label: 'With the camera…', onClick: () => setCamera(true) }]
+        // Only phones and tablets turn the photo request into the camera; computers would just show the file picker.
+        : matchMedia('(pointer: coarse)').matches ? [{ label: 'Take a photo…', onClick: takePhoto }] : []),
       // Reading the screen needs the desktop app; the web vault can't.
       ...(web ? [] : [{ label: 'On the screen', onClick: async () => {
         const r = await run(api.scanQrFromScreen());
