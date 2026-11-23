@@ -527,3 +527,55 @@ html:has(.pk-prompt), body:has(.pk-prompt) { height: auto; min-height: 0; overfl
 .pk-code-label { font-size: 12px; font-weight: 600; color: var(--muted); }
 .pk-code { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 26px; font-weight: 600; letter-spacing: .12em; color: var(--text); user-select: all; }
 .pk-foot {display: flex; align-items: center; gap: 8px; padding: 18px 20px 18px; }
+
+/* ---------- phones (the web vault on a phone; the desktop window can't get this narrow) ---------- */
+.mobile-bar, .nav-backdrop { display: none; }
+@media (max-width: 720px) {
+  /* Only one pane at a time: a top bar, then the list, an item or a page. The sidebar slides in over it. */
+  .shell { flex-direction: column; height: 100dvh; }
+  .mobile-bar { display: flex; align-items: center; gap: 6px; height: 52px; padding: 0 8px; flex: none; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .mobile-brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+  .content { min-height: 0; }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: min(300px, 86vw); z-index: 60; transform: translateX(-100%); transition: transform .2s ease; box-shadow: var(--shadow); visibility: hidden; }
+  .nav-open .sidebar { transform: none; visibility: visible; }
+  .nav-backdrop { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 55; animation: fade .15s; }
+  .list-pane { width: 100%; border-right: 0; }
+  .detail-pane.placeholder { display: none; }
+  .item-open .list-pane { display: none; }
+
+  /* Room to tap, and 16px text so iPhones don't zoom into fields. */
+  input, textarea, select { font-size: 16px; }
+  .icon-btn { width: 40px; height: 40px; }
+  .side-item { padding: 10px 12px; }
+  .menu-item { padding: 11px 12px; }
+  .btn-sm { padding: 8px 12px; }
+
+  /* Tighter page edges. */
+  .page { padding: 18px 16px 48px; }
+  .detail-toolbar { padding: 8px 12px; flex-wrap: wrap; }
+  .detail-scroll { padding: 16px 16px 48px; }
+  .detail-head h1 { font-size: 20px; }
+  .field-row { padding: 8px 4px 8px 14px; }
+  .wt-hero { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .home-grid { grid-template-columns: 1fr; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Settings: the section list becomes a row of tabs that scrolls sideways. */
+  .settings { flex-direction: column; }
+  .settings-nav { width: auto; display: flex; gap: 4px; overflow-x: auto; padding: 8px; border-right: 0; border-bottom: 1px solid var(--line); flex: none; scrollbar-width: none; }
+  .settings-nav .side-item { width: auto; flex: none; white-space: nowrap; }
+  .settings-body { padding: 16px 14px 48px; }
+  .settings-section { padding: 14px; }
+  .toggle-row input:not(.switch), .toggle-row select { max-width: 50%; }
+
+  /* Dialogs and menus fit the screen. */
+  .modal-backdrop { place-items: end center; }
+  .modal { width: 100%; max-width: 100%; max-height: 92dvh; border-radius: 16px 16px 0 0; border-bottom: 0; }
+  .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .icon-pick-grid { grid-template-columns: repeat(auto-fill, 40px); }
+  .menu { max-width: calc(100vw - 24px); }
+
+  /* Sign-in and setup. */
+  .welcome { place-items: start center; overflow-y: auto; padding: 16px 0; }
+  .welcome-card { width: calc(100vw - 24px); max-width: 440px; padding: 22px 18px; }
+}

@@ -3,7 +3,8 @@ import { SCHEMES } from '../core/schemes';
 import { fieldByPurpose } from '../core/templates';
 import type { Category } from '../core/types';
 import { api } from './api';
-import { LockKeyhole } from 'lucide-react';
+import { ChevronLeft, LockKeyhole, Menu as MenuIcon } from 'lucide-react';
+import { BrandMark } from './components/BrandMark';
 import { ConfirmHost, copiedMessage, Toasts } from './components/ui';
 import { Ico } from './components/icons';
 import { useApp } from './state';
@@ -47,8 +48,17 @@ function useTheme() {
 }
 
 function MainWindow() {
-  const { app, data, route, navigate, run, settings } = useApp();
+  const { app, data, route, navigate, run, settings, filter } = useApp();
   const [picker, setPicker] = useState(false);
+  /** On phones the sidebar slides in over the content; this says whether it's out. */
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => setNavOpen(false), [route, filter]);
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setNavOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [navOpen]);
   const setupStarted = useRef(false);
   const [setupDone, setSetupDone] = useState(false);
 
@@ -92,6 +102,8 @@ function MainWindow() {
 
   let main: React.ReactNode;
   const m = route.match(/^\/(item|edit|new|settings)\/?([^/]*)/);
+  // On phones only one pane fits: an open item (or the editor) replaces the list.
+  const itemOpen = (m?.[1] === 'item' || m?.[1] === 'edit' || m?.[1] === 'new') && !!m?.[2];
   if (route.startsWith('/home')) main = <HomeView />;
   else if (route.startsWith('/watchtower')) main = <WatchtowerView />;
   else if (route.startsWith('/generator')) main = <GeneratorView />;
@@ -108,8 +120,16 @@ function MainWindow() {
     </>);
   }
   return (
-    <div className="shell">
+    <div className={`shell${navOpen ? ' nav-open' : ''}${itemOpen ? ' item-open' : ''}`}>
+      {/* Phones only (CSS hides it on wider screens): Back while an item is open, otherwise the menu. The editor has its own Cancel. */}
+      <header className="mobile-bar">
+        {m?.[1] === 'item'
+          ? <button className="icon-btn" aria-label="Back to the list" onClick={() => navigate('/')}><Ico icon={ChevronLeft} size={22} /></button>
+          : <button className="icon-btn" aria-label="Menu" aria-expanded={navOpen} onClick={() => setNavOpen(o => !o)}><Ico icon={MenuIcon} size={20} /></button>}
+        <span className="mobile-brand"><BrandMark size={22} />Boltwork</span>
+      </header>
       <Sidebar />
+      {navOpen && <div className="nav-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" />}
       <main className="content">{main}</main>
       {picker && <CategoryPicker onClose={() => setPicker(false)} onPick={c => { setPicker(false); navigate(`/new/${c}`); }} />}
     </div>
