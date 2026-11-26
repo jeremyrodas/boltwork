@@ -15,8 +15,8 @@ android {
         applicationId = "app.boltwork.android"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.4.3"
+        versionCode = 2
+        versionName = "0.4.4"
     }
     // Release signing comes from a properties file outside the repo, passed as
     // -Pboltwork.signing=/path/to/signing.properties (storeFile, storePassword, keyAlias, keyPassword).
