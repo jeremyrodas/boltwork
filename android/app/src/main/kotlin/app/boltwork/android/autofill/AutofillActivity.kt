@@ -149,8 +149,9 @@ private fun PickerScreen(model: AppModel, match: LoginMatch, onPick: (Item) -> U
     val logins = model.items.filter { it.state == ItemState.active && it.category == ItemCategory.login && it.content.field(FieldPurpose.password) != null }
     val suggested = match.logins(logins, guesses = true)
     val q = query.trim().lowercase()
-    val others = logins.filter { it !in suggested }
-        .filter { q.isEmpty() || q in it.title.lowercase() || q in it.content.field(FieldPurpose.username)?.value.orEmpty().lowercase() || it.content.urls.any { u -> q in u.url.lowercase() } }
+    // Only this site's logins until the person searches: the rest of the vault isn't laid out on another site's screen.
+    val others = if (q.isEmpty()) emptyList() else logins
+        .filter { q in it.title.lowercase() || q in it.content.field(FieldPurpose.username)?.value.orEmpty().lowercase() || it.content.urls.any { u -> q in u.url.lowercase() } }
         .sortedBy { it.title.lowercase() }
 
     Scaffold(topBar = {
@@ -170,9 +171,13 @@ private fun PickerScreen(model: AppModel, match: LoginMatch, onPick: (Item) -> U
                 item { Header("Suggested") }
                 items(suggested, key = { "s" + it.id }) { login -> ItemRow(login) { onPick(login) } }
             }
-            if (others.isNotEmpty() || suggested.isEmpty() || q.isNotEmpty()) item { Header(if (q.isEmpty()) "All logins" else "Results") }
-            items(others, key = { it.id }) { login -> ItemRow(login) { onPick(login) } }
-            if (others.isEmpty() && (suggested.isEmpty() || q.isNotEmpty())) item { Text("No logins", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (q.isEmpty()) {
+                if (suggested.isEmpty()) item { Text("No saved logins for ${match.label}. Search above to find one.", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            } else {
+                item { Header("Results") }
+                items(others, key = { it.id }) { login -> ItemRow(login) { onPick(login) } }
+                if (others.isEmpty()) item { Text("No logins match “${query.trim()}”.", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
         }
     }
 }
