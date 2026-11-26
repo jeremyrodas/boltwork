@@ -12,7 +12,9 @@ import { baseDomain, domainOf } from './search';
 import type { PasskeyTarget, VaultStore } from './store';
 import { blankContent, fieldByPurpose } from './templates';
 import { currentTotp } from './totp';
-import type { Item } from './types';
+import { generatePassword } from './generator';
+import { DEFAULT_GENERATOR } from './settings';
+import type { GeneratorOptions, Item } from './types';
 
 export interface Pairing { id: string; name: string; origin: string; tokenHash: string; createdAt: number; lastUsedAt: number }
 
@@ -28,6 +30,8 @@ export type BridgeRequest =
   | { type: 'save'; url: string; username: string; password: string; title?: string }
   | { type: 'update'; id: string; username: string; password: string }
   | { type: 'open'; route?: string }
+  /** A new password from the user's generator settings, for the extension's "new login" form and sign-up pages. */
+  | { type: 'generate' }
   // Passkeys. `url` is the top-level page URL Chrome reported to the extension, never one the page supplied.
   | { type: 'passkeyCreate'; url: string; request: CreateRequest }
   | { type: 'passkeyGet'; url: string; request: GetRequest; conditional?: boolean; credentialId?: string }
@@ -87,6 +91,8 @@ export interface BridgeDeps {
   waitForUnlock: () => Promise<boolean>;
   onChanged: () => void;
   version: string;
+  /** The user's password generator settings. */
+  generator?: () => GeneratorOptions;
 }
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -172,6 +178,11 @@ export class BrowserBridge {
     const store = this.deps.store();
     if (msg.type === 'status') return { locked: !store, version: this.deps.version };
     if (msg.type === 'open') { this.deps.showMain(msg.route); return { ok: true }; }
+    if (msg.type === 'generate') {
+      // A PIN is no password for a website; use the standard settings then.
+      const o = this.deps.generator?.() ?? DEFAULT_GENERATOR;
+      return { password: generatePassword(o.mode === 'pin' ? DEFAULT_GENERATOR : o) };
+    }
     if (!store) return { locked: true };
     const items = store.snapshot().items;
 

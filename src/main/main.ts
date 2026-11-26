@@ -1106,6 +1106,7 @@ async function setBrowserIntegration(on: boolean) {
     approvePasskey,
     waitForUnlock,
     approvePairing,
+    generator: () => settings.generator,
   });
 }
 

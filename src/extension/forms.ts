@@ -66,6 +66,21 @@ export function loginFields(anchor?: Element | null): LoginFields {
   return { username, passwords, otp };
 }
 
+const NEW_HINT = /\bnew\b|create|choose|confirm|repeat|retype|re-?enter|verify|sign.?up|register/;
+
+/** A field for a password being made up now (sign-up, or a new password on a change-password form). */
+export function isNewPassword(el: unknown): el is HTMLInputElement {
+  if (!isPassword(el) || el.autocomplete === 'current-password') return false;
+  return el.autocomplete === 'new-password' || NEW_HINT.test(hintOf(el));
+}
+
+/** Every new-password field next to `pw` (the password and its "confirm" box), to fill with the same one. */
+export function newPasswordFields(pw: HTMLInputElement): HTMLInputElement[] {
+  const all = inputsIn(pw.form ?? document).filter(isPassword);
+  const fresh = all.filter(isNewPassword);
+  return fresh.includes(pw) ? fresh : [pw];
+}
+
 export function kindOf(el: unknown): FieldKind | null {
   if (isPassword(el)) return el.autocomplete === 'new-password' ? null : 'password';
   if (isOtp(el)) return 'otp';

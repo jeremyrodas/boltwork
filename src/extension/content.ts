@@ -5,7 +5,7 @@
  * restyle it, and we only act on real (isTrusted) clicks.
  */
 import type { BridgeMatch } from '../core/browserBridge';
-import { captureLogin, captureUsernameStep, kindOf, loginFields, setValue, type FieldKind } from './forms';
+import { captureLogin, captureUsernameStep, isNewPassword, kindOf, loginFields, newPasswordFields, setValue, type FieldKind } from './forms';
 import type { Creds, ExtMessage, PublicPendingSave, TabMessage } from './messages';
 
 declare global { interface Window { __boltworkLoaded?: boolean } }
@@ -149,9 +149,43 @@ async function openMenu(field: HTMLInputElement, kind: FieldKind) {
   placeMenu();
 }
 
+/**
+ * On sign-up pages: one click puts a strong password from Boltwork's generator into the password and its confirm
+ * box. When the form is sent, the usual save bar offers to keep it, so a new account is a login in two clicks.
+ */
+async function openNewPasswordMenu(field: HTMLInputElement) {
+  if (Date.now() < suppressUntil || field.value) return;
+  const status = await send<{ locked?: boolean; error?: string }>({ type: 'matches' });
+  if (document.activeElement !== field || !status || status.error || status.locked) return;
+  closeMenu();
+  const { host, root } = shadowHost();
+  const box = el('div', 'box');
+  const head = el('div', 'head');
+  head.append(el('span', 'logo'), el('span', '', 'Boltwork'));
+  const b = el('button', 'row');
+  b.append(el('span', 't', 'Use a strong password'), el('span', 's', 'Boltwork offers to save it when you sign up'));
+  b.addEventListener('mousedown', async e => {
+    if (!e.isTrusted) return;
+    e.preventDefault();
+    closeMenu();
+    suppressUntil = Date.now() + 3000;
+    const r = await send<{ password?: string }>({ type: 'generate' });
+    if (!r?.password) return;
+    for (const f of newPasswordFields(field)) setValue(f, r.password);
+    field.focus();
+    suppressUntil = Date.now() + 1500;
+  });
+  box.append(head, b);
+  root.append(box);
+  document.documentElement.append(host);
+  menu = { host, root, field };
+  placeMenu();
+}
+
 function init() {
   document.addEventListener('focusin', e => {
     const t = e.composedPath()[0];
+    if (isNewPassword(t)) { void openNewPasswordMenu(t); return; }
     const kind = kindOf(t);
     if (kind && t instanceof HTMLInputElement) void openMenu(t, kind);
     else if (!(t instanceof HTMLElement && t.tagName === 'BOLTWORK-UI')) closeMenu();

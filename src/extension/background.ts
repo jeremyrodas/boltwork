@@ -166,6 +166,18 @@ async function handle(m: ExtMessage, sender: chrome.runtime.MessageSender): Prom
       if (typeof r.error === 'string') return m.type === 'passkeyList' ? { passkeys: [] } : { fallback: true };
       return r;
     }
+    case 'generate': return call({ type: 'generate' });
+    case 'createLogin': {
+      if (fromPage) return { error: 'not-allowed' };
+      const saved = await call({ type: 'save', url: m.url, title: m.title, username: m.username, password: m.password });
+      if (typeof saved.error === 'string' || !m.fill) return saved;
+      // Fill it on the page the popup was opened over, if that page is the login's site.
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id || !tab.url || hostOf(tab.url) !== hostOf(m.url)) return saved;
+      const creds = await call({ type: 'fill', id: String(saved.id), url: tab.url });
+      if (!creds.error) await chrome.tabs.sendMessage(tab.id, { type: 'doFill', creds }, { frameId: 0 }).catch(() => null);
+      return { ...saved, filled: !creds.error };
+    }
     case 'unpair': {
       if (fromPage) return { error: 'not-allowed' };
       await chrome.storage.local.remove('token');

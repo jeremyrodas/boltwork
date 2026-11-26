@@ -15,6 +15,10 @@ export type ExtMessage =
   | { type: 'neverSaveList' }
   | { type: 'removeNeverSave'; host: string }
   | { type: 'unpair' }
+  // A strong password from Boltwork's generator (popup's new-login form, and new-password fields on pages).
+  | { type: 'generate' }
+  // The popup's new-login form. Only the popup may send it.
+  | { type: 'createLogin'; url: string; title: string; username: string; password: string; fill?: boolean }
   // Passkeys (from webauthn-relay.ts in top-level pages; the page URL comes from Chrome, not the message).
   | { type: 'passkeyCreate'; request: Record<string, unknown> }
   | { type: 'passkeyGet'; request: Record<string, unknown>; conditional?: boolean; credentialId?: string }

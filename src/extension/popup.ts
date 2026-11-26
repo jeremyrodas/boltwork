@@ -70,6 +70,7 @@ async function renderMain() {
   const list = h('div', { className: 'list' });
   const toast = h('div', { className: 'toast' });
   const header = h('div', { className: 'top' }, h('div', { className: 'logo' }), search,
+    h('button', { className: 'icon add', title: pageHost ? `New login for ${pageHost}` : 'New login', onclick: () => void renderNew(tab, pageHost, matches) }, '+'),
     h('button', { className: 'icon', title: 'Open Boltwork', onclick: async () => { await send({ type: 'open' }); window.close(); } }, '↗'));
   app.replaceChildren(header, list, toast);
 
@@ -103,6 +104,7 @@ async function renderMain() {
     list.replaceChildren(
       h('div', { className: 'label' }, pageHost ? `Logins for ${pageHost}` : 'Search your logins'),
       ...(matches.length ? matches.map(m => row(m, true)) : [h('p', { className: 'muted pad' }, pageHost ? 'No saved logins for this site. Search above to find one.' : 'Type to search.')]),
+      ...(pageHost ? [h('div', { className: 'pad' }, h('button', { className: 'btn', onclick: () => void renderNew(tab, pageHost, matches) }, `+ New login for ${pageHost}`))] : []),
     );
   };
   showMatches();
@@ -120,6 +122,72 @@ async function renderMain() {
       ...items.map(it => row(it, ids.has(it.id))));
   });
   search.focus();
+}
+
+/**
+ * A new login in a few seconds: the site and a strong password are already filled in, so usually only the
+ * username is left to type. "Save & fill" also puts it into the page the popup was opened over.
+ */
+async function renderNew(tab: chrome.tabs.Tab | undefined, pageHost: string, matches: BridgeMatch[]) {
+  const origin = (() => { try { return pageHost ? new URL(tab!.url!).origin : ''; } catch { return ''; } })();
+  const field = (label: string, input: HTMLInputElement, ...extra: HTMLElement[]) =>
+    h('label', { className: 'field' }, h('span', { className: 'flabel' }, label), h('div', { className: 'frow' }, input, ...extra));
+  const title = h('input', { className: 'search', value: pageHost, placeholder: 'Netflix', autocomplete: 'off' }) as HTMLInputElement;
+  const site = h('input', { className: 'search', value: origin, placeholder: 'https://example.com', autocomplete: 'off', spellcheck: 'false' }) as HTMLInputElement;
+  const user = h('input', { className: 'search', placeholder: 'Email or username', autocomplete: 'off', spellcheck: 'false' }) as HTMLInputElement;
+  const pass = h('input', { className: 'search mono', type: 'text', autocomplete: 'off', spellcheck: 'false' }) as HTMLInputElement;
+  const status = h('p', { className: 'err' });
+  const regen = async () => {
+    const r = await send<{ password?: string; error?: string }>({ type: 'generate' });
+    if (r.password) pass.value = r.password;
+  };
+  const show = h('button', { className: 'icon', type: 'button', title: 'Hide password', onclick: () => {
+    const hidden = pass.type === 'password';
+    pass.type = hidden ? 'text' : 'password';
+    show.title = hidden ? 'Hide password' : 'Show password';
+  } }, '👁');
+  const again = h('button', { className: 'icon', type: 'button', title: 'New password', onclick: () => void regen() }, '↻');
+
+  const website = () => {
+    const v = site.value.trim();
+    if (!v) return '';
+    try {
+      const u = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(v) ? v : `https://${v}`);
+      return /^https?:$/.test(u.protocol) && u.hostname.includes('.') ? u.origin : '';
+    } catch { return ''; }
+  };
+  const save = async (fill: boolean) => {
+    status.textContent = '';
+    const url = website();
+    if (!url) { status.textContent = 'Enter the website, like example.com.'; site.focus(); return; }
+    if (!pass.value) { status.textContent = 'Enter or generate a password.'; pass.focus(); return; }
+    const name = user.value.trim();
+    const sameHost = (() => { try { return new URL(url).hostname.replace(/^www\./, '') === pageHost; } catch { return false; } })();
+    if (sameHost && name && matches.some(m => m.username.toLowerCase() === name.toLowerCase())
+      && !confirm(`You already have a login for ${name} on ${pageHost}. Save another one?`)) return;
+    for (const b of buttons) b.setAttribute('disabled', '');
+    const r = await send<{ id?: string; title?: string; error?: string; filled?: boolean }>({
+      type: 'createLogin', url, title: title.value.trim() || new URL(url).hostname.replace(/^www\./, ''), username: name, password: pass.value, fill,
+    });
+    for (const b of buttons) b.removeAttribute('disabled');
+    if (r.error || !r.id) { status.textContent = r.error === 'locked' ? 'Unlock Boltwork first.' : 'Couldn’t save the login. Is Boltwork unlocked?'; return; }
+    if (fill) window.close();
+    else { app.replaceChildren(); await renderMain(); }
+  };
+  const buttons = [
+    h('button', { className: 'btn', type: 'button', onclick: () => void save(false) }, 'Save'),
+    ...(pageHost ? [h('button', { className: 'btn primary', type: 'button', onclick: () => void save(true) }, 'Save & fill')] : []),
+  ];
+  const form = h('form', { className: 'newform' },
+    field('Title', title), field('Website', site), field('Username', user), field('Password', pass, show, again),
+    status, h('div', { className: 'btns' }, h('button', { className: 'btn', type: 'button', onclick: () => { app.replaceChildren(); void renderMain(); } }, 'Cancel'), ...buttons));
+  form.addEventListener('submit', e => { e.preventDefault(); void save(!!pageHost); });
+  app.replaceChildren(
+    h('div', { className: 'top' }, h('div', { className: 'logo' }), h('div', { className: 'heading' }, pageHost ? `New login for ${pageHost}` : 'New login')),
+    form,
+  );
+  await regen();
+  (pageHost ? user : title).focus();
 }
 
 void render();

@@ -118,6 +118,23 @@ test('bridge: pairing, locked state, fill domain check, save and update', async 
   assert.equal(item.urls[0].url, 'https://news.example.org');
 });
 
+test('bridge: new logins from the popup, with a generated password', async () => {
+  const { bridge, store } = await setup();
+  const { token } = await bridge.handle({ type: 'pair', code: 'ABC-123', name: 'Chrome' }, ORIGIN) as { token: string };
+  const call = (m: object) => bridge.handle({ ...m, token } as never, ORIGIN) as Promise<Record<string, unknown>>;
+  const a = String((await call({ type: 'generate' })).password);
+  const b = String((await call({ type: 'generate' })).password);
+  assert.ok(a.length >= 12 && a !== b, 'a fresh, strong password each time');
+  assert.deepEqual(await bridge.handle({ type: 'generate' } as never, ORIGIN), { error: 'unpaired' }, 'only paired browsers');
+
+  const saved = await call({ type: 'save', url: 'https://x.com', title: 'X', username: 'me@example.com', password: a });
+  const item = store.getItem(String(saved.id));
+  assert.equal(item.title, 'X');
+  assert.equal(item.urls[0].url, 'https://x.com');
+  assert.equal(item.fields.find(f => f.purpose === 'password')!.value, a);
+  assert.equal((await call({ type: 'matches', url: 'https://x.com/i/flow/login' }) as { items: { id: string }[] }).items[0].id, item.id);
+});
+
 test('bridge: declined pairing gives no token', async () => {
   const { bridge } = await setup(false);
   assert.deepEqual(await bridge.handle({ type: 'pair', code: 'X', name: 'Chrome' }, ORIGIN), { error: 'denied' });

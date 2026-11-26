@@ -28,3 +28,13 @@ body { margin: 0; width: 360px; min-height: 220px; font: 13px/1.4 system-ui, -ap
 .actions { display: flex; align-items: center; gap: 2px; flex: none; }
 .toast { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); background: #c9a45c; color: #1c1709; padding: 6px 12px; border-radius: 8px; opacity: 0; transition: opacity .15s; pointer-events: none; }
 .toast.on { opacity: 1; }
+.heading { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon.add { font-size: 18px; line-height: 1; padding: 2px 7px; }
+.newform { padding: 6px 14px 14px; }
+.field { display: block; margin-top: 10px; }
+.flabel { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #8b8ba0; margin-bottom: 4px; }
+.frow { display: flex; align-items: center; gap: 4px; }
+.frow .search { min-width: 0; }
+.mono { font-family: ui-monospace, Consolas, monospace; }
+.err { color: #ff8a8a; min-height: 1em; margin: 8px 0 0; }
+.btns { display: flex; justify-content: flex-end; gap: 8px; }
