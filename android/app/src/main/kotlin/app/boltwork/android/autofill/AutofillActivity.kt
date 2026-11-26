@@ -98,7 +98,7 @@ class AutofillActivity : FragmentActivity() {
 
     private fun fill(form: PickForm, item: Item) {
         val asForm = AutofillForm(form.usernames, form.passwords, form.codes, form.match, null, null)
-        val dataset = BoltworkAutofillService.dataset(this, asForm, item, BoltworkAutofillService.presentation(this, item.title, ""))
+        val dataset = BoltworkAutofillService.dataset(this, asForm, item, BoltworkAutofillService.presentation(this, item.title, "", item.content.icon))
         model.markUsed(item.id)
         setResult(Activity.RESULT_OK, Intent().putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, dataset))
         finish()

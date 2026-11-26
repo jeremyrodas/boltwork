@@ -43,7 +43,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.onFocusChanged
 import app.boltwork.android.AppModel
+import app.boltwork.android.SiteIconFetcher
+import app.boltwork.core.SiteIcons
+import kotlinx.coroutines.delay
 import app.boltwork.core.Field
 import app.boltwork.core.FieldPurpose
 import app.boltwork.core.FieldType
@@ -158,6 +163,30 @@ fun ItemEditorScreen(model: AppModel, item: Item?, category: ItemCategory, onDon
     }
     BackHandler { leave() }
 
+    // The website's logo, fetched as its address is entered or changed. An icon the user chose (no iconHost) stays;
+    // so does no icon at all once they've removed the logo for this site. Same rules as the desktop editor.
+    var logoRemovedFor by remember { mutableStateOf("") }
+    val iconHost = SiteIcons.hostOf(result())
+    val wantLogo = model.websiteLogos && iconHost.isNotEmpty() && !SiteIcons.isCustom(content) &&
+        content.iconHost != iconHost && logoRemovedFor != iconHost
+    LaunchedEffect(wantLogo, iconHost) {
+        if (!wantLogo) return@LaunchedEffect
+        delay(700)
+        val icon = SiteIconFetcher.iconFor("https://$iconHost")
+        if (SiteIcons.hostOf(result()) != iconHost || SiteIcons.isCustom(content)) return@LaunchedEffect
+        content = if (icon != null) content.copy(icon = icon, iconHost = iconHost) else content.copy(icon = null, iconHost = null)
+    }
+    // No website any more: a logo fetched for the old one goes too.
+    LaunchedEffect(iconHost) { if (iconHost.isEmpty() && content.iconHost != null) content = content.copy(icon = null, iconHost = null) }
+
+    // A known service's name ("Netflix") fills in its website when none is entered yet.
+    fun fillWebsite() {
+        if (!template.hasUrls || urls.any { it.url.isNotBlank() }) return
+        val site = SiteIcons.websiteForName(content.title) ?: return
+        urls = listOf(ItemUrl(url = "https://$site", primary = true)) + urls.filter { it.url.isNotBlank() }
+    }
+    var titleFocused by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -176,10 +205,21 @@ fun ItemEditorScreen(model: AppModel, item: Item?, category: ItemCategory, onDon
             Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            OutlinedTextField(
-                content.title, { content = content.copy(title = it) }, Modifier.fillMaxWidth(), label = { Text("Title") }, singleLine = true,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ItemIcon(content, Modifier.padding(top = 6.dp), size = 48.dp)
+                OutlinedTextField(
+                    content.title, { content = content.copy(title = it) },
+                    Modifier.weight(1f).onFocusChanged { if (titleFocused && !it.isFocused) fillWebsite(); titleFocused = it.isFocused },
+                    label = { Text("Title") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                )
+            }
+            if (content.icon != null) {
+                TextButton(onClick = {
+                    content.iconHost?.let { logoRemovedFor = it }
+                    content = content.copy(icon = null, iconHost = null)
+                }) { Text("Remove icon") }
+            }
             if (model.vaults.size > 1) {
                 MenuField("Vault", model.vaults.firstOrNull { it.id == vaultId }?.name.orEmpty(), model.vaults.map { it.name }, { name ->
                     model.vaults.firstOrNull { it.name == name }?.let { vaultId = it.id }

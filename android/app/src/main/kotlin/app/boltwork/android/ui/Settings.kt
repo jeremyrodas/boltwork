@@ -77,13 +77,13 @@ private fun Line() = HorizontalDivider(Modifier.padding(start = 16.dp), color = 
 
 /** Asks for a fingerprint, then keeps the vault key behind it. Reports a problem through `onProblem`. */
 fun turnOnFingerprintUnlock(activity: FragmentActivity?, model: AppModel, onProblem: (String) -> Unit) {
-    val noFingerprint = "Set up a fingerprint or face unlock in this device’s settings first."
+    val noFingerprint = "Set up fingerprint or face unlock in this device’s settings first."
     if (activity == null || !Biometrics.available(activity)) return onProblem(noFingerprint)
     val cipher = runCatching { model.secrets.cipherForSaving() }.getOrNull() ?: return onProblem(noFingerprint)
-    Biometrics.unlock(activity, "Turn on fingerprint unlock", cipher) { unlocked ->
+    Biometrics.unlock(activity, "Turn on biometric unlock", cipher) { unlocked ->
         val key = model.masterKeyCopy()
         if (unlocked != null && key != null) {
-            runCatching { model.secrets.saveQuickUnlock(unlocked, key) }.onFailure { onProblem("Fingerprint unlock couldn’t be turned on.") }
+            runCatching { model.secrets.saveQuickUnlock(unlocked, key) }.onFailure { onProblem("Biometric unlock couldn’t be turned on.") }
         }
         key?.fill(0)
         model.quickUnlockChanged()
@@ -180,9 +180,16 @@ fun SettingsScreen(model: AppModel, onBack: () -> Unit, onSecretKey: () -> Unit,
                 }
             }
 
+            Heading("Appearance")
+            Card {
+                SettingRow("Website logos", "Gets each login’s logo from its own website and saves it with the login, so it syncs and shows offline. Each website sees one request from this device when Boltwork fetches its logo; no other service is involved.") {
+                    Switch(model.websiteLogos, model::changeWebsiteLogos)
+                }
+            }
+
             Heading("Security")
             Card {
-                SettingRow("Unlock with fingerprint", "Your account password still works, and is needed after the device’s fingerprints change.") {
+                SettingRow("Unlock with biometrics", "Fingerprint or face. Your account password still works, and is needed after the device’s fingerprints or face change.") {
                     Switch(model.quickUnlock, ::setFingerprint)
                 }
                 problem?.let { Text(it, Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }

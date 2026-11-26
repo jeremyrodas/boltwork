@@ -20,6 +20,7 @@ import android.widget.RemoteViews
 import app.boltwork.android.BoltworkApplication
 import app.boltwork.android.Phase
 import app.boltwork.android.R
+import app.boltwork.android.SiteIconFetcher
 import app.boltwork.core.FieldPurpose
 import app.boltwork.core.Item
 import app.boltwork.core.Totp
@@ -42,7 +43,7 @@ class BoltworkAutofillService : AutofillService() {
         if (model.phase == Phase.Unlocked) {
             for (item in form.match.logins(model.items).take(5)) {
                 val username = item.content.field(FieldPurpose.username)?.value.orEmpty()
-                response.addDataset(dataset(this, form, item, presentation(this, item.title, username.ifEmpty { "Login" })))
+                response.addDataset(dataset(this, form, item, presentation(this, item.title, username.ifEmpty { "Login" }, item.content.icon)))
                 count++
             }
         }
@@ -77,7 +78,9 @@ class BoltworkAutofillService : AutofillService() {
         private val requestCodes = AtomicInteger(1)
         fun nextRequestCode() = requestCodes.incrementAndGet()
 
-        fun presentation(context: Context, title: String, subtitle: String) = RemoteViews(context.packageName, R.layout.autofill_item).apply {
+        /** One suggestion: the login's logo (or Boltwork's icon), its title and a subtitle. */
+        fun presentation(context: Context, title: String, subtitle: String, icon: String? = null) = RemoteViews(context.packageName, R.layout.autofill_item).apply {
+            icon?.let(SiteIconFetcher::decode)?.let { setImageViewBitmap(R.id.autofill_icon, it) }
             setTextViewText(R.id.autofill_title, title)
             setTextViewText(R.id.autofill_subtitle, subtitle)
         }

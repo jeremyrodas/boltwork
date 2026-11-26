@@ -315,7 +315,8 @@ private fun OneTimeCodeCard(model: AppModel, item: Item) {
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(item.category.icon, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                if (item.content.icon != null) ItemIcon(item.content, size = 18.dp)
+                else Icon(item.category.icon, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                 Text(item.title, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text("one-time code", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)

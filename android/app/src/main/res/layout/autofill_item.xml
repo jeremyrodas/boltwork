@@ -9,6 +9,7 @@
     android:paddingTop="10dp"
     android:paddingBottom="10dp">
     <ImageView
+        android:id="@+id/autofill_icon"
         android:layout_width="24dp"
         android:layout_height="24dp"
         android:src="@mipmap/ic_launcher"

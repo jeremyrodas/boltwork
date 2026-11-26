@@ -167,6 +167,18 @@ class VaultStore private constructor(
         return changed
     }
 
+    /**
+     * Saves a website's logo, fetched in the background, on an item whose first website is on `host`. Leaves an icon
+     * the user chose alone, and adds no history version: the logo isn't something the user changed. Null if skipped.
+     */
+    @Synchronized fun setSiteIcon(id: String, host: String, icon: String): Item? {
+        val item = item(id)
+        val c = item.content
+        if (SiteIcons.isCustom(c) || c.iconHost == host || SiteIcons.hostOf(c) != host) return null
+        require(icon.startsWith("data:image/png;base64,") && icon.length <= SiteIcons.MAX_ICON_CHARS) { "Not a website logo." }
+        return patch(id) { it.copy(content = it.content.copy(icon = icon, iconHost = host)) }
+    }
+
     @Synchronized fun setFavorite(id: String, favorite: Boolean) = patch(id, touch = false) { it.copy(favorite = favorite) }
     @Synchronized fun archive(id: String) = patch(id) { it.copy(state = ItemState.archived) }
     @Synchronized fun trash(id: String) = patch(id) { it.copy(state = ItemState.deleted, deletedAt = now()) }

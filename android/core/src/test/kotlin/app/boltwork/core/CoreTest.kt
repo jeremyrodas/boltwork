@@ -308,6 +308,60 @@ class ItemToolsTest {
     }
 }
 
+class SiteIconsTest {
+    private val png = "data:image/png;base64,iVBORw0KGgo="
+
+    @Test fun iconLinksBestFirst() {
+        val html = """<html><head><base href="/assets/">
+            <link rel="icon" href="fav-16.png" sizes="16x16"><link rel="mask-icon" href="mask.svg">
+            <link rel="apple-touch-icon" href="https://cdn.example.com/touch.png" sizes="180x180">
+            <link rel='shortcut icon' href='/favicon.ico'><link rel="icon" type="image/svg+xml" href="logo.svg?v=2&amp;x=1">"""
+        assertEquals(
+            listOf("https://example.com/assets/logo.svg?v=2&x=1", "https://cdn.example.com/touch.png", "https://example.com/favicon.ico", "https://example.com/assets/fav-16.png"),
+            SiteIcons.iconCandidates(html, "https://example.com/"),
+        )
+        assertEquals(listOf("https://example.com/favicon.ico"), SiteIcons.iconCandidates("<p>no icons</p>", "https://example.com/page"))
+    }
+
+    @Test fun homepages() {
+        assertEquals("https://netflix.com/", SiteIcons.siteHome("netflix.com/browse?x=1").toString())
+        assertEquals("http://192.168.1.5:8080/", SiteIcons.siteHome("http://192.168.1.5:8080/login").toString())
+        assertEquals(null, SiteIcons.siteHome("ftp://example.com"))
+        assertEquals(null, SiteIcons.siteHome("intranet"))
+        assertEquals(null, SiteIcons.siteHome("  "))
+    }
+
+    @Test fun knownServices() {
+        assertEquals("netflix.com", SiteIcons.websiteForName("Netflix"))
+        assertEquals("netflix.com", SiteIcons.websiteForName("  NETFLIX account "))
+        assertEquals("khanacademy.org", SiteIcons.websiteForName("Khan Academy (kids)"))
+        assertEquals("lowes.com", SiteIcons.websiteForName("Lowe’s"))
+        assertEquals(null, SiteIcons.websiteForName("My bank"))
+    }
+
+    @Test fun savingALogoKeepsTheUsersOwnIconAndAddsNoHistory() {
+        val dir = java.nio.file.Files.createTempDirectory("boltwork-icons").toFile()
+        val store = VaultStore.open(VaultStore.create(dir, "correct horse battery", SecretKey.generate(), VaultCrypto.fastCostForTests), dir)
+        val vault = store.vaults.first().id
+        val login = ItemTemplate.blankContent(ItemCategory.login).copy(title = "Site", urls = listOf(ItemUrl(url = "https://www.example.com/login")))
+        val item = store.saveItem(null, vault, login)
+        assertEquals("example.com", SiteIcons.hostOf(item.content))
+        assertEquals(null, store.setSiteIcon(item.id, "other.com", png))
+        val saved = assertNotNull(store.setSiteIcon(item.id, "example.com", png))
+        assertEquals("example.com", saved.content.iconHost)
+        assertTrue(saved.history.isEmpty())
+        assertEquals(null, store.setSiteIcon(item.id, "example.com", png))
+        assertFailsWith<IllegalArgumentException> { store.setSiteIcon(store.saveItem(null, vault, login).id, "example.com", "data:image/svg+xml,<svg/>") }
+
+        val custom = store.saveItem(null, vault, login.copy(icon = png))
+        assertEquals(null, store.setSiteIcon(custom.id, "example.com", png))
+
+        val text = Json.encodeToString(Item.serializer(), saved)
+        assertTrue("\"iconHost\":\"example.com\"" in text)
+        assertEquals(saved.content, Json.decodeFromString(Item.serializer(), text).content)
+    }
+}
+
 class SSHKeyTest {
     private fun run(dir: File, vararg args: String): String {
         val p = ProcessBuilder(*args).directory(dir).redirectErrorStream(true).start()

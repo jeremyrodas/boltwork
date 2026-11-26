@@ -226,7 +226,7 @@ fun ItemDetailScreen(model: AppModel, item: Item, onBack: () -> Unit, onEdit: ()
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                ItemIcon(item.category)
+                ItemIcon(item.content, size = 48.dp)
                 Column {
                     Text(item.title, style = MaterialTheme.typography.headlineSmall)
                     val vault = model.vaults.firstOrNull { it.id == item.vaultId }?.name

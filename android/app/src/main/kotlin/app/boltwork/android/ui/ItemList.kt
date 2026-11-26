@@ -1,7 +1,16 @@
 package app.boltwork.android.ui
 
 import androidx.activity.compose.BackHandler
+import android.util.LruCache
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.Dp
+import app.boltwork.android.SiteIconFetcher
+import app.boltwork.core.ItemContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -102,6 +111,28 @@ fun ItemIcon(category: ItemCategory, modifier: Modifier = Modifier) {
     }
 }
 
+/** Decoded item icons, so long lists don't decode the same logo on every scroll. */
+private val iconCache = LruCache<String, ImageBitmap>(200)
+
+/**
+ * The item's icon: one the user chose, or its website's saved logo (see SiteIconFetcher), else its category's.
+ * Logos sync with the item, so they show here even when Website logos is off on this device.
+ */
+@Composable
+fun ItemIcon(content: ItemContent, modifier: Modifier = Modifier, size: Dp = 40.dp) {
+    val icon = content.icon
+    val bitmap = remember(icon) {
+        icon?.let { key -> iconCache.get(key) ?: SiteIconFetcher.decode(key)?.asImageBitmap()?.also { iconCache.put(key, it) } }
+    }
+    if (bitmap == null) {
+        Box(modifier.size(size).clip(RoundedCornerShape(size / 4)).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+            Icon(content.category.icon, null, Modifier.size(size * 0.55f), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+        }
+    } else {
+        Image(bitmap, null, modifier.size(size).clip(RoundedCornerShape(size / 4)), contentScale = ContentScale.Crop, filterQuality = FilterQuality.High)
+    }
+}
+
 /** One item in a list: icon, title, subtitle, and a star for favorites. */
 @Composable
 fun ItemRow(item: Item, onOpen: (String) -> Unit) {
@@ -109,7 +140,7 @@ fun ItemRow(item: Item, onOpen: (String) -> Unit) {
         Modifier.fillMaxWidth().clickable { onOpen(item.id) }.padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        ItemIcon(item.category)
+        ItemIcon(item.content)
         Column(Modifier.weight(1f)) {
             Text(item.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val subtitle = item.content.subtitle

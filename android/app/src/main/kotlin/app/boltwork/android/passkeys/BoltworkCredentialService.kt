@@ -27,6 +27,7 @@ import app.boltwork.android.AppModel
 import app.boltwork.android.BoltworkApplication
 import app.boltwork.android.Phase
 import app.boltwork.android.R
+import app.boltwork.android.SiteIconFetcher
 import app.boltwork.android.autofill.BoltworkAutofillService
 import app.boltwork.core.WebAuthn
 import app.boltwork.core.passkeys
@@ -85,7 +86,7 @@ class BoltworkCredentialService : CredentialProviderService() {
                     for (passkey in WebAuthn.usable(item.passkeys, json, rpId)) {
                         val entry = PublicKeyCredentialEntry.Builder(context, passkey.userName.ifEmpty { item.title }, PasskeyActivity.getIntent(context, item.id, passkey.credentialId), option)
                             .setDisplayName(passkey.userDisplayName ?: item.title)
-                            .setIcon(Icon.createWithResource(context, R.mipmap.ic_launcher))
+                            .setIcon(item.content.icon?.let(SiteIconFetcher::decode)?.let(Icon::createWithBitmap) ?: Icon.createWithResource(context, R.mipmap.ic_launcher))
                             .apply { (passkey.lastUsedAt ?: item.lastUsedAt)?.let { setLastUsedTime(Instant.ofEpochMilli(it)) } }
                             .build()
                         response.addCredentialEntry(entry)

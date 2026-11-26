@@ -227,14 +227,14 @@ fun LockScreen(model: AppModel, title: String = "Boltwork is locked", allowSignO
         model.quickUnlockChanged()
         if (activity == null || cipher == null) {
             model.quickUnlockLost()
-            error = "Fingerprint unlock was turned off because this device’s fingerprints changed. Unlock with your password to turn it back on."
+            error = "Biometric unlock was turned off because this device’s fingerprints or face changed. Unlock with your password to turn it back on."
             return
         }
         Biometrics.unlock(activity, "Unlock Boltwork", cipher) { unlocked ->
             if (unlocked == null) return@unlock
             scope.launch {
                 busy = true
-                error = runCatching { model.secrets.openQuickUnlock(unlocked) }.fold({ model.unlock(it) }, { "Fingerprint unlock didn’t work. Use your password." })
+                error = runCatching { model.secrets.openQuickUnlock(unlocked) }.fold({ model.unlock(it) }, { "Biometric unlock didn’t work. Use your password." })
                 busy = false
             }
         }
@@ -259,7 +259,7 @@ fun LockScreen(model: AppModel, title: String = "Boltwork is locked", allowSignO
         if (model.quickUnlock) {
             OutlinedButton(onClick = ::fingerprint, modifier = wide, enabled = !busy) {
                 Icon(Icons.Filled.Fingerprint, null, Modifier.size(18.dp))
-                Text("  Use Fingerprint")
+                Text("  Use Biometrics")
             }
         }
         if (allowSignOut) TextButton(onClick = { confirmSignOut = true }, enabled = !busy) { Text(if (model.account != null) "Sign Out of This Device" else "Delete Vault from This Device") }

@@ -73,6 +73,11 @@ data class ItemContent(
     val notes: String = "",
     val tags: List<String> = emptyList(),
     val icon: String? = null,
+    /**
+     * Set when `icon` is the website's own logo, fetched automatically for this host (see SiteIcons). Without it,
+     * `icon` is one the user chose, which is never replaced automatically.
+     */
+    val iconHost: String? = null,
     val autosubmit: Boolean? = null,
 ) {
     /** All fields, primary first, then section fields. */
@@ -139,7 +144,7 @@ internal object ItemSerializer : KSerializer<Item> {
     private val ownKeys = setOf(
         "id", "vaultId", "favorite", "state", "createdAt", "updatedAt", "deletedAt", "lastUsedAt", "useCount",
         "passwordChangedAt", "attachments", "history", "watchtowerIgnore",
-        "category", "title", "urls", "fields", "sections", "notes", "tags", "icon", "autosubmit",
+        "category", "title", "urls", "fields", "sections", "notes", "tags", "icon", "iconHost", "autosubmit",
     )
 
     override fun deserialize(decoder: Decoder): Item {

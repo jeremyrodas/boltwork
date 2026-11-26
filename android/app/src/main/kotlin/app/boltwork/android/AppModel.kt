@@ -23,6 +23,7 @@ import app.boltwork.core.ItemState
 import app.boltwork.core.Watchtower
 import app.boltwork.core.Keyset
 import app.boltwork.core.SecretKey
+import app.boltwork.core.SiteIcons
 import app.boltwork.core.SyncClient
 import app.boltwork.core.SyncEngine
 import app.boltwork.core.SyncError
@@ -157,6 +158,7 @@ class AppModel(private val app: Application) {
         unlockedAt = System.currentTimeMillis()
         refresh()
         phase = Phase.Unlocked
+        fillSiteIcons()
         startSync()
         if (withPassword) offerQuickUnlock()
     }
@@ -204,6 +206,72 @@ class AppModel(private val app: Application) {
         vaults = store.vaults
         account = store.syncState
         pwnedCounts = store.pwnedCounts
+        fillSiteIcons()
+    }
+
+    // Website logos
+
+    /** Whether logins get their website's logo, fetched from the website itself. Off by default, as on desktop. */
+    var websiteLogos by mutableStateOf(settings.getBoolean("websiteLogos", false))
+        private set
+
+    fun changeWebsiteLogos(on: Boolean) {
+        websiteLogos = on
+        settings.edit().putBoolean("websiteLogos", on).apply()
+        fillSiteIcons()
+    }
+
+    private val iconMisses = app.getSharedPreferences("siteIconMisses", Context.MODE_PRIVATE)
+    private val week = 7 * 86_400_000L
+    private var fillingIcons: Job? = null
+
+    /** Remembers a site with no readable logo, so it isn't asked again for a week. Only a hint, kept on this device. */
+    private fun noteIconMiss(host: String) {
+        val now = System.currentTimeMillis()
+        val edit = iconMisses.edit().putLong(host, now)
+        for ((h, at) in iconMisses.all) if (at is Long && now - at > week) edit.remove(h)
+        edit.apply()
+    }
+
+    /**
+     * While Website logos is on, fetches logos for logins that don't have one yet, three sites at a time. New and
+     * edited logins get theirs in the editor; this covers everything saved before, and logins synced from elsewhere.
+     */
+    private fun fillSiteIcons() {
+        if (!websiteLogos || phase != Phase.Unlocked || fillingIcons?.isActive == true) return
+        val store = store ?: return
+        val now = System.currentTimeMillis()
+        val byHost = items.asSequence()
+            .filter { it.state != ItemState.deleted && !SiteIcons.isCustom(it.content) }
+            .mapNotNull { item -> SiteIcons.hostOf(item.content).takeIf { it.isNotEmpty() && item.content.iconHost != it }?.let { it to item } }
+            .filter { (host, _) -> now - iconMisses.getLong(host, 0) >= week }
+            .groupBy({ it.first }, { it.second })
+        if (byHost.isEmpty()) return
+        val queue = java.util.concurrent.ConcurrentLinkedQueue(byHost.entries.take(40))
+        val more = byHost.size > queue.size
+        fillingIcons = scope.launch {
+            val saved = java.util.concurrent.atomic.AtomicBoolean(false)
+            List(3) {
+                launch {
+                    while (true) {
+                        val (host, hostItems) = queue.poll() ?: break
+                        val icon = SiteIconFetcher.iconFor("https://$host")
+                        if (icon == null) { noteIconMiss(host); continue }
+                        if (this@AppModel.store !== store) break
+                        withContext(Dispatchers.IO) {
+                            for (item in hostItems) runCatching { store.setSiteIcon(item.id, host, icon) }.getOrNull()?.let { saved.set(true) }
+                        }
+                    }
+                }
+            }.forEach { it.join() }
+            fillingIcons = null
+            if (this@AppModel.store === store && saved.get()) {
+                items = store.items
+                syncSoon?.cancel()
+                syncSoon = scope.launch { delay(1500); syncNow() }
+            }
+            if (more) fillSiteIcons()
+        }
     }
 
     fun lock() {
@@ -212,6 +280,8 @@ class AppModel(private val app: Application) {
         File(app.cacheDir, "kit").deleteRecursively()
         syncLoop?.cancel()
         syncSoon?.cancel()
+        fillingIcons?.cancel()
+        fillingIcons = null
         store?.lock()
         store = null
         items = emptyList()
@@ -574,8 +644,8 @@ class AppModel(private val app: Application) {
 
 /** The question asked after a password unlock: unlock with a fingerprint next time? */
 data class QuickUnlockOffer(val afterReset: Boolean) {
-    val title get() = if (afterReset) "Turn fingerprint unlock back on?" else "Unlock with your fingerprint next time?"
+    val title get() = if (afterReset) "Turn biometric unlock back on?" else "Unlock with biometrics next time?"
     val message get() = if (afterReset)
-        "Fingerprint unlock was turned off because this device’s fingerprints changed. Turn it back on so you don’t have to type your password each time."
-    else "Use your fingerprint or face instead of typing your password each time you open Boltwork. You can change this in Settings."
+        "Biometric unlock was turned off because this device’s fingerprints or face changed. Turn it back on so you don’t have to type your password each time."
+    else "Use biometrics (fingerprint or face) instead of typing your password each time you open Boltwork. You can change this in Settings."
 }

@@ -256,7 +256,7 @@ fun WatchtowerIssuesScreen(model: AppModel, check: WatchtowerCheck, onOpen: (Str
                     Modifier.fillMaxWidth().clickable { onOpen(item.id) }.padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    ItemIcon(item.category)
+                    ItemIcon(item.content)
                     Column(Modifier.weight(1f)) {
                         Text(item.title, style = MaterialTheme.typography.bodyLarge)
                         Text(issue.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
